@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import Generator, Union
 from unittest.mock import patch
 
 import pytest
@@ -48,7 +48,7 @@ def apify_actors_tool_fixture() -> Generator[ApifyActorsTool, None, None]:
     ) as mock_build_tool_args_schema_model:
 
         class DummyModel(BaseModel):
-            run_input: str | dict
+            run_input: Union[str, dict]
 
         mock_build_tool_args_schema_model.return_value = DummyModel
 

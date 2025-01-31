@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from apify_client import ApifyClient
 from langchain_core.callbacks import (
@@ -88,7 +88,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
 
     def _run(
         self,
-        run_input: str | dict,
+        run_input: Union[str, dict],
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> list[dict]:
         """Use the Apify Actor."""
@@ -138,7 +138,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
 
         return create_model(
             "ApifyActorsToolInput",
-            run_input=(str | dict, Field(..., description=description)),
+            run_input=(Union[str, dict], Field(..., description=description)),
         )
 
     def _run_actor(self, run_input: dict) -> list[dict]:
