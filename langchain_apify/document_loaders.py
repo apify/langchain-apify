@@ -1,6 +1,6 @@
 """Apify document loader."""
 
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Iterator, Optional
 
 from apify_client import ApifyClient
 from langchain_core.document_loaders.base import BaseLoader
@@ -49,7 +49,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         self,
         dataset_id: str,
         dataset_mapping_function: Callable[[dict], Document],
-        apify_api_token: str | None = None,
+        apify_api_token: Optional[str] = None,
     ):
         """Initialize the loader with an Apify dataset ID and a mapping function.
 

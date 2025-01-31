@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from apify_client import ApifyClient, ApifyClientAsync
 from langchain_core.documents import Document
@@ -48,11 +48,11 @@ class ApifyWrapper(BaseModel):
 
     apify_client: ApifyClient
     apify_client_async: ApifyClientAsync
-    apify_api_token: str | None = None
+    apify_api_token: Optional[str] = None
 
     def __init__(
         self,
-        apify_api_token: str | None = None,
+        apify_api_token: Optional[str] = None,
         *args: Any,
         **kwargs: Any,
     ):
@@ -98,9 +98,9 @@ class ApifyWrapper(BaseModel):
         run_input: dict,
         dataset_mapping_function: Callable[[dict], Document],
         *,
-        build: str | None = None,
-        memory_mbytes: int | None = None,
-        timeout_secs: int | None = None,
+        build: Optional[str] = None,
+        memory_mbytes: Optional[int] = None,
+        timeout_secs: Optional[int] = None,
     ) -> "ApifyDatasetLoader":
         """Run an Actor on the Apify platform and wait for results to be ready.
         Args:
@@ -140,9 +140,9 @@ class ApifyWrapper(BaseModel):
         run_input: dict,
         dataset_mapping_function: Callable[[dict], Document],
         *,
-        build: str | None = None,
-        memory_mbytes: int | None = None,
-        timeout_secs: int | None = None,
+        build: Optional[str] = None,
+        memory_mbytes: Optional[int] = None,
+        timeout_secs: Optional[int] = None,
     ) -> "ApifyDatasetLoader":
         """Run an Actor on the Apify platform and wait for results to be ready.
         Args:
@@ -182,9 +182,9 @@ class ApifyWrapper(BaseModel):
         task_input: dict,
         dataset_mapping_function: Callable[[dict], Document],
         *,
-        build: str | None = None,
-        memory_mbytes: int | None = None,
-        timeout_secs: int | None = None,
+        build: Optional[str] = None,
+        memory_mbytes: Optional[int] = None,
+        timeout_secs: Optional[int] = None,
     ) -> "ApifyDatasetLoader":
         """Run a saved Actor task on Apify and wait for results to be ready.
         Args:
@@ -225,9 +225,9 @@ class ApifyWrapper(BaseModel):
         task_input: dict,
         dataset_mapping_function: Callable[[dict], Document],
         *,
-        build: str | None = None,
-        memory_mbytes: int | None = None,
-        timeout_secs: int | None = None,
+        build: Optional[str] = None,
+        memory_mbytes: Optional[int] = None,
+        timeout_secs: Optional[int] = None,
     ) -> "ApifyDatasetLoader":
         """Run a saved Actor task on Apify and wait for results to be ready.
         Args:
