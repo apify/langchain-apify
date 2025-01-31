@@ -5,7 +5,7 @@ This package enables seamless integration of the Apify platform into your Langua
 ## Installation
 
 ```bash
-pip install -U langchain-apify
+pip install langchain-apify
 ```
 
 And you should configure credentials by setting the following environment variables:
