@@ -24,7 +24,7 @@ jobs:
         poetry-version: ${{ matrix.poetry-version }}
 
     - name: Install dependencies
-      run: poetry sync --no-interaction --no-ansi --group lint --group test
+      run: poetry sync --no-interaction --no-ansi --with lint --with test
 
     - name: Run lint
       run: make lint
