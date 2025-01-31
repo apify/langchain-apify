@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.13"]
+        python-version: ["3.12"]
         poetry-version: ["latest"]
     steps:
     - name: Checkout repository
@@ -24,7 +24,7 @@ jobs:
         poetry-version: ${{ matrix.poetry-version }}
 
     - name: Install dependencies
-      run: poetry sync --no-interaction --no-ansi --all-groups
+      run: poetry sync --no-interaction --no-ansi --with lint --with test --with dev
 
     - name: Run lint
       run: make lint
