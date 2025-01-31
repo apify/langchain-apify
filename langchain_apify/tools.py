@@ -21,7 +21,7 @@ from langchain_apify.utils import (
 MAX_DESCRIPTION_LEN = 250
 
 
-class ApifyActorsTool(BaseTool):
+class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
     """Tool that runs Apify Actors.
 
     To use, you should have the environment variable `APIFY_API_TOKEN` set
