@@ -77,15 +77,9 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
             values, "apify_api_token", "APIFY_API_TOKEN"
         )
 
-        try:
-            client = create_apify_client(apify_api_token)
+        client = create_apify_client(apify_api_token)
 
-            values["apify_client"] = client
-        except ImportError:
-            raise ImportError(
-                "Could not import apify-client Python package. "
-                "Please install it with `pip install apify-client`."
-            )
+        values["apify_client"] = client
 
         return values
 
