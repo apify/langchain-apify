@@ -1,6 +1,6 @@
 # langchain-apify
 
-This package enables seamless integration of the Apify platform into your Language Learning Models (LLMs) workflows using LangChain.
+This package allows you to use Apify, a platform for web scraping and data extraction, with LangChain. It provides tools to interact with Apify actors, datasets, and API.
 
 ## Installation
 
@@ -8,8 +8,12 @@ This package enables seamless integration of the Apify platform into your Langua
 pip install langchain-apify
 ```
 
-And you should configure credentials by setting the following environment variables:
+## Prerequisites
+
+You should configure credentials by setting the following environment variables:
 - `APIFY_API_TOKEN` - Apify API token
+
+Learn how to get your API token in the [Apify documentation](https://docs.apify.com/platform/integrations/api).
 
 ## Tools
 
