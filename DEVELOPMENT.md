@@ -32,5 +32,5 @@ To run single test file, use `TEST_FILE` argument:
 
 ```bash
 make test TEST_FILE=path_to/test_file.py
-make integration_test TEST_FILE=path_to/test_file.py
+APIFY_API_TOKEN="YOUR_TOKEN" make integration_test TEST_FILE=path_to/test_file.py
 ```
