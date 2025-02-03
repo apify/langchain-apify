@@ -12,6 +12,7 @@ pip install langchain-apify
 
 You should configure credentials by setting the following environment variables:
 - `APIFY_API_TOKEN` - Apify API token
+- `OPENAI_API_KEY` - OpenAI API key (optional, only required if using OpenAI)
 
 Learn how to get your API token in the [Apify documentation](https://docs.apify.com/platform/integrations/api).
 
@@ -31,6 +32,8 @@ search_results = browser.invoke(input={
 # use the tool with an agent
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
+os.environ["OPENAI_API_KEY"] = "YOUR_OPENAI_API_KEY"
+
 model = ChatOpenAI(model="gpt-4o-mini")
 tools = [browser]
 agent = create_react_agent(model, tools)
