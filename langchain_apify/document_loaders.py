@@ -77,21 +77,27 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
             values, "apify_api_token", "APIFY_API_TOKEN"
         )
 
-        client = create_apify_client(apify_api_token)
+        client = create_apify_client(ApifyClient, apify_api_token)
 
         values["apify_client"] = client
 
         return values
 
     def load(self) -> list[Document]:
-        """Load documents."""
+        """Load documents.
+
+        Returns a list of Document objects.
+        """
         dataset_items = (
             self.apify_client.dataset(self.dataset_id).list_items(clean=True).items
         )
         return list(map(self.dataset_mapping_function, dataset_items))
 
     def lazy_load(self) -> Iterator[Document]:
-        """Lazy load documents."""
+        """Lazily loads documents.
+
+        Returns an iterator that yields Document objects.
+        """
         dataset_items = self.apify_client.dataset(self.dataset_id).iterate_items(
             clean=True
         )

@@ -1,4 +1,5 @@
 import string
+from typing import Type, TypeVar
 
 from apify_client import ApifyClientAsync
 from apify_client.client import ApifyClient
@@ -30,25 +31,24 @@ def prune_actor_input_schema(
     return properties_out, required
 
 
-def create_apify_client(token: str) -> ApifyClient:
-    """Get the Apify client. Is created if not exists or token changes."""
+T = TypeVar("T", ApifyClient, ApifyClientAsync)
+
+
+def create_apify_client(t: Type[T], token: str) -> T:
+    """Create an Apify client instance with custom user-agent.
+
+    :param t: ApifyClient or ApifyClientAsync
+    :param token: API token
+    """
     if not token:
         msg = "API token is required."
         raise ValueError(msg)
-    client = ApifyClient(token)
-    if httpx_client := getattr(client.http_client, "httpx_client"):
-        httpx_client.headers["user-agent"] += "; Origin/langchain"
-    return client
-
-
-def create_apify_client_async(token: str) -> ApifyClientAsync:
-    if not token:
-        msg = "API token is required."
-        raise ValueError(msg)
-    client = ApifyClientAsync(token)
-    if httpx_async_client := getattr(client.http_client, "httpx_async_client"):
-        httpx_async_client.headers["user-agent"] += "; Origin/langchain"
-
+    client = t(token)
+    http_client_attr = (
+        "httpx_async_client" if isinstance(client, ApifyClientAsync) else "httpx_client"
+    )
+    if http_client := getattr(client.http_client, http_client_attr):
+        http_client.headers["user-agent"] += "; Origin/langchain"
     return client
 
 

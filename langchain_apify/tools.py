@@ -69,7 +69,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
             msg = "APIFY_API_TOKEN environment variable is not set."
             raise ValueError(msg)
 
-        apify_client = create_apify_client(apify_api_token)
+        apify_client = create_apify_client(ApifyClient, apify_api_token)
 
         kwargs.update(
             {

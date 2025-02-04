@@ -24,6 +24,7 @@ class TestApifyActorsToolIntegration(ToolsIntegrationTests):
         test_invoke_no_tool_call(tool): Tests if the tool can return anything without
             throwing an error when invoked without a ToolCall.
     """
+
     @property
     def tool_constructor(self) -> Type[BaseTool]:
         """Return the tool class to be tested."""

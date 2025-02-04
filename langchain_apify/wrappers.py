@@ -6,7 +6,7 @@ from langchain_core.utils import get_from_dict_or_env
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from langchain_apify.document_loaders import ApifyDatasetLoader
-from langchain_apify.utils import create_apify_client, create_apify_client_async
+from langchain_apify.utils import create_apify_client
 
 
 class ApifyWrapper(BaseModel):
@@ -78,8 +78,8 @@ class ApifyWrapper(BaseModel):
             values, "apify_api_token", "APIFY_API_TOKEN"
         )
 
-        client = create_apify_client(apify_api_token)
-        async_client = create_apify_client_async(apify_api_token)
+        client = create_apify_client(ApifyClient, apify_api_token)
+        async_client = create_apify_client(ApifyClientAsync, apify_api_token)
 
         values["apify_client"] = client
         values["apify_client_async"] = async_client
