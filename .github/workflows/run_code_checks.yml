@@ -1,4 +1,4 @@
-name: Poetry Project CI
+name: Code checks
 
 on:
   push:
