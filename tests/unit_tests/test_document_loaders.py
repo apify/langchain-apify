@@ -8,6 +8,10 @@ from langchain_apify import ApifyDatasetLoader
 
 
 def test_apify_dataset_loader_load() -> None:
+    """Tests the ApifyDatasetLoader.load method.
+
+    Mocks the ApifyClient and DatasetClient to return a single item.
+    """
     with patch.object(DatasetClient, "list_items") as mock_list_items:
         mock_list_items.return_value = ListPage(
             data={"items": [{"text": "Apify is great!", "url": "https://apify.com"}]}
@@ -28,6 +32,10 @@ def test_apify_dataset_loader_load() -> None:
 
 
 def test_apify_dataset_loader_lazy_load() -> None:
+    """Tests the ApifyDatasetLoader.lazy_load method.
+
+    Mocks the ApifyClient and DatasetClient to return a single item.
+    """
     with patch.object(DatasetClient, "iterate_items") as mock_list_items:
         mock_list_items.return_value = iter(
             [{"text": "Apify is great!", "url": "https://apify.com"}]

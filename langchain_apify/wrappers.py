@@ -71,6 +71,7 @@ class ApifyWrapper(BaseModel):
     @classmethod
     def validate_environment(cls, values: dict) -> Any:
         """Validate environment.
+
         Validate that an Apify API token is set and the apify-client
         Python package exists in the current environment.
         """
@@ -97,6 +98,7 @@ class ApifyWrapper(BaseModel):
         timeout_secs: Optional[int] = None,
     ) -> "ApifyDatasetLoader":
         """Run an Actor on the Apify platform and wait for results to be ready.
+
         Args:
             actor_id (str): The ID or name of the Actor on the Apify platform.
             run_input (Dict): The input object of the Actor that you're trying to run.
@@ -108,6 +110,7 @@ class ApifyWrapper(BaseModel):
             memory_mbytes (int, optional): Optional memory limit for the run,
                 in megabytes.
             timeout_secs (int, optional): Optional timeout for the run, in seconds.
+
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
                 Actor run's default dataset.
@@ -139,6 +142,7 @@ class ApifyWrapper(BaseModel):
         timeout_secs: Optional[int] = None,
     ) -> "ApifyDatasetLoader":
         """Run an Actor on the Apify platform and wait for results to be ready.
+
         Args:
             actor_id (str): The ID or name of the Actor on the Apify platform.
             run_input (Dict): The input object of the Actor that you're trying to run.
@@ -150,6 +154,7 @@ class ApifyWrapper(BaseModel):
             memory_mbytes (int, optional): Optional memory limit for the run,
                 in megabytes.
             timeout_secs (int, optional): Optional timeout for the run, in seconds.
+
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
                 Actor run's default dataset.
@@ -181,6 +186,7 @@ class ApifyWrapper(BaseModel):
         timeout_secs: Optional[int] = None,
     ) -> "ApifyDatasetLoader":
         """Run a saved Actor task on Apify and wait for results to be ready.
+
         Args:
             task_id (str): The ID or name of the task on the Apify platform.
             task_input (Dict): The input object of the task that you're trying to run.
@@ -193,6 +199,7 @@ class ApifyWrapper(BaseModel):
             memory_mbytes (int, optional): Optional memory limit for the run,
                 in megabytes.
             timeout_secs (int, optional): Optional timeout for the run, in seconds.
+
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
                 task run's default dataset.
@@ -224,6 +231,7 @@ class ApifyWrapper(BaseModel):
         timeout_secs: Optional[int] = None,
     ) -> "ApifyDatasetLoader":
         """Run a saved Actor task on Apify and wait for results to be ready.
+
         Args:
             task_id (str): The ID or name of the task on the Apify platform.
             task_input (Dict): The input object of the task that you're trying to run.
@@ -236,6 +244,7 @@ class ApifyWrapper(BaseModel):
             memory_mbytes (int, optional): Optional memory limit for the run,
                 in megabytes.
             timeout_secs (int, optional): Optional timeout for the run, in seconds.
+
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
                 task run's default dataset.

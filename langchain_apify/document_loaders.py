@@ -71,7 +71,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         """Validate environment.
 
         Args:
-            values: The values to validate.
+            values (dict): The values to validate.
         """
         apify_api_token = get_from_dict_or_env(
             values, "apify_api_token", "APIFY_API_TOKEN"
@@ -86,7 +86,8 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
     def load(self) -> list[Document]:
         """Load documents.
 
-        Returns a list of Document objects.
+        Returns:
+            list[Document]: A list of Document objects.
         """
         dataset_items = (
             self.apify_client.dataset(self.dataset_id).list_items(clean=True).items
@@ -96,7 +97,8 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
     def lazy_load(self) -> Iterator[Document]:
         """Lazily loads documents.
 
-        Returns an iterator that yields Document objects.
+        Returns:
+            Iterator[Document]: An iterator that yields Document objects.
         """
         dataset_items = self.apify_client.dataset(self.dataset_id).iterate_items(
             clean=True

@@ -9,6 +9,11 @@ from langchain_apify.utils import actor_id_to_tool_name
 
 
 def test_apify_actors_tool_instance() -> None:
+    """Tests the ApifyActorsTool instance creation.
+
+    Creates an instance of the ApifyActorsTool and
+        checks if the instance is created correctly.
+    """
     with patch.object(
         ApifyActorsTool, "create_description", return_value="Mocked description"
     ), patch.object(
@@ -29,6 +34,10 @@ def test_apify_actors_tool_instance() -> None:
 
 
 def test_run_actor_method(apify_actors_tool_fixture: ApifyActorsTool) -> None:
+    """Tests the ApifyActorsTool._run_actor method.
+
+    Mocks the ApifyActorsTool._run_actor method to return a single item.
+    """
     with patch.object(ApifyActorsTool, "_run_actor") as mock_run_actor:
         mock_run_actor.return_value = [{"text": "Apify is great!"}]
 
@@ -41,6 +50,11 @@ def test_run_actor_method(apify_actors_tool_fixture: ApifyActorsTool) -> None:
 
 @pytest.fixture
 def apify_actors_tool_fixture() -> Generator[ApifyActorsTool, None, None]:
+    """Fixture to create an instance of the ApifyActorsTool.
+
+    Yields:
+        ApifyActorsTool: An instance of the ApifyActorsTool.
+    """
     with patch.object(
         ApifyActorsTool, "create_description", return_value="Mocked description"
     ), patch.object(

@@ -61,8 +61,9 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         **kwargs: Any,
     ) -> None:
         """
-        :param actor_id: Actor name from Apify store to run.
-        :param apify_api_token: Apify API token.
+        Args:
+            actor_id (str): Actor name from Apify store to run.
+            apify_api_token (Optional[str]): Apify API token.
         """
         apify_api_token = apify_api_token or os.getenv("APIFY_API_TOKEN")
         if not apify_api_token:
@@ -91,7 +92,16 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         run_input: Union[str, dict],
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> list[dict]:
-        """Use the Apify Actor."""
+        """Use the Apify Actor.
+
+        Args:
+            run_input (Union[str, dict]): JSON input for the Actor.
+            run_manager (Optional[CallbackManagerForToolRun]): Callback manager for the
+                tool run.
+
+        Returns:
+            list[dict]: The output dataset.
+        """
         input_dict = json.loads(run_input) if isinstance(run_input, str) else run_input
         # retrieve if nested, just in case
         input_dict = input_dict.get("run_input", input_dict)
@@ -114,7 +124,8 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         """
         Build a tool class for agent that runs the Apify Actor.
 
-        :param actor_id: Actor name from Apify store to run.
+        Args:
+            actor_id (str): Actor name from Apify store to run.
         """
         build = get_actor_latest_build(apify_client, actor_id)
         if not (actor_input := build.get("actorDefinition", {}).get("input")):
@@ -144,10 +155,11 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
     def _run_actor(self, run_input: dict) -> list[dict]:
         """Run an Apify Actor and return the output dataset.
 
-        :param actor_id: Actor name from Apify store to run.
-        :param run_input: JSON input for the Actor.
-        :param fields: List of fields to extract from the dataset.
-        Other fields will be ignored.
+        Args:
+            actor_id: str, Actor name from Apify store to run.
+            run_input: dict, JSON input for the Actor.
+            fields: list, List of fields to extract from the dataset.
+                Other fields will be ignored.
         """
         if (
             details := self._apify_client.actor(actor_id=self._actor_id).call(

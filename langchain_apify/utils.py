@@ -11,6 +11,14 @@ def prune_actor_input_schema(
     """Get the input schema from the Actor build.
 
     Trim the description to 250 characters.
+
+    Args:
+        input_schema (dict): The input schema from the Actor build.
+        max_description_len (int): The maximum length of the description.
+
+    Returns:
+        tuple[dict, list[str]]: A tuple containing the pruned properties
+            and required fields.
     """
     properties = input_schema.get("properties", {})
     required = input_schema.get("required", [])
@@ -37,8 +45,12 @@ T = TypeVar("T", ApifyClient, ApifyClientAsync)
 def create_apify_client(t: Type[T], token: str) -> T:
     """Create an Apify client instance with custom user-agent.
 
-    :param t: ApifyClient or ApifyClientAsync
-    :param token: API token
+    Args:
+        t (Type[T]): ApifyClient or ApifyClientAsync.
+        token (str): API token.
+
+    Returns:
+        T: ApifyClient or ApifyClientAsync instance.
     """
     if not token:
         msg = "API token is required."
@@ -57,6 +69,12 @@ def actor_id_to_tool_name(actor_id: str) -> str:
 
     Tool name must only contain letters, numbers, underscores, dashes,
     and cannot contain spaces.
+
+    Args:
+        actor_id (str): Actor ID from Apify store.
+
+    Returns:
+        str: A valid tool name.
     """
     valid_chars = string.ascii_letters + string.digits + "_-"
     return "apify_actor_" + "".join(
@@ -65,7 +83,15 @@ def actor_id_to_tool_name(actor_id: str) -> str:
 
 
 def get_actor_latest_build(client: ApifyClient, actor_id: str) -> dict:
-    """Get the latest build of an Actor from default build tag."""
+    """Get the latest build of an Actor from default build tag.
+
+    Args:
+        client (ApifyClient): An instance of the ApifyClient class.
+        actor_id (str): Actor name from Apify store to run.
+
+    Returns:
+        dict: The latest build of the Actor.
+    """
     actor = client.actor(actor_id=actor_id)
     if not (actor_info := actor.get()):
         msg = f"Actor {actor_id} not found."

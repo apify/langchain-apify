@@ -8,6 +8,11 @@ from langchain_apify import ApifyDatasetLoader
 
 
 def test_apify_dataset_loader_load() -> None:
+    """Tests the ApifyDatasetLoader.load method.
+
+    Creates a new dataset, pushes items to it,
+        and then loads the items using the loader.
+    """
     token = os.getenv("APIFY_API_TOKEN")
     client = ApifyClient(token=token)
 
@@ -42,6 +47,11 @@ def test_apify_dataset_loader_load() -> None:
 
 
 def test_apify_dataset_loader_lazy_load() -> None:
+    """Tests the ApifyDatasetLoader.lazy_load method.
+
+    Creates a new dataset, pushes items to it,
+        and then loads the items using the loader.
+    """
     token = os.getenv("APIFY_API_TOKEN")
     client = ApifyClient(token=token)
 
