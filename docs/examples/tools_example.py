@@ -17,14 +17,12 @@ model = ChatOpenAI(model="gpt-4o-mini")
 
 tool = ApifyActorsTool(actor_id="apify/rag-web-browser")
 
-# Use the tool directly to call the Apify Actor
-# results: list[dict] = tool.invoke(
-#    input={"run_input": {"query": "what is Apify?", "maxResults": 3}}
-# )
-# for result in results:
-#    print(result)
+# Example: Use the tool directly to call the Apify Actor
+results = tool.invoke(input={"run_input": {"query": "what is Apify?", "maxResults": 3}})
+for result in results:
+    print(result)  # noqa
 
-# Use the tool with an agent
+# Example: Use the tool with an agent
 tools = [tool]
 agent = create_react_agent(model, tools)
 

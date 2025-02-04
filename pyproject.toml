@@ -12,7 +12,7 @@ repository = "https://github.com/apify/langchain-apify"
 license = "MIT"
 
 [tool.mypy]
-disallow_untyped_defs = "True"
+disallow_untyped_defs = true
 
 [tool.poetry.urls]
 "Source Code" = "https://github.com/apify/langchain-apify/tree/master/"
@@ -69,6 +69,7 @@ codespell = "^2.2.6"
 
 [tool.poetry.group.lint.dependencies]
 ruff = "^0.5"
+types-requests = "^2.32.0.20241016"
 
 [tool.poetry.group.typing.dependencies]
 mypy = "^1.10"

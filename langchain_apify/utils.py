@@ -1,6 +1,7 @@
 import string
 from typing import Type, TypeVar
 
+import requests
 from apify_client import ApifyClientAsync
 from apify_client.client import ApifyClient
 
@@ -82,7 +83,7 @@ def actor_id_to_tool_name(actor_id: str) -> str:
     )
 
 
-def get_actor_latest_build(client: ApifyClient, actor_id: str) -> dict:
+def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
     """Get the latest build of an Actor from default build tag.
 
     Args:
@@ -92,18 +93,24 @@ def get_actor_latest_build(client: ApifyClient, actor_id: str) -> dict:
     Returns:
         dict: The latest build of the Actor.
     """
-    actor = client.actor(actor_id=actor_id)
-    if not (actor_info := actor.get()):
+    if (actor := apify_client.actor(actor_id).get()) is None:
         msg = f"Actor {actor_id} not found."
         raise ValueError(msg)
 
-    default_build_tag = actor_info.get("defaultRunOptions", {}).get("build")
-    latest_build_id = (
-        actor_info.get("taggedBuilds", {}).get(default_build_tag, {}).get("buildId")
-    )
-
-    if (build := client.build(latest_build_id).get()) is None:
-        msg = f"Build {latest_build_id} not found."
+    if (actor_obj_id := actor.get("id")) is None:
+        msg = f"Failed to get the Actor object ID for {actor_id}."
         raise ValueError(msg)
 
-    return build
+    url = f"https://api.apify.com/v2/acts/{actor_obj_id}/builds/default"
+    response = requests.request("GET", url)
+
+    build = response.json()
+    if not isinstance(build, dict):
+        msg = f"Failed to get the latest build of the Actor {actor_id}."
+        raise ValueError(msg)
+
+    if (data := build.get("data")) is None:
+        msg = f"Failed to get the latest build data of the Actor {actor_id}."
+        raise ValueError(msg)
+
+    return data
