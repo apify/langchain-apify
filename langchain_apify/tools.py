@@ -39,7 +39,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
             tool = ApifyActorsTool(actor_id="apify/rag-web-browser")
             # Use the tool directly to call the Apify Actor
             result = tool.invoke(
-                input={"run_input": {"query": "what is monero?", "maxResults": 3}}
+                input={"run_input": {"query": "what is Apify?", "maxResults": 3}}
             )
 
             # Use the tool with an agent
@@ -47,7 +47,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
             agent = create_react_agent(model, tools)
 
             for chunk in agent.stream(
-                {"messages": [("human", "search why is monero important?")]},
+                {"messages": [("human", "search for what is Apify?")]},
                 stream_mode="values"
             ):
                 chunk["messages"][-1].pretty_print()

@@ -10,7 +10,7 @@ from langchain_apify import ApifyDatasetLoader
 def test_apify_dataset_loader_load() -> None:
     with patch.object(DatasetClient, "list_items") as mock_list_items:
         mock_list_items.return_value = ListPage(
-            data={"items": [{"text": "monero is based", "url": "https://monero.org"}]}
+            data={"items": [{"text": "Apify is great!", "url": "https://apify.com"}]}
         )
 
         loader = ApifyDatasetLoader(
@@ -23,14 +23,14 @@ def test_apify_dataset_loader_load() -> None:
         documents = loader.load()
 
         mock_list_items.assert_called_once()
-        assert documents[0].page_content == "monero is based"
-        assert documents[0].metadata["source"] == "https://monero.org"
+        assert documents[0].page_content == "Apify is great!"
+        assert documents[0].metadata["source"] == "https://apify.com"
 
 
 def test_apify_dataset_loader_lazy_load() -> None:
     with patch.object(DatasetClient, "iterate_items") as mock_list_items:
         mock_list_items.return_value = iter(
-            [{"text": "monero is based", "url": "https://monero.org"}]
+            [{"text": "Apify is great!", "url": "https://apify.com"}]
         )
 
         loader = ApifyDatasetLoader(
@@ -43,5 +43,5 @@ def test_apify_dataset_loader_lazy_load() -> None:
         documents = list(loader.lazy_load())
 
         mock_list_items.assert_called_once()
-        assert documents[0].page_content == "monero is based"
-        assert documents[0].metadata["source"] == "https://monero.org"
+        assert documents[0].page_content == "Apify is great!"
+        assert documents[0].metadata["source"] == "https://apify.com"

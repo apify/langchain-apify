@@ -28,7 +28,7 @@ from langchain_apify import ApifyActorsTool
 
 browser = ApifyActorsTool('apify/rag-web-browser')
 search_results = browser.invoke(input={
-    "run_input": {"query": "what is monero?", "maxResults": 3}
+    "run_input": {"query": "what is Apify?", "maxResults": 3}
 })
 
 # use the tool with an agent
@@ -41,7 +41,7 @@ tools = [browser]
 agent = create_react_agent(model, tools)
 
 for chunk in agent.stream(
-    {"messages": [("human", "search why is monero important?")]},
+    {"messages": [("human", "search for what is Apify?")]},
     stream_mode="values"
 ):
     chunk["messages"][-1].pretty_print()

@@ -30,13 +30,13 @@ def test_apify_actors_tool_instance() -> None:
 
 def test_run_actor_method(apify_actors_tool_fixture: ApifyActorsTool) -> None:
     with patch.object(ApifyActorsTool, "_run_actor") as mock_run_actor:
-        mock_run_actor.return_value = [{"text": "monero is based"}]
+        mock_run_actor.return_value = [{"text": "Apify is great!"}]
 
         result = apify_actors_tool_fixture.invoke(
-            input={"run_input": {"query": "what is monero?", "maxResults": 3}}
+            input={"run_input": {"query": "what is Apify?", "maxResults": 3}}
         )
         mock_run_actor.assert_called_once()
-        assert result[0]["text"] == "monero is based"
+        assert result[0]["text"] == "Apify is great!"
 
 
 @pytest.fixture

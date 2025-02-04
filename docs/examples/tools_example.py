@@ -19,7 +19,7 @@ tool = ApifyActorsTool(actor_id="apify/rag-web-browser")
 
 # Use the tool directly to call the Apify Actor
 # results: list[dict] = tool.invoke(
-#    input={"run_input": {"query": "what is monero?", "maxResults": 3}}
+#    input={"run_input": {"query": "what is Apify?", "maxResults": 3}}
 # )
 # for result in results:
 #    print(result)
@@ -29,6 +29,6 @@ tools = [tool]
 agent = create_react_agent(model, tools)
 
 for chunk in agent.stream(
-    {"messages": [("human", "search why is monero important?")]}, stream_mode="values"
+    {"messages": [("human", "search for what is Apify?")]}, stream_mode="values"
 ):
     chunk["messages"][-1].pretty_print()
