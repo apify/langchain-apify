@@ -12,13 +12,12 @@ pip install langchain-apify
 
 You should configure credentials by setting the following environment variables:
 - `APIFY_API_TOKEN` - Apify API token
-- `OPENAI_API_KEY` - OpenAI API key (optional, only required if using OpenAI)
 
 Learn how to get your API token in the [Apify documentation](https://docs.apify.com/platform/integrations/api).
 
 ## Tools
 
-`ApifyActorsTool` class exposes Apify Actors from Apify. For more information, see [Apify Actors documentation](https://docs.apify.com/platform/actors).
+`ApifyActorsTool` class provides access to **Apify Actors**, which are cloud-based web scraping and automation programs that you can run without managing any infrastructure. For more detailed information, see the [Apify Actors documentation](https://docs.apify.com/platform/actors).
 
 ```python
 import json
@@ -47,7 +46,7 @@ for chunk in agent.stream(
 
 ## Document loaders
 
-`ApifyDatasetLoader` class exposes Apify datasets as document loaders. For more information, see [Apify datasets documentation](https://docs.apify.com/platform/storage/dataset).
+`ApifyDatasetLoader` class provides access to **Apify datasets** as document loaders. Datasets are storage solutions that store results from web scraping, crawling, or data processing. For more information, see the [Apify datasets documentation](https://docs.apify.com/platform/storage/dataset).
 
 ```python
 from langchain_apify import ApifyDatasetLoader
@@ -72,7 +71,14 @@ loader = ApifyDatasetLoader(
 
 ## Wrappers
 
-`ApifyWrapper` class wraps the Apify API to easily turn results into documents. For more information, see [Apify LangChain integration documentation](https://docs.apify.com/platform/integrations/langchain).
+`ApifyWrapper` class wraps the Apify API to easily convert results into documents. Available methods include:
+
+- **call_actor**: Runs an Apify Actor and returns an `ApifyDatasetLoader` for the results.
+- **acall_actor**: Asynchronous version of `call_actor`.
+- **call_actor_task**: Runs a saved Actor task and returns an `ApifyDatasetLoader` for the results. Actor tasks allow you to create and reuse multiple configurations of a single Actor for different use cases.
+- **acall_actor_task**: Asynchronous version of `call_actor_task`.
+
+For more information, see the [Apify LangChain integration documentation](https://docs.apify.com/platform/integrations/langchain).
 
 ```python
 from langchain_apify import ApifyWrapper
