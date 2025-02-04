@@ -1,6 +1,6 @@
 # langchain-apify
 
-This package allows you to use Apify, a platform for web scraping and data extraction, with LangChain. It provides tools to interact with Apify actors, datasets, and API.
+This package allows you to use Apify, a platform for web scraping and data extraction, with LangChain. It provides tools to interact with Apify Actors, datasets, and API.
 
 ## Installation
 
