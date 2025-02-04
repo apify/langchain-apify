@@ -1,12 +1,16 @@
-from typing import Any, Callable, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Callable
 
 from apify_client import ApifyClient, ApifyClientAsync
-from langchain_core.documents import Document
 from langchain_core.utils import get_from_dict_or_env
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from langchain_apify.document_loaders import ApifyDatasetLoader
 from langchain_apify.utils import create_apify_client
+
+if TYPE_CHECKING:
+    from langchain_core.documents import Document
 
 
 class ApifyWrapper(BaseModel):
@@ -48,14 +52,14 @@ class ApifyWrapper(BaseModel):
 
     apify_client: ApifyClient
     apify_client_async: ApifyClientAsync
-    apify_api_token: Optional[str] = None
+    apify_api_token: str | None = None
 
     def __init__(
         self,
-        apify_api_token: Optional[str] = None,
-        *args: Any,
-        **kwargs: Any,
-    ):
+        apify_api_token: str | None = None,
+        *args: Any,  # noqa: ANN401
+        **kwargs: Any,  # noqa: ANN401
+    ) -> None:
         """Initialize the loader with an Apify dataset ID and a mapping function.
 
         Args:
@@ -63,40 +67,45 @@ class ApifyWrapper(BaseModel):
             dataset_mapping_function (Callable): A function that takes a single
                 dictionary (an Apify dataset item) and converts it to an instance
                 of the Document class.
+            apify_api_token (Optional[str]): Apify API token.
+            *args: Any: Additional positional arguments.
+            **kwargs: Any: Additional keyword arguments.
         """
-        kwargs.update({"apify_api_token": apify_api_token})
+        kwargs.update({'apify_api_token': apify_api_token})
         super().__init__(*args, **kwargs)
 
-    @model_validator(mode="before")
+    @model_validator(mode='before')
     @classmethod
-    def validate_environment(cls, values: dict) -> Any:
+    def validate_environment(cls, values: dict) -> Any:  # noqa: ANN401
         """Validate environment.
 
         Validate that an Apify API token is set and the apify-client
         Python package exists in the current environment.
         """
         apify_api_token = get_from_dict_or_env(
-            values, "apify_api_token", "APIFY_API_TOKEN"
+            values,
+            'apify_api_token',
+            'APIFY_API_TOKEN',
         )
 
         client = create_apify_client(ApifyClient, apify_api_token)
         async_client = create_apify_client(ApifyClientAsync, apify_api_token)
 
-        values["apify_client"] = client
-        values["apify_client_async"] = async_client
+        values['apify_client'] = client
+        values['apify_client_async'] = async_client
 
         return values
 
-    def call_actor(
+    def call_actor(  # noqa: PLR0913
         self,
         actor_id: str,
         run_input: dict,
         dataset_mapping_function: Callable[[dict], Document],
         *,
-        build: Optional[str] = None,
-        memory_mbytes: Optional[int] = None,
-        timeout_secs: Optional[int] = None,
-    ) -> "ApifyDatasetLoader":
+        build: str | None = None,
+        memory_mbytes: int | None = None,
+        timeout_secs: int | None = None,
+    ) -> ApifyDatasetLoader:
         """Run an Actor on the Apify platform and wait for results to be ready.
 
         Args:
@@ -123,24 +132,24 @@ class ApifyWrapper(BaseModel):
                 timeout_secs=timeout_secs,
             )
         ) is None:
-            msg = f"Failed to call actor {actor_id}."
+            msg = f'Failed to call actor {actor_id}.'
             raise RuntimeError(msg)
 
         return ApifyDatasetLoader(
-            dataset_id=actor_call["defaultDatasetId"],
+            dataset_id=actor_call['defaultDatasetId'],
             dataset_mapping_function=dataset_mapping_function,
         )
 
-    async def acall_actor(
+    async def acall_actor(  # noqa: PLR0913
         self,
         actor_id: str,
         run_input: dict,
         dataset_mapping_function: Callable[[dict], Document],
         *,
-        build: Optional[str] = None,
-        memory_mbytes: Optional[int] = None,
-        timeout_secs: Optional[int] = None,
-    ) -> "ApifyDatasetLoader":
+        build: str | None = None,
+        memory_mbytes: int | None = None,
+        timeout_secs: int | None = None,
+    ) -> ApifyDatasetLoader:
         """Run an Actor on the Apify platform and wait for results to be ready.
 
         Args:
@@ -167,24 +176,24 @@ class ApifyWrapper(BaseModel):
                 timeout_secs=timeout_secs,
             )
         ) is None:
-            msg = f"Failed to call actor {actor_id}."
+            msg = f'Failed to call actor {actor_id}.'
             raise RuntimeError(msg)
 
         return ApifyDatasetLoader(
-            dataset_id=actor_call["defaultDatasetId"],
+            dataset_id=actor_call['defaultDatasetId'],
             dataset_mapping_function=dataset_mapping_function,
         )
 
-    def call_actor_task(
+    def call_actor_task(  # noqa: PLR0913
         self,
         task_id: str,
         task_input: dict,
         dataset_mapping_function: Callable[[dict], Document],
         *,
-        build: Optional[str] = None,
-        memory_mbytes: Optional[int] = None,
-        timeout_secs: Optional[int] = None,
-    ) -> "ApifyDatasetLoader":
+        build: str | None = None,
+        memory_mbytes: int | None = None,
+        timeout_secs: int | None = None,
+    ) -> ApifyDatasetLoader:
         """Run a saved Actor task on Apify and wait for results to be ready.
 
         Args:
@@ -212,24 +221,24 @@ class ApifyWrapper(BaseModel):
                 timeout_secs=timeout_secs,
             )
         ) is None:
-            msg = f"Failed to call task {task_id}."
+            msg = f'Failed to call task {task_id}.'
             raise RuntimeError(msg)
 
         return ApifyDatasetLoader(
-            dataset_id=task_call["defaultDatasetId"],
+            dataset_id=task_call['defaultDatasetId'],
             dataset_mapping_function=dataset_mapping_function,
         )
 
-    async def acall_actor_task(
+    async def acall_actor_task(  # noqa: PLR0913
         self,
         task_id: str,
         task_input: dict,
         dataset_mapping_function: Callable[[dict], Document],
         *,
-        build: Optional[str] = None,
-        memory_mbytes: Optional[int] = None,
-        timeout_secs: Optional[int] = None,
-    ) -> "ApifyDatasetLoader":
+        build: str | None = None,
+        memory_mbytes: int | None = None,
+        timeout_secs: int | None = None,
+    ) -> ApifyDatasetLoader:
         """Run a saved Actor task on Apify and wait for results to be ready.
 
         Args:
@@ -257,10 +266,10 @@ class ApifyWrapper(BaseModel):
                 timeout_secs=timeout_secs,
             )
         ) is None:
-            msg = f"Failed to call task {task_id}."
+            msg = f'Failed to call task {task_id}.'
             raise RuntimeError(msg)
 
         return ApifyDatasetLoader(
-            dataset_id=task_call["defaultDatasetId"],
+            dataset_id=task_call['defaultDatasetId'],
             dataset_mapping_function=dataset_mapping_function,
         )

@@ -24,7 +24,56 @@ langchain-core = "^0.3.15"
 apify-client = "^1.8.1"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "T201"]
+select = ["ALL"]
+ignore = [
+    "D100",     # Missing docstring in public module
+    "D104",     # Missing docstring in public package
+    "D107",     # Missing docstring in `__init__`
+    "COM812",
+    "ISC001"
+]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = [
+    "F401", # Unused imports
+]
+"**/{scripts}/*" = [
+    "D",       # Everything from the pydocstyle
+    "INP001",  # File {filename} is part of an implicit namespace package, add an __init__.py
+    "T201",    # Use of `print` statement
+    "PERF203", # try`-`except` within a loop incurs performance overhead
+    "BLE001",  # Do not catch blind exception: `Exception`
+]
+"**/{docs/examples}/*" = [
+    "D",       # Everything from the pydocstyle
+    "INP001",  # File {filename} is part of an implicit namespace package, add an __init__.py
+    "T201",    # Use of `print` statement
+]
+"**/{tests}/*" = [
+    "D",       # Everything from the pydocstyle
+    "INP001",  # File {filename} is part of an implicit namespace package, add an __init__.py
+    "PLR2004", # Magic value used in comparison, consider replacing {value} with a constant variable
+    "S101",    # Use of assert detected
+    "SLF001",  # Private member accessed: `{name}`
+    "T20",     # flake8-print
+    "TRY301",  # Abstract `raise` to an inner function
+    "TID252",  # Prefer absolute imports over relative imports from parent modules
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
+inline-quotes = "single"
+
+[tool.ruff.lint.flake8-pytest-style]
+fixture-parentheses = false
+mark-parentheses = false
 
 [tool.coverage.run]
 omit = ["tests/*"]
