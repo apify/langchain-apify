@@ -101,7 +101,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         return list(map(self.dataset_mapping_function, dataset_items))
 
     def lazy_load(self) -> Iterator[Document]:
-        """Lazily loads documents.
+        """Lazily load documents.
 
         Returns:
             Iterator[Document]: An iterator that yields Document objects.

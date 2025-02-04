@@ -49,7 +49,7 @@ T = TypeVar('T', ApifyClient, ApifyClientAsync)
 
 
 def create_apify_client(t: type[T], token: str) -> T:
-    """Create an Apify client instance with custom user-agent.
+    """Create an Apify client instance with a custom user-agent.
 
     Args:
         t (Type[T]): ApifyClient or ApifyClientAsync.
@@ -89,7 +89,7 @@ def actor_id_to_tool_name(actor_id: str) -> str:
 
 
 def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
-    """Get the latest build of an Actor from default build tag.
+    """Get the latest build of an Actor from the default build tag.
 
     Args:
         apify_client (ApifyClient): An instance of the ApifyClient class.

@@ -126,7 +126,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
             readme = readme[:MAX_DESCRIPTION_LEN] + '...(TRUNCATED, README TOO LONG)'
         return (
             'Run an Apify Actor with the given input. '
-            'Here README for available Apify Actor:\n\n'
+            'Here is the README for the available Apify Actor:\n\n'
             f'{readme}\n\n'
         )
 
@@ -135,7 +135,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         apify_client: ApifyClient,
         actor_id: str,
     ) -> type[BaseModel]:
-        """Build a tool class for agent that runs the Apify Actor.
+        """Build a tool class for an agent that runs the Apify Actor.
 
         Args:
             apify_client (ApifyClient): Apify client instance.
