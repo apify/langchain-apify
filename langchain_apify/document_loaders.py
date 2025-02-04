@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from apify_client import ApifyClient
 from langchain_core.document_loaders.base import BaseLoader
+from langchain_core.documents import Document  # noqa: TCH002
 from langchain_core.utils import get_from_dict_or_env
 from pydantic import BaseModel, ConfigDict, model_validator
 
@@ -11,8 +12,6 @@ from langchain_apify.utils import create_apify_client
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-
-    from langchain_core.documents import Document
 
 
 class ApifyDatasetLoader(BaseLoader, BaseModel):

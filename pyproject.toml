@@ -62,6 +62,7 @@ indent-style = "space"
     "T20",     # flake8-print
     "TRY301",  # Abstract `raise` to an inner function
     "TID252",  # Prefer absolute imports over relative imports from parent modules
+    "S106",    # Checks for potential uses of hardcoded passwords in function calls.
 ]
 
 [tool.ruff.lint.pydocstyle]

@@ -34,7 +34,7 @@ def test_apify_actors_tool_instance() -> None:
         mock_build_tool_args_schema_model.return_value = DummyModel
 
         actor_id = 'apify/python-example'
-        tool = ApifyActorsTool(actor_id=actor_id, apify_api_token=None)
+        tool = ApifyActorsTool(actor_id=actor_id, apify_api_token='dummy-token')
         assert isinstance(tool, ApifyActorsTool)
         assert tool.description == 'Mocked description'
         assert tool.name == actor_id_to_tool_name(actor_id)
@@ -77,5 +77,7 @@ def apify_actors_tool_fixture() -> Generator[ApifyActorsTool, None, None]:
 
         mock_build_tool_args_schema_model.return_value = DummyModel
 
-        tool = ApifyActorsTool(actor_id='apify/python-example', apify_api_token=None)
+        tool = ApifyActorsTool(
+            actor_id='apify/python-example', apify_api_token='dummy-token'
+        )
         yield tool
