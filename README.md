@@ -18,7 +18,7 @@ Learn how to get your API token in the [Apify documentation](https://docs.apify.
 
 ## Tools
 
-`ApifyActorsTool` class exposes Apify actors from Apify. For more information, see [Apify Actors documentation](https://docs.apify.com/platform/actors).
+`ApifyActorsTool` class exposes Apify Actors from Apify. For more information, see [Apify Actors documentation](https://docs.apify.com/platform/actors).
 
 ```python
 import json
