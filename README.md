@@ -13,12 +13,15 @@ pip install langchain-apify
 You should configure credentials by setting the following environment variables:
 - `APIFY_API_TOKEN` - Apify API token
 
-Learn how to get your API token in the [Apify documentation](https://docs.apify.com/platform/integrations/api).
+Register your free Apify account [here](https://console.apify.com/sign-up) and learn how to get your API token in the [Apify documentation](https://docs.apify.com/platform/integrations/api).
 
 ## Tools
 
 `ApifyActorsTool` class provides access to **Apify Actors**, which are cloud-based web scraping and automation programs that you can run without managing any infrastructure. For more detailed information, see the [Apify Actors documentation](https://docs.apify.com/platform/actors).
 
+`ApifyActorsTool` is useful when you need to run an Apify Actor as a tool in LangChain. You can use the tool to interact with the Actor manually or as part of an agent workflow.
+
+Example usage of `ApifyActorsTool` with the [RAG Web Browser](https://apify.com/apify/rag-web-browser) Actor, which searches for information on the web:
 ```python
 import json
 from langchain_apify import ApifyActorsTool
@@ -48,6 +51,9 @@ for chunk in agent.stream(
 
 `ApifyDatasetLoader` class provides access to **Apify datasets** as document loaders. Datasets are storage solutions that store results from web scraping, crawling, or data processing. For more information, see the [Apify datasets documentation](https://docs.apify.com/platform/storage/dataset).
 
+`ApifyDatasetLoader` is useful when you need to process data from an Apify Actor run. If you are extracting webpage content, you would typically use this loader after running an Apify Actor manually from the [Apify console](https://console.apify.com), where you can access the results stored in the dataset.
+
+Example usage for `ApifyDatasetLoader` with a custom dataset mapping function for loading webpage content and source URLs as a list of  `Document` objects containing the page content and source URL.
 ```python
 from langchain_apify import ApifyDatasetLoader
 
@@ -80,6 +86,9 @@ loader = ApifyDatasetLoader(
 
 For more information, see the [Apify LangChain integration documentation](https://docs.apify.com/platform/integrations/langchain).
 
+`ApifyWrapper` is useful when you need to run an Apify Actor programmatically and process the results in LangChain.
+
+Example usage for `call_actor` involves running the [Website Content Crawler](https://apify.com/apify/website-content-crawler) Actor, which extracts content from webpages. The wrapper then returns the results as a list of `Document` objects containing the page content and source URL:
 ```python
 from langchain_apify import ApifyWrapper
 from langchain_core.documents import Document

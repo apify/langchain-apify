@@ -1,6 +1,5 @@
 name: Poetry Project CI
 
-#on: [push, pull_request]
 on:
   push:
     branches:
