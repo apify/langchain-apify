@@ -1,4 +1,23 @@
-# langchain-apify
+<div align="center">
+
+<picture>
+  <img alt="Apify logo" src="/docs/logo_apify.svg" width="50%" height="50%">
+</picture>
+
+LangChain Apify: Full-stack web scraping and data extraction platform enhanced with AI capabilities. Maintained by [Apify](https://apify.com).
+
+<h3>
+
+[Apify](https://apify.com) | [Documentation](https://docs.apify.org/) | [LangChain](https://langchain.com)
+
+</h3>
+
+[![GitHub Repo stars](https://img.shields.io/github/stars/apify/langchain-apify)](https://github.com/apify/langchain-apify/stargazers)
+[![Tests](https://github.com/apify/langchain-apify/actions/workflows/run_code_checks.yml/badge.svg)](https://github.com/apify/langchain-apify/actions/workflows/run_code_checks.yml/badge.svg)
+
+</div>
+
+---
 
 This package allows you to use Apify, a platform for web scraping and data extraction, with LangChain. It provides tools to interact with Apify Actors, datasets, and API.
 
