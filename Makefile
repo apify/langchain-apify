@@ -1,4 +1,4 @@
-.PHONY: all format lint test tests integration_tests docker_tests help extended_tests
+.PHONY: all format lint test tests integration_tests docker_tests help extended_tests install-dev
 
 # Default target executed when no arguments are given to make.
 all: help
@@ -49,6 +49,9 @@ spell_fix:
 
 check_imports: $(shell find langchain_apify -name '*.py')
 	poetry run python ./scripts/check_imports.py $^
+
+install-dev:
+	poetry sync --all-groups
 
 ######################
 # HELP
