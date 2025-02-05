@@ -8,7 +8,7 @@ LangChain Apify: Full-stack web scraping and data extraction platform enhanced w
 
 <h3>
 
-[Apify](https://apify.com) | [Documentation](https://docs.apify.org/) | [LangChain](https://langchain.com)
+[Apify](https://apify.com) | [Documentation](https://docs.apify.com/platform/integrations/langchain) | [LangChain](https://langchain.com)
 
 </h3>
 
