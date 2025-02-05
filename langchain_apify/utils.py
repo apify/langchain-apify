@@ -98,7 +98,7 @@ def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
     Returns:
         dict: The latest build of the Actor.
     """
-    if (actor := apify_client.actor(actor_id).get()) is None:
+    if not (actor := apify_client.actor(actor_id).get()):
         msg = f'Actor {actor_id} not found.'
         raise ValueError(msg)
 
