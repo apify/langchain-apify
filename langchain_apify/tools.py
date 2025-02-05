@@ -170,10 +170,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         """Run an Apify Actor and return the output dataset.
 
         Args:
-            actor_id: str, Actor name from Apify store to run.
-            run_input: dict, JSON input for the Actor.
-            fields: list, List of fields to extract from the dataset.
-                Other fields will be ignored.
+            run_input: dict, JSON input for the Actor
         """
         if (
             details := self._apify_client.actor(actor_id=self._actor_id).call(
