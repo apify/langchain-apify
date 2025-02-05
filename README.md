@@ -96,7 +96,7 @@ loader = ApifyDatasetLoader(
 
 ## Wrappers
 
-`ApifyWrapper` class wraps the Apify API to easily convert results into documents. Available methods include:
+`ApifyWrapper` class wraps the Apify API to easily convert Apify dataset into documents. Available methods include:
 
 - **call_actor**: Runs an Apify Actor and returns an `ApifyDatasetLoader` for the results.
 - **acall_actor**: Asynchronous version of `call_actor`.
