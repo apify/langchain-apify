@@ -19,9 +19,9 @@ test_watch:
 integration_test integration_tests:
 	poetry run pytest $(TEST_FILE)
 
-######################
+#########################
 # LINTING AND FORMATTING
-######################
+#########################
 
 # Define a variable for Python and notebook files.
 PYTHON_FILES=.
