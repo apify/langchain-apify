@@ -39,7 +39,7 @@ jobs:
         with:
           ref: ${{ github.ref }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          check-regexp: "( check| tests)$"
+          check-regexp: "(check|tests)$"
           wait-interval: 5
 
   update_changelog:
