@@ -36,7 +36,7 @@ Register your free Apify account [here](https://console.apify.com/sign-up) and l
 
 ## Tools
 
-`ApifyActorsTool` class provides access to **Apify Actors**, which are cloud-based web scraping and automation programs that you can run without managing any infrastructure. For more detailed information, see the [Apify Actors documentation](https://docs.apify.com/platform/actors).
+`ApifyActorsTool` class provides access to [Apify Actors](https://apify.com/store), which are cloud-based web scraping and automation programs that you can run without managing any infrastructure. For more detailed information, see the [Apify Actors documentation](https://docs.apify.com/platform/actors).
 
 `ApifyActorsTool` is useful when you need to run an Apify Actor as a tool in LangChain. You can use the tool to interact with the Actor manually or as part of an agent workflow.
 
