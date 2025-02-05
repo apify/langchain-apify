@@ -6,17 +6,19 @@ build-backend = "poetry.core.masonry.api"
 name = "langchain-apify"
 version = "0.1.0"
 description = "An integration package connecting Apify and LangChain"
-authors = []
+authors = ["Apify Technologies s.r.o. <support@apify.com>"]
 readme = "README.md"
 repository = "https://github.com/apify/langchain-apify"
-license = "MIT"
+license = "Apache-2.0"
 
 [tool.mypy]
 disallow_untyped_defs = true
 
 [tool.poetry.urls]
+"Apify Homepage" = "https://apify.com"
 "Source Code" = "https://github.com/apify/langchain-apify/tree/main/"
 "Release Notes" = "https://github.com/apify/langchain-apify/releases?expanded=true"
+"Issue Tracker" = "https://github.com/apify/langchain-apify/issues"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
