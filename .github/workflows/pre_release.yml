@@ -1,10 +1,10 @@
 name: Create a pre-release
 
 on:
-  # Trigger a beta version release (pre-release) on push to the master branch.
+  # Trigger a beta version release (pre-release) on push to the main branch.
   push:
     branches:
-      - master
+      - main
     tags-ignore:
       - "**" # Ignore all tags to prevent duplicate builds when tags are pushed.
 
