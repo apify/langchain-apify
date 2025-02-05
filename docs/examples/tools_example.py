@@ -18,7 +18,8 @@ model = ChatOpenAI(model='gpt-4o-mini')
 tool = ApifyActorsTool(actor_id='apify/rag-web-browser')
 
 # Example: Use the tool directly to call the Apify Actor
-results = tool.invoke(input={'run_input': {'query': 'what is Apify?', 'maxResults': 3}})
+print('Calling tool ...')
+results = tool.invoke(input={'run_input': {'query': 'what are Apify Actors?', 'maxResults': 3}})
 for result in results:
     print(result)
 
