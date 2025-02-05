@@ -68,7 +68,7 @@ for chunk in agent.stream(
 
 ## Document loaders
 
-`ApifyDatasetLoader` class provides access to **Apify datasets** as document loaders. Datasets are storage solutions that store results from web scraping, crawling, or data processing. For more information, see the [Apify datasets documentation](https://docs.apify.com/platform/storage/dataset).
+`ApifyDatasetLoader` class provides access to [Apify datasets](https://docs.apify.com/platform/storage/dataset) as document loaders. Datasets are storage solutions that store results from web scraping, crawling, or data processing.
 
 `ApifyDatasetLoader` is useful when you need to process data from an Apify Actor run. If you are extracting webpage content, you would typically use this loader after running an Apify Actor manually from the [Apify console](https://console.apify.com), where you can access the results stored in the dataset.
 
