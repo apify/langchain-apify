@@ -57,6 +57,9 @@ def create_apify_client(client_cls: type[T], token: str) -> T:
 
     Returns:
         T: ApifyClient or ApifyClientAsync instance.
+
+    Raises:
+        ValueError: If the API token is not provided.
     """
     if not token:
         msg = 'API token is required to create an Apify client.'
@@ -93,6 +96,10 @@ def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
 
     Returns:
         dict: The latest build of the Actor.
+
+    Raises:
+        ValueError: If the Actor is not found or the build data is not found.
+        TypeError: If the build is not a dictionary.
     """
     if not (actor := apify_client.actor(actor_id).get()):
         msg = f'Actor {actor_id} not found.'

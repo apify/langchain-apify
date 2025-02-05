@@ -81,6 +81,9 @@ class ApifyWrapper(BaseModel):
 
         Validate that an Apify API token is set and the apify-client
         Python package exists in the current environment.
+
+        Returns:
+            Any: The validated values.
         """
         apify_api_token = get_from_dict_or_env(values, 'apify_api_token', 'APIFY_API_TOKEN')
 
@@ -116,6 +119,9 @@ class ApifyWrapper(BaseModel):
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
                 Actor run's default dataset.
+
+        Raises:
+            RuntimeError: If the Actor call fails.
         """
         if (
             actor_call := self.apify_client.actor(actor_id).call(
@@ -160,6 +166,9 @@ class ApifyWrapper(BaseModel):
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
                 Actor run's default dataset.
+
+        Raises:
+            RuntimeError: If the Actor call fails.
         """
         if (
             actor_call := await self.apify_client_async.actor(actor_id).call(
@@ -205,6 +214,9 @@ class ApifyWrapper(BaseModel):
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
                 task run's default dataset.
+
+        Raises:
+            RuntimeError: If the task call fails.
         """
         if (
             task_call := self.apify_client.task(task_id).call(
@@ -250,6 +262,9 @@ class ApifyWrapper(BaseModel):
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
                 task run's default dataset.
+
+        Raises:
+            RuntimeError: If the task call fails.
         """
         if (
             task_call := await self.apify_client_async.task(task_id).call(

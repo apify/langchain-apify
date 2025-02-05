@@ -70,6 +70,9 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
             apify_api_token (Optional[str]): Apify API token.
             *args: Additional arguments.
             **kwargs: Additional keyword arguments.
+
+        Raises:
+            ValueError: If the `APIFY_API_TOKEN` environment variable is not set
         """
         apify_api_token = apify_api_token or os.getenv('APIFY_API_TOKEN')
         if not apify_api_token:
@@ -119,6 +122,9 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Args:
             apify_client (ApifyClient): Apify client instance.
             actor_id (str): Actor name from Apify store to run.
+
+        Returns:
+            str: The description.
         """
         build = get_actor_latest_build(apify_client, actor_id)
         actor_description = build.get('actorDefinition', {}).get('description', '')
@@ -136,6 +142,12 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Args:
             apify_client (ApifyClient): Apify client instance.
             actor_id (str): Actor name from Apify store to run.
+
+        Returns:
+            type[BaseModel]: The tool input model class for the Apify Actor.
+
+        Raises:
+            ValueError: If the input schema is not found in the Actor build.
         """
         build = get_actor_latest_build(apify_client, actor_id)
         if not (actor_input := build.get('actorDefinition', {}).get('input')):
@@ -164,6 +176,12 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
 
         Args:
             run_input: dict, JSON input for the Actor
+
+        Returns:
+            list[dict]: The output dataset
+
+        Raises:
+            ValueError: If the Actor was not started properly or the Run ID was not found in the run details
         """
         if (details := self._apify_client.actor(actor_id=self._actor_id).call(run_input=run_input)) is None:
             msg = f'Actor: {self._actor_id} was not started properly and details about the run were not returned'
