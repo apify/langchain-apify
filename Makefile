@@ -53,6 +53,9 @@ check_imports: $(shell find langchain_apify -name '*.py')
 install-dev:
 	poetry sync --all-groups
 
+type-check:
+	[ "$(PYTHON_FILES)" = "" ] || mkdir -p $(MYPY_CACHE) && poetry run mypy $(PYTHON_FILES) --cache-dir $(MYPY_CACHE)
+
 ######################
 # HELP
 ######################
