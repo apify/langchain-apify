@@ -1,17 +1,13 @@
 import os
 
+from langchain_core.messages import ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
 from langchain_apify import ApifyActorsTool
 
-if 'OPENAI_API_KEY' not in os.environ:
-    msg = 'OPENAI_API_KEY environment variable is not set.'
-    raise ValueError(msg)
-
-if 'APIFY_API_TOKEN' not in os.environ:
-    msg = 'APIFY_API_TOKEN environment variable is not set.'
-    raise ValueError(msg)
+os.environ['OPENAI_API_KEY'] = 'YOUR_OPENAI_API_KEY'
+os.environ['APIFY_API_TOKEN'] = 'YOUR_APIFY_API_TOKEN'
 
 model = ChatOpenAI(model='gpt-4o-mini')
 
@@ -31,4 +27,8 @@ for chunk in agent.stream(
     {'messages': [('human', 'search for what is Apify?')]},
     stream_mode='values',
 ):
-    chunk['messages'][-1].pretty_print()
+    msg = chunk['messages'][-1]
+    # skip tool messages
+    if isinstance(msg, ToolMessage):
+        continue
+    msg.pretty_print()

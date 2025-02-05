@@ -24,14 +24,20 @@ langchain-core = "^0.3.15"
 apify-client = "^1.8.1"
 eval-type-backport = "^0.2.2"
 
+[tool.ruff]
+line-length = 120
+
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
     "D100",     # Missing docstring in public module
     "D104",     # Missing docstring in public package
     "D107",     # Missing docstring in `__init__`
-    "COM812",
-    "ISC001"
+    "COM812",   # Missing trailing comma
+    "ISC001",   # Single line implicit concatenation
+    "RUF101",   # redirected-noqa
+    "S105",     # Possible hard-coded password
+    "S106",    # Checks for potential uses of hardcoded passwords in function calls.
 ]
 
 [tool.ruff.format]
@@ -63,7 +69,6 @@ indent-style = "space"
     "T20",     # flake8-print
     "TRY301",  # Abstract `raise` to an inner function
     "TID252",  # Prefer absolute imports over relative imports from parent modules
-    "S106",    # Checks for potential uses of hardcoded passwords in function calls.
 ]
 
 [tool.ruff.lint.pydocstyle]

@@ -9,6 +9,8 @@ from apify_client.client import ApifyClient
 
 from langchain_apify.const import MAX_DESCRIPTION_LEN, REQUESTS_TIMEOUT_SECS
 
+APIFY_API_ENDPOINT_GET_DEFAULT_BUILD = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
+
 
 def prune_actor_input_schema(
     input_schema: dict,
@@ -34,9 +36,7 @@ def prune_actor_input_schema(
         properties_out[item] = {}
         if desc := meta.get('description'):
             properties_out[item]['description'] = (
-                desc[:max_description_len] + '...'
-                if len(desc) > max_description_len
-                else desc
+                desc[:max_description_len] + '...' if len(desc) > max_description_len else desc
             )
         for key_name in ('type', 'default', 'prefill', 'enum'):
             if value := meta.get(key_name):
@@ -48,23 +48,21 @@ def prune_actor_input_schema(
 T = TypeVar('T', ApifyClient, ApifyClientAsync)
 
 
-def create_apify_client(t: type[T], token: str) -> T:
+def create_apify_client(client_cls: type[T], token: str) -> T:
     """Create an Apify client instance with a custom user-agent.
 
     Args:
-        t (Type[T]): ApifyClient or ApifyClientAsync.
+        client_cls (ApifyClient | ApifyClientAsync): ApifyClient or ApifyClientAsync class.
         token (str): API token.
 
     Returns:
         T: ApifyClient or ApifyClientAsync instance.
     """
     if not token:
-        msg = 'API token is required.'
+        msg = 'API token is required to create an Apify client.'
         raise ValueError(msg)
-    client = t(token)
-    http_client_attr = (
-        'httpx_async_client' if isinstance(client, ApifyClientAsync) else 'httpx_client'
-    )
+    client = client_cls(token)
+    http_client_attr = 'httpx_async_client' if isinstance(client, ApifyClientAsync) else 'httpx_client'
     if http_client := getattr(client.http_client, http_client_attr):
         http_client.headers['user-agent'] += '; Origin/langchain'
     return client
@@ -83,9 +81,7 @@ def actor_id_to_tool_name(actor_id: str) -> str:
         str: A valid tool name.
     """
     valid_chars = string.ascii_letters + string.digits + '_-'
-    return 'apify_actor_' + ''.join(
-        char if char in valid_chars else '_' for char in actor_id
-    )
+    return 'apify_actor_' + ''.join(char if char in valid_chars else '_' for char in actor_id)
 
 
 def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
@@ -102,11 +98,11 @@ def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
         msg = f'Actor {actor_id} not found.'
         raise ValueError(msg)
 
-    if (actor_obj_id := actor.get('id')) is None:
+    if not (actor_obj_id := actor.get('id')):
         msg = f'Failed to get the Actor object ID for {actor_id}.'
         raise ValueError(msg)
 
-    url = f'https://api.apify.com/v2/acts/{actor_obj_id}/builds/default'
+    url = APIFY_API_ENDPOINT_GET_DEFAULT_BUILD.format(actor_id=actor_obj_id)
     response = requests.request('GET', url, timeout=REQUESTS_TIMEOUT_SECS)
 
     build = response.json()

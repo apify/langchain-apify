@@ -1,4 +1,21 @@
-This is a development documentation for this project.
+# Development
+
+## Contributing
+
+If you want to contribute, please ensure that you have your environment properly set up. Run the following commands to make sure that the code is properly formatted and is not breaking before submitting a pull request.
+
+## Installation
+
+To work on this repo locally, you first need to clone the repository and install the dependencies. You can do this by running the following commands:
+
+```bash
+git clone https://github.com/apify/langchain-apify
+cd langchain-apify
+
+poetry sync --all-groups
+# for poetry version < 2.0
+poetry install --with dev,test,lint --no-root --sync
+```
 
 ## Formatting and linting
 

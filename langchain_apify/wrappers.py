@@ -82,11 +82,7 @@ class ApifyWrapper(BaseModel):
         Validate that an Apify API token is set and the apify-client
         Python package exists in the current environment.
         """
-        apify_api_token = get_from_dict_or_env(
-            values,
-            'apify_api_token',
-            'APIFY_API_TOKEN',
-        )
+        apify_api_token = get_from_dict_or_env(values, 'apify_api_token', 'APIFY_API_TOKEN')
 
         values['apify_client'] = create_apify_client(ApifyClient, apify_api_token)
         values['apify_client_async'] = create_apify_client(ApifyClientAsync, apify_api_token)
@@ -129,7 +125,7 @@ class ApifyWrapper(BaseModel):
                 timeout_secs=timeout_secs,
             )
         ) is None:
-            msg = f'Failed to call actor {actor_id}.'
+            msg = f'Failed to call Actor {actor_id}.'
             raise RuntimeError(msg)
 
         return ApifyDatasetLoader(
@@ -173,7 +169,7 @@ class ApifyWrapper(BaseModel):
                 timeout_secs=timeout_secs,
             )
         ) is None:
-            msg = f'Failed to call actor {actor_id}.'
+            msg = f'Failed to call Actor {actor_id}.'
             raise RuntimeError(msg)
 
         return ApifyDatasetLoader(

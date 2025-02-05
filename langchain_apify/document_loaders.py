@@ -36,7 +36,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
                 ),
             )
             documents = loader.load()
-    """  # noqa: E501
+    """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -77,11 +77,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         Args:
             values (dict): The values to validate.
         """
-        apify_api_token = get_from_dict_or_env(
-            values,
-            'apify_api_token',
-            'APIFY_API_TOKEN',
-        )
+        apify_api_token = get_from_dict_or_env(values, 'apify_api_token', 'APIFY_API_TOKEN')
 
         client = create_apify_client(ApifyClient, apify_api_token)
 
@@ -95,9 +91,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         Returns:
             list[Document]: A list of Document objects.
         """
-        dataset_items = (
-            self.apify_client.dataset(self.dataset_id).list_items(clean=True).items
-        )
+        dataset_items = self.apify_client.dataset(self.dataset_id).list_items(clean=True).items
         return list(map(self.dataset_mapping_function, dataset_items))
 
     def lazy_load(self) -> Iterator[Document]:

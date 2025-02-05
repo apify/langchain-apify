@@ -77,7 +77,5 @@ def apify_actors_tool_fixture() -> Generator[ApifyActorsTool, None, None]:
 
         mock_build_tool_args_schema_model.return_value = DummyModel
 
-        tool = ApifyActorsTool(
-            actor_id='apify/python-example', apify_api_token='dummy-token'
-        )
+        tool = ApifyActorsTool(actor_id='apify/python-example', apify_api_token='dummy-token')
         yield tool

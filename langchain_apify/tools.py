@@ -8,6 +8,7 @@ from apify_client import ApifyClient
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, create_model
 
+from langchain_apify.error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify.utils import (
     actor_id_to_tool_name,
     create_apify_client,
@@ -72,7 +73,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         """
         apify_api_token = apify_api_token or os.getenv('APIFY_API_TOKEN')
         if not apify_api_token:
-            msg = 'APIFY_API_TOKEN environment variable is not set.'
+            msg = ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
 
         apify_client = create_apify_client(ApifyClient, apify_api_token)
@@ -102,8 +103,6 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
 
         Args:
             run_input (Union[str, dict]): JSON input for the Actor.
-            run_manager (Optional[CallbackManagerForToolRun]): Callback manager for the
-                tool run.
 
         Returns:
             list[dict]: The output dataset.
@@ -113,7 +112,8 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         input_dict = input_dict.get('run_input', input_dict)
         return self._run_actor(input_dict)
 
-    def _create_description(self, apify_client: ApifyClient, actor_id: str) -> str:
+    @staticmethod
+    def _create_description(apify_client: ApifyClient, actor_id: str) -> str:
         """Create a description for the tool.
 
         Args:
@@ -121,17 +121,13 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
             actor_id (str): Actor name from Apify store to run.
         """
         build = get_actor_latest_build(apify_client, actor_id)
-        readme = build.get('readme', '')
-        if len(readme) > MAX_DESCRIPTION_LEN:
-            readme = readme[:MAX_DESCRIPTION_LEN] + '...(TRUNCATED, README TOO LONG)'
-        return (
-            'Run an Apify Actor with the given input. '
-            'Here is the README for the available Apify Actor:\n\n'
-            f'{readme}\n\n'
-        )
+        actor_description = build.get('actorDefinition', {}).get('description', '')
+        if len(actor_description) > MAX_DESCRIPTION_LEN:
+            actor_description = actor_description[:MAX_DESCRIPTION_LEN] + '...(TRUNCATED, TOO LONG)'
+        return actor_description
 
+    @staticmethod
     def _build_tool_args_schema_model(
-        self,
         apify_client: ApifyClient,
         actor_id: str,
     ) -> type[BaseModel]:
@@ -143,23 +139,20 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         """
         build = get_actor_latest_build(apify_client, actor_id)
         if not (actor_input := build.get('actorDefinition', {}).get('input')):
-            msg = 'Input schema not found'
+            msg = f'Input schema not found in the Actor build for Actor: {actor_id}'
             raise ValueError(msg)
 
         properties, required = prune_actor_input_schema(actor_input)
         properties = {'run_input': properties}
 
-        _description = [
-            (
-                "JSON encoded as a string with input schema "
-                "(STRICTLY FOLLOW JSON FORMAT AND SCHEMA):\n\n"
-                f"{json.dumps(properties, separators=(',', ':'))}"
-                "\nIF THE TOOL INPUT SCHEMA SUPPORTS IT LIMIT THE NUMBER OF RESULTS"
-            ),
-        ]
+        description = (
+            "JSON encoded as a string with input schema "
+            "(STRICTLY FOLLOW JSON FORMAT AND SCHEMA):\n\n"
+            f"{json.dumps(properties, separators=(',', ':'))}"
+            "\nIF THE TOOL INPUT SCHEMA SUPPORTS IT LIMIT THE NUMBER OF RESULTS"
+        )
         if required:
-            _description.append('\n\nRequired fields:\n' + '\n'.join(required))
-        description = ''.join(_description)
+            description += '\n\nRequired fields:\n' + '\n'.join(required)
 
         return create_model(
             'ApifyActorsToolInput',
@@ -172,15 +165,11 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Args:
             run_input: dict, JSON input for the Actor
         """
-        if (
-            details := self._apify_client.actor(actor_id=self._actor_id).call(
-                run_input=run_input,
-            )
-        ) is None:
-            msg = 'Actor run details not found'
+        if (details := self._apify_client.actor(actor_id=self._actor_id).call(run_input=run_input)) is None:
+            msg = f'Actor: {self._actor_id} was not started properly and details about the run were not returned'
             raise ValueError(msg)
         if (run_id := details.get('id')) is None:
-            msg = 'Run ID not found'
+            msg = f'Run ID not found in the run details for Actor: {self._actor_id}'
             raise ValueError(msg)
         run = self._apify_client.run(run_id=run_id)
 
