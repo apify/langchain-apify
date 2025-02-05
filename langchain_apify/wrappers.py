@@ -88,11 +88,8 @@ class ApifyWrapper(BaseModel):
             'APIFY_API_TOKEN',
         )
 
-        client = create_apify_client(ApifyClient, apify_api_token)
-        async_client = create_apify_client(ApifyClientAsync, apify_api_token)
-
-        values['apify_client'] = client
-        values['apify_client_async'] = async_client
+        values['apify_client'] = create_apify_client(ApifyClient, apify_api_token)
+        values['apify_client_async'] = create_apify_client(ApifyClientAsync, apify_api_token)
 
         return values
 
