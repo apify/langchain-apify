@@ -56,6 +56,9 @@ install-dev:
 type-check:
 	[ "$(PYTHON_FILES)" = "" ] || mkdir -p $(MYPY_CACHE) && poetry run mypy $(PYTHON_FILES) --cache-dir $(MYPY_CACHE)
 
+build:
+	poetry build --no-interaction -vv
+
 ######################
 # HELP
 ######################
