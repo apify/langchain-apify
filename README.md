@@ -1,7 +1,7 @@
 <div align="center">
 
 <picture>
-  <img alt="Apify logo" src="/docs/logo_apify.svg" width="20%" height="20%">
+  <img alt="Apify logo" src="https://raw.githubusercontent.com/apify/langchain-apify/refs/heads/main/docs/logo_apify.svg" width="20%" height="20%">
 </picture>
 
 LangChain Apify: Full-stack web scraping and data extraction platform enhanced with AI capabilities. Maintained by [Apify](https://apify.com).
