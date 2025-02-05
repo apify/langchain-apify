@@ -180,7 +180,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
             msg = 'Actor run details not found'
             raise ValueError(msg)
         if (run_id := details.get('id')) is None:
-            msg = 'Run id not found'
+            msg = 'Run ID not found'
             raise ValueError(msg)
         run = self._apify_client.run(run_id=run_id)
 
