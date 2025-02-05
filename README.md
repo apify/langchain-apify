@@ -47,7 +47,7 @@ from langchain_apify import ApifyActorsTool
 
 browser = ApifyActorsTool('apify/rag-web-browser')
 search_results = browser.invoke(input={
-    "run_input": {"query": "what is Apify?", "maxResults": 3}
+    "run_input": {"query": "what is Apify Actor?", "maxResults": 3}
 })
 
 # use the tool with an agent
