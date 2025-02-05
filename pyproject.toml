@@ -15,7 +15,7 @@ license = "MIT"
 disallow_untyped_defs = true
 
 [tool.poetry.urls]
-"Source Code" = "https://github.com/apify/langchain-apify/tree/master/"
+"Source Code" = "https://github.com/apify/langchain-apify/tree/main/"
 "Release Notes" = "https://github.com/apify/langchain-apify/releases?expanded=true"
 
 [tool.poetry.dependencies]
