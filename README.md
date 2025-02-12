@@ -21,6 +21,10 @@ LangChain Apify: A full-stack scraping platform built on Apify's infrastructure 
 
 Build web scraping and automation workflows in Python by connecting Apify Actors with LangChain. This package gives you programmatic access to Apify's infrastructure - run scraping tasks, handle datasets, and use the API directly through LangChain's tools.
 
+## Agentic LLMs
+
+If you are an agent or an LLM, refer to the [llms.txt](llms.txt) file to get package context and learn how to work with this package.
+
 ## Installation
 
 ```bash
