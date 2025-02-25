@@ -1,0 +1,114 @@
+# LangChain Apify Package Overview
+
+The `langchain-apify` package integrates Apify's web scraping and automation capabilities with LangChain's AI toolkit. Here's how you can use it:
+
+## Setup
+
+To install the package, use pip:
+
+```bash
+pip install langchain-apify
+```
+
+Ensure you have set the `APIFY_API_TOKEN` environment variable with your Apify API token.
+
+```python
+import os
+os.environ["APIFY_API_TOKEN"] = "YOUR_APIFY_API_TOKEN"
+```
+
+## Key Imports
+
+For using the package, import these classes:
+
+```python
+from langchain_apify import ApifyActorsTool, ApifyDatasetLoader, ApifyWrapper
+```
+
+## ApifyActorsTool
+
+This tool allows running Apify Actors directly from LangChain:
+
+```python
+browser = ApifyActorsTool(actor_id='apify/rag-web-browser')
+results = browser.invoke(input={
+    "run_input": {"query": "what is Apify Actor?", "maxResults": 3}
+})
+```
+
+### Using with an Agent
+
+The ApifyActorsTool can also be integrated with LangChain agents for more dynamic workflows:
+
+```python
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
+
+model = ChatOpenAI(model="gpt-4o-mini")
+tools = [browser]
+agent = create_react_agent(model, tools)
+
+for chunk in agent.stream(
+    {"messages": [("human", "search for what is Apify?")]},
+    stream_mode="values"
+):
+    chunk["messages"][-1].pretty_print()
+```
+
+## ApifyDatasetLoader
+
+Use this to load data from Apify datasets into LangChain's Document format:
+
+```python
+# Example dataset structure
+# [
+#     {
+#         "text": "Example text from the website.",
+#         "url": "http://example.com"
+#     },
+#     ...
+# ]
+
+loader = ApifyDatasetLoader(
+    dataset_id="your-dataset-id",
+    dataset_mapping_function=lambda dataset_item: Document(
+        page_content=dataset_item["text"],
+        metadata={"source": dataset_item["url"]}
+    ),
+)
+documents = loader.load()
+```
+
+## ApifyWrapper
+
+This wrapper provides methods to interact with Apify Actors and tasks:
+
+```python
+apify = ApifyWrapper()
+
+# Example to call an actor
+loader = apify.call_actor(
+    actor_id="apify/website-content-crawler",
+    run_input={
+        "startUrls": [{"url": "https://python.langchain.com/docs/introduction/"}],
+        "maxCrawlPages": 10,
+        "crawlerType": "cheerio"
+    },
+    dataset_mapping_function=lambda item: Document(
+        page_content=item["text"] or "",
+        metadata={"source": item["url"]}
+    ),
+)
+documents = loader.load()
+```
+
+## Usage Tips
+
+- **Authentication:** Ensure your Apify API token is correctly set in the environment.
+- **Error Handling:** Look out for specific exceptions like `ValueError` for missing API tokens or `RuntimeError` for failed Actor calls.
+- **Async Support:** Use `acall_actor` or `acall_actor_task` for asynchronous operations.
+
+**Note:**
+- This document assumes you're familiar with Python and LangChain basics.
+- Adjust the `YOUR_APIFY_API_TOKEN` placeholder with your actual token or follow the instructions for setting environment variables.
+- The `dataset_mapping_function` is crucial for shaping the data into `Document` objects that LangChain can understand. Adjust based on the structure of your data.
