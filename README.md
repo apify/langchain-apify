@@ -1,3 +1,10 @@
+> [\!WARNING] 
+> ⚠️ **This repository is deprecated!** ⚠️
+>
+> This repository is deprecated. Development has moved to the **Apify MCP**. Please use the MCP (Model Context Protocol):
+>
+> ### 👉 [https://mcp.apify.com](https://mcp.apify.com) 👈
+
 <div align="center">
 
 <picture>
