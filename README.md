@@ -1,7 +1,13 @@
+> 🎉 **Apify MCP server released!** 🎉
+>
+> Apify has released its MCP ([Model Context Protocol](https://modelcontextprotocol.io)) server, which offers more features. You can use it through the [LangChain MCP Adapter](https://github.com/langchain-ai/langchain-mcp-adapters). It allows you to run Apify Actors, access Apify storage, search and read Apify documentation, and much more.
+>
+> ### 👉 [https://mcp.apify.com](https://mcp.apify.com) 👈
+
 <div align="center">
 
 <picture>
-  <img alt="Apify logo" src="https://raw.githubusercontent.com/apify/langchain-apify/refs/heads/main/docs/logo_apify.svg" width="20%" height="20%">
+  <img alt="Apify logo" src="https://raw.githubusercontent.com/apify/langchain-apify/refs/heads/main/docs/apify-logo.png" width="20%" height="20%">
 </picture>
 
 LangChain Apify: A full-stack scraping platform built on Apify's infrastructure and LangChain's AI tools. Maintained by [Apify](https://apify.com).
