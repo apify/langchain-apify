@@ -1,7 +1,6 @@
-> [\!WARNING] 
-> ⚠️ **This repository is deprecated!** ⚠️
+> 🎉 **Apify MCP server released!** 🎉
 >
-> This repository is deprecated. Development has moved to the **Apify MCP**. Please use the MCP (Model Context Protocol):
+> Apify has released its MCP ([Model Context Protocol](https://modelcontextprotocol.io)) server, which offers more features. You can use it through the [LangChain MCP Adapter](https://github.com/langchain-ai/langchain-mcp-adapters). It allows you to run Apify Actors, access Apify storage, search and read Apify documentation, and much more.
 >
 > ### 👉 [https://mcp.apify.com](https://mcp.apify.com) 👈
 
