@@ -35,7 +35,7 @@ jobs:
       changelog: ${{ steps.release_metadata.outputs.changelog }}
       release_notes: ${{ steps.release_metadata.outputs.release_notes }}
     steps:
-      - uses: apify/workflows/git-cliff-release@main
+      - uses: apify/workflows/git-cliff-release@6cbb5232cc59d59047f1e8268da10747e729989e
         name: Prepare release metadata
         id: release_metadata
         with:
@@ -43,17 +43,13 @@ jobs:
           custom_version: ${{ inputs.custom_version }}
           existing_changelog_path: CHANGELOG.md
 
-  #lint_check:
-  #  name: Lint check
-  #  uses: apify/workflows/.github/workflows/python_lint_check.yaml@main
-  #  with:
-  #    python-versions: '["3.10", "3.11", "3.12", "3.13"]'
+  lint_check:
+    name: Lint check
+    uses: apify/workflows/.github/workflows/python_lint_check.yaml@6cbb5232cc59d59047f1e8268da10747e729989e
 
-  #type_check:
-  #  name: Type check
-  #  uses: apify/workflows/.github/workflows/python_type_check.yaml@main
-  #  with:
-  #    python-versions: '["3.10", "3.11", "3.12", "3.13"]'
+  type_check:
+    name: Type check
+    uses: apify/workflows/.github/workflows/python_type_check.yaml@6cbb5232cc59d59047f1e8268da10747e729989e
 
   code_check:
     runs-on: ubuntu-latest
@@ -112,7 +108,7 @@ jobs:
       url: https://pypi.org/project/langchain-apify
     steps:
       - name: Prepare distribution
-        uses: apify/workflows/prepare-pypi-distribution@main
+        uses: apify/workflows/prepare-pypi-distribution@6cbb5232cc59d59047f1e8268da10747e729989e
         with:
           ref: ${{ github.ref }}
           package_name: langchain-apify
