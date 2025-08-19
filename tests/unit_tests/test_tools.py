@@ -19,14 +19,17 @@ def test_apify_actors_tool_instance() -> None:
     Creates an instance of the ApifyActorsTool and
         checks if the instance is created correctly.
     """
-    with patch.object(
-        ApifyActorsTool,
-        '_create_description',
-        return_value='Mocked description',
-    ), patch.object(
-        ApifyActorsTool,
-        '_build_tool_args_schema_model',
-    ) as mock_build_tool_args_schema_model:
+    with (
+        patch.object(
+            ApifyActorsTool,
+            '_create_description',
+            return_value='Mocked description',
+        ),
+        patch.object(
+            ApifyActorsTool,
+            '_build_tool_args_schema_model',
+        ) as mock_build_tool_args_schema_model,
+    ):
 
         class DummyModel(BaseModel):
             run_input: str
@@ -63,14 +66,17 @@ def apify_actors_tool_fixture() -> Generator[ApifyActorsTool, None, None]:
     Yields:
         ApifyActorsTool: An instance of the ApifyActorsTool.
     """
-    with patch.object(
-        ApifyActorsTool,
-        '_create_description',
-        return_value='Mocked description',
-    ), patch.object(
-        ApifyActorsTool,
-        '_build_tool_args_schema_model',
-    ) as mock_build_tool_args_schema_model:
+    with (
+        patch.object(
+            ApifyActorsTool,
+            '_create_description',
+            return_value='Mocked description',
+        ),
+        patch.object(
+            ApifyActorsTool,
+            '_build_tool_args_schema_model',
+        ) as mock_build_tool_args_schema_model,
+    ):
 
         class DummyModel(BaseModel):
             run_input: str | dict
