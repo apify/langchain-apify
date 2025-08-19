@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any, Callable
 
 from apify_client import ApifyClient
@@ -81,6 +82,8 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
             Any: The validated values.
         """
         apify_api_token = get_from_dict_or_env(values, 'apify_api_token', 'APIFY_API_TOKEN')
+        # when running at Apify platform, use APIFY_TOKEN environment variable
+        apify_api_token = apify_api_token or os.getenv('APIFY_TOKEN', '')
 
         client = create_apify_client(ApifyClient, apify_api_token)
 
