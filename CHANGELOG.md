@@ -3,11 +3,13 @@
 All notable changes to this project will be documented in this file.
 
 <!-- git-cliff-unreleased-start -->
-## 0.1.4 - **not yet released**
+## 0.1.5 - **not yet released**
 
 ### 🐛 Bug Fixes
 
-- Use APIFY_TOKEN when running at Apify platform, run make format ([#21](https://github.com/apify/langchain-apify/pull/21)) ([2574c02](https://github.com/apify/langchain-apify/commit/2574c02bfa060f6491a9c6b730fd1fcce5edb9e3)) by [@jirispilka](https://github.com/jirispilka)
+- Update CHANGELOG.md ([#22](https://github.com/apify/langchain-apify/pull/22)) ([eadab67](https://github.com/apify/langchain-apify/commit/eadab67a1d864400d2f72c2fe1532cfa4bd96ddd)) by [@jirispilka](https://github.com/jirispilka)
+
+
 <!-- git-cliff-unreleased-end -->
 
 ## [0.1.3](https://github.com/apify/langchain-apify/releases/tag/v0.1.3) (2025-07-25)
