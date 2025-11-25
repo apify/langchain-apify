@@ -158,10 +158,10 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         properties = {'run_input': properties}
 
         description = (
-            "JSON encoded as a string with input schema "
-            "(STRICTLY FOLLOW JSON FORMAT AND SCHEMA):\n\n"
-            f"{json.dumps(properties, separators=(',', ':'))}"
-            "\nIF THE TOOL INPUT SCHEMA SUPPORTS IT LIMIT THE NUMBER OF RESULTS"
+            'JSON encoded as a string with input schema '
+            '(STRICTLY FOLLOW JSON FORMAT AND SCHEMA):\n\n'
+            f'{json.dumps(properties, separators=(",", ":"))}'
+            '\nIF THE TOOL INPUT SCHEMA SUPPORTS IT LIMIT THE NUMBER OF RESULTS'
         )
         if required:
             description += '\n\nRequired fields:\n' + '\n'.join(required)

@@ -69,14 +69,10 @@ def create_apify_client(client_cls: type[T], token: str) -> T:
     # Check for new attribute names first (without 'x'), then fall back to old names (with 'x')
     if isinstance(client, ApifyClientAsync):
         http_client_attr = (
-            'httpx_async_client'
-            if hasattr(client.http_client, 'httpx_async_client')
-            else 'http_async_client'
+            'httpx_async_client' if hasattr(client.http_client, 'httpx_async_client') else 'http_async_client'
         )
     else:
-        http_client_attr = (
-            'httpx_client' if hasattr(client.http_client, 'httpx_client') else 'http_client'
-        )
+        http_client_attr = 'httpx_client' if hasattr(client.http_client, 'httpx_client') else 'http_client'
 
     if http_client := getattr(client.http_client, http_client_attr, None):
         http_client.headers['user-agent'] += '; Origin/langchain'
