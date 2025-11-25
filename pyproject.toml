@@ -40,7 +40,8 @@ ignore = [
     "RUF101",   # redirected-noqa
     "S105",     # Possible hard-coded password
     "S106",     # Checks for potential uses of hardcoded passwords in function calls.
-    "CPY001"    # missing copyright notice
+    "CPY001",   # missing copyright notice
+    "TCH003",   # Move standard library import into type-checking block
 ]
 
 [tool.ruff.format]
