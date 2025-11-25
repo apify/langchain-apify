@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool
@@ -158,17 +158,17 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         properties = {'run_input': properties}
 
         description = (
-            "JSON encoded as a string with input schema "
-            "(STRICTLY FOLLOW JSON FORMAT AND SCHEMA):\n\n"
-            f"{json.dumps(properties, separators=(',', ':'))}"
-            "\nIF THE TOOL INPUT SCHEMA SUPPORTS IT LIMIT THE NUMBER OF RESULTS"
+            'JSON encoded as a string with input schema '
+            '(STRICTLY FOLLOW JSON FORMAT AND SCHEMA):\n\n'
+            f'{json.dumps(properties, separators=(",", ":"))}'
+            '\nIF THE TOOL INPUT SCHEMA SUPPORTS IT LIMIT THE NUMBER OF RESULTS'
         )
         if required:
             description += '\n\nRequired fields:\n' + '\n'.join(required)
 
         return create_model(
             'ApifyActorsToolInput',
-            run_input=(Union[str, dict], Field(..., description=description)),
+            run_input=(str | dict, Field(..., description=description)),
         )
 
     def _run_actor(self, run_input: dict) -> list[dict]:

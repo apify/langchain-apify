@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient, ApifyClientAsync
 from langchain_core.utils import get_from_dict_or_env
@@ -10,6 +11,8 @@ from langchain_apify.document_loaders import ApifyDatasetLoader
 from langchain_apify.utils import create_apify_client
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from langchain_core.documents import Document
 
 

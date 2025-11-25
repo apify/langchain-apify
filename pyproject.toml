@@ -21,9 +21,9 @@ disallow_untyped_defs = true
 "Issue Tracker" = "https://github.com/apify/langchain-apify/issues"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4.0"
+python = ">=3.10,<4.0"
 langchain-core = "^0.3.15"
-apify-client = "^1.8.1"
+apify-client = "^2.3.0"
 eval-type-backport = "^0.2.2"
 
 [tool.ruff]
@@ -40,7 +40,8 @@ ignore = [
     "RUF101",   # redirected-noqa
     "S105",     # Possible hard-coded password
     "S106",     # Checks for potential uses of hardcoded passwords in function calls.
-    "CPY001"    # missing copyright notice
+    "CPY001",   # missing copyright notice
+    "TCH003",   # Move standard library import into type-checking block
 ]
 
 [tool.ruff.format]
@@ -112,7 +113,7 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 langchain-openai = "^0.3.2"
-langgraph = "^0.2.68"
+langgraph = "^1.0.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.4.3"
