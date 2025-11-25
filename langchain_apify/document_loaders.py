@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable  # noqa: TC003
+from collections.abc import Callable  # noqa: TCH003
 from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
