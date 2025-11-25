@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from apify_client.clients import DatasetClient
-from apify_shared.models import ListPage
+from apify_client._types import ListPage
 from langchain_core.documents import Document
 
 from langchain_apify import ApifyDatasetLoader

@@ -65,8 +65,14 @@ def create_apify_client(client_cls: type[T], token: str) -> T:
         msg = 'API token is required to create an Apify client.'
         raise ValueError(msg)
     client = client_cls(token)
-    http_client_attr = 'httpx_async_client' if isinstance(client, ApifyClientAsync) else 'httpx_client'
-    if http_client := getattr(client.http_client, http_client_attr):
+    
+    # Check for new attribute names first (without 'x'), then fall back to old names (with 'x')
+    if isinstance(client, ApifyClientAsync):
+        http_client_attr = 'httpx_async_client' if hasattr(client.http_client, 'httpx_async_client') else 'http_async_client'
+    else:
+        http_client_attr = 'httpx_client' if hasattr(client.http_client, 'httpx_client') else 'http_client'
+    
+    if http_client := getattr(client.http_client, http_client_attr, None):
         http_client.headers['user-agent'] += '; Origin/langchain'
     return client
 
