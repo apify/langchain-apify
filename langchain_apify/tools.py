@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool
@@ -168,7 +168,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
 
         return create_model(
             'ApifyActorsToolInput',
-            run_input=(Union[str, dict], Field(..., description=description)),
+            run_input=(str | dict, Field(..., description=description)),
         )
 
     def _run_actor(self, run_input: dict) -> list[dict]:
