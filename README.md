@@ -46,7 +46,7 @@ Register your free Apify account [here](https://console.apify.com/sign-up) and l
 
 ## Tools
 
-`ApifyActorsTool` class provides access to [Apify Actors](https://apify.com/store), which are cloud-based web scraping and automation programs that you can run without managing any infrastructure. For more detailed information, see the [Apify Actors documentation](https://docs.apify.com/platform/actors).
+`ApifyActorsTool` class provides access to [Apify Actors](https://apify.com/store), which are cloud-based web-scraping and automation programs that you can run without managing any infrastructure. For more detailed information, see the [Apify Actors documentation](https://docs.apify.com/platform/actors).
 
 `ApifyActorsTool` is useful when you need to run an Apify Actor as a tool in LangChain. You can use the tool to interact with the Actor manually or as part of an agent workflow.
 
@@ -81,9 +81,11 @@ for chunk in agent.stream(
 
 ## Document loaders
 
+> **⚠️ Note for Actor Developers**: If you're building an Apify Actor, use `Actor.open_dataset()` from the Apify SDK instead of this loader. See the [Note for Apify Actor developers](#note-for-apify-actor-developers) section for details.
+
 `ApifyDatasetLoader` class provides access to [Apify datasets](https://docs.apify.com/platform/storage/dataset) as document loaders. Datasets are storage solutions that store results from web scraping, crawling, or data processing.
 
-`ApifyDatasetLoader` is useful when you need to process data from an Apify Actor run. If you are extracting webpage content, you would typically use this loader after running an Apify Actor manually from the [Apify console](https://console.apify.com), where you can access the results stored in the dataset.
+`ApifyDatasetLoader` is useful when you need to process data from an Apify Actor run **from outside the Actor runtime** (e.g., in an external script, notebook, or application). If you are extracting webpage content, you would typically use this loader after running an Apify Actor manually from the [Apify console](https://console.apify.com), where you can access the results stored in the dataset.
 
 Example usage for `ApifyDatasetLoader` with a custom dataset mapping function for loading webpage content and source URLs as a list of  `Document` objects containing the page content and source URL.
 ```python
@@ -145,3 +147,47 @@ loader = apify.call_actor(
 )
 documents = loader.load()
 ```
+
+## Note for Apify Actor developers
+
+**If you are building an Apify Actor that will run on the Apify platform**, you should **NOT** use this package for dataset loading. Instead:
+
+**Use the Apify Actor SDK directly** with `Actor.open_dataset()`
+**Do NOT use** `ApifyDatasetLoader` from this package
+
+### Why?
+
+1. **Security & permissions**: Actors should run with `LIMITED_PERMISSIONS` and use scoped tokens that grant access only to specific resources. The Actor SDK's `Actor.open_dataset()` method respects these scoped tokens.
+2. **Best practices**: Using the Actor SDK is the proper way to access Apify resources within an Actor runtime environment.
+3. **No external dependencies**: Your Actor doesn't need to depend on `langchain-apify` for basic dataset operations.
+
+### Example: Loading dataset in an Actor
+
+```python
+from apify import Actor
+from langchain_core.documents import Document
+
+async def main():
+    async with Actor:
+        # Get dataset ID from input or integration payload
+        dataset_id = Actor.get_input().get("datasetId")
+
+        # Open dataset using Actor SDK (respects LIMITED_PERMISSIONS)
+        dataset = await Actor.open_dataset(name=dataset_id)
+
+        # Transform items to Documents
+        documents = []
+        async for item in dataset.iterate_items():
+            doc = Document(page_content=item.get("text", ""), metadata={"url": item.get("url")})
+            documents.append(doc)
+```
+
+### When to use langchain-apify
+
+This package is designed for:
+- External scripts and applications that need to access Apify from outside the Actor runtime
+- LangChain agents that use Apify Actors as tools
+- Data processing pipelines that consume Apify datasets
+
+It is **NOT** designed for:
+- Code running inside an Apify Actor (use Actor SDK instead)
