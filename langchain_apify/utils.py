@@ -7,14 +7,14 @@ import requests
 from apify_client import ApifyClientAsync
 from apify_client.client import ApifyClient
 
-from langchain_apify.const import MAX_DESCRIPTION_LEN, REQUESTS_TIMEOUT_SECS
-
-APIFY_API_ENDPOINT_GET_DEFAULT_BUILD = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
+_MAX_DESCRIPTION_LEN: int = 350
+_REQUESTS_TIMEOUT_SECS: float = 10.0
+_APIFY_API_ENDPOINT_GET_DEFAULT_BUILD = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
 
 
 def prune_actor_input_schema(
     input_schema: dict,
-    max_description_len: int = MAX_DESCRIPTION_LEN,
+    max_description_len: int = _MAX_DESCRIPTION_LEN,
 ) -> tuple[dict, list[str]]:
     """Get the input schema from the Actor build.
 
@@ -117,8 +117,8 @@ def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
         msg = f'Failed to get the Actor object ID for {actor_id}.'
         raise ValueError(msg)
 
-    url = APIFY_API_ENDPOINT_GET_DEFAULT_BUILD.format(actor_id=actor_obj_id)
-    response = requests.request('GET', url, timeout=REQUESTS_TIMEOUT_SECS)
+    url = _APIFY_API_ENDPOINT_GET_DEFAULT_BUILD.format(actor_id=actor_obj_id)
+    response = requests.request('GET', url, timeout=_REQUESTS_TIMEOUT_SECS)
 
     build = response.json()
     if not isinstance(build, dict):

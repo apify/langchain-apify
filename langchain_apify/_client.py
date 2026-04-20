@@ -8,6 +8,11 @@ from langchain_apify.error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify.utils import create_apify_client
 
 _SCRAPE_ACTOR_ID = 'apify/website-content-crawler'
+_DEFAULT_RUN_TIMEOUT_SECS = 300
+_DEFAULT_SCRAPE_TIMEOUT_SECS = 120
+_DEFAULT_TASK_TIMEOUT_SECS = 300
+_DEFAULT_DATASET_ITEMS_LIMIT = 100
+_RUN_STATUS_SUCCEEDED = 'SUCCEEDED'
 
 
 class ApifyToolsClient:
@@ -35,7 +40,7 @@ class ApifyToolsClient:
         self,
         actor_id: str,
         run_input: dict | None = None,
-        timeout_secs: int = 300,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
     ) -> dict:
         """Start an Actor and block until it finishes.
@@ -77,9 +82,9 @@ class ApifyToolsClient:
         self,
         actor_id: str,
         run_input: dict | None = None,
-        timeout_secs: int = 300,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
-        dataset_items_limit: int = 100,
+        dataset_items_limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
     ) -> tuple[dict, list[dict]]:
         """Run an Actor, then fetch items from its default dataset.
 
@@ -105,7 +110,7 @@ class ApifyToolsClient:
         self,
         task_id: str,
         task_input: dict | None = None,
-        timeout_secs: int = 300,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
     ) -> dict:
         """Start a saved Actor task and block until it finishes.
@@ -135,9 +140,9 @@ class ApifyToolsClient:
         self,
         task_id: str,
         task_input: dict | None = None,
-        timeout_secs: int = 300,
+        timeout_secs: int = _DEFAULT_TASK_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
-        dataset_items_limit: int = 100,
+        dataset_items_limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
     ) -> tuple[dict, list[dict]]:
         """Run a saved Actor task, then fetch items from its default dataset.
 
@@ -160,7 +165,7 @@ class ApifyToolsClient:
         items = self._client.dataset(dataset_id).list_items(limit=dataset_items_limit, clean=True).items
         return run, items
 
-    def scrape_url(self, url: str, timeout_secs: int = 120) -> str:
+    def scrape_url(self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS) -> str:
         """Scrape a single URL and return its content as markdown.
 
         Uses ``apify/website-content-crawler`` with ``maxCrawlPages=1``.
@@ -199,7 +204,7 @@ class ApifyToolsClient:
     def _check_run_status(run: dict) -> None:
         """Raise if the run did not succeed."""
         status = run.get('status')
-        if status != 'SUCCEEDED':
+        if status != _RUN_STATUS_SUCCEEDED:
             run_id = run.get('id', 'unknown')
             msg = f'Actor run {run_id} ended with status {status}.'
             raise RuntimeError(msg)

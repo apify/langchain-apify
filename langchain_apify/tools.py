@@ -10,13 +10,12 @@ from pydantic import BaseModel, Field, create_model
 
 from langchain_apify.error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify.utils import (
+    _MAX_DESCRIPTION_LEN,
     actor_id_to_tool_name,
     create_apify_client,
     get_actor_latest_build,
     prune_actor_input_schema,
 )
-
-from .const import MAX_DESCRIPTION_LEN
 
 if TYPE_CHECKING:
     from langchain_core.callbacks import (
@@ -128,8 +127,8 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         """
         build = get_actor_latest_build(apify_client, actor_id)
         actor_description = build.get('actorDefinition', {}).get('description', '')
-        if len(actor_description) > MAX_DESCRIPTION_LEN:
-            actor_description = actor_description[:MAX_DESCRIPTION_LEN] + '...(TRUNCATED, TOO LONG)'
+        if len(actor_description) > _MAX_DESCRIPTION_LEN:
+            actor_description = actor_description[:_MAX_DESCRIPTION_LEN] + '...(TRUNCATED, TOO LONG)'
         return actor_description
 
     @staticmethod
