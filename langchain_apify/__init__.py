@@ -1,19 +1,50 @@
 from importlib import metadata
 
 from langchain_apify.document_loaders import ApifyDatasetLoader
-from langchain_apify.tools import ApifyActorsTool
+from langchain_apify.tools import (
+    ApifyActorsTool,
+    ApifyGetDatasetItemsTool,
+    ApifyRunActorAndGetItemsTool,
+    ApifyRunActorTool,
+    ApifyScrapeUrlTool,
+)
 from langchain_apify.wrappers import ApifyWrapper
 
 try:
     __version__ = metadata.version(__package__)
 except metadata.PackageNotFoundError:
-    # Case where package metadata is not available.
     __version__ = ''
 del metadata  # optional, avoids polluting the results of dir(__package__)
 
+# ---------------------------------------------------------------------------
+# Convenience tool-class lists for selective agent binding.
+#
+# Binding all tools at once overwhelms the LLM context window; pick the
+# group(s) relevant to your use case:
+#
+#   from langchain_apify import CORE_TOOLS
+#   agent = create_react_agent(model, [t() for t in CORE_TOOLS])
+# ---------------------------------------------------------------------------
+
+CORE_TOOLS: list[type] = [
+    ApifyRunActorTool,
+    ApifyGetDatasetItemsTool,
+    ApifyRunActorAndGetItemsTool,
+    ApifyScrapeUrlTool,
+]
+
 __all__ = [
+    # Existing components (backward-compatible)
     'ApifyActorsTool',
     'ApifyDatasetLoader',
     'ApifyWrapper',
+    # Core generic tools
+    'ApifyGetDatasetItemsTool',
+    'ApifyRunActorAndGetItemsTool',
+    'ApifyRunActorTool',
+    'ApifyScrapeUrlTool',
+    # Tool group lists
+    'CORE_TOOLS',
+    # Meta
     '__version__',
 ]
