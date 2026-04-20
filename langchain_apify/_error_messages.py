@@ -5,3 +5,7 @@ ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET = (
     ' To pass it as environment variable, you can use the following command:'
     ' `APIFY_API_TOKEN="YOUR_APIFY_API_TOKEN" python your_script.py`'
 )
+
+ERROR_ACTOR_RUN_FAILED = 'Actor run {run_id} ended with status {status}.'
+
+ERROR_SCRAPE_EMPTY = 'No content extracted from {url}.'

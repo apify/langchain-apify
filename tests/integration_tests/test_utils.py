@@ -2,7 +2,7 @@ import os
 
 from apify_client.client import ApifyClient
 
-from langchain_apify.error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+from langchain_apify._error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify.utils import create_apify_client, get_actor_latest_build
 
 

@@ -5,10 +5,11 @@ import os
 from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
-from langchain_core.tools import BaseTool
+from langchain_core.tools import BaseTool, ToolException
 from pydantic import BaseModel, Field, create_model
 
-from langchain_apify.error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+from langchain_apify._client import ApifyToolsClient
+from langchain_apify._error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify.utils import (
     _MAX_DESCRIPTION_LEN,
     actor_id_to_tool_name,
@@ -191,3 +192,259 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         run = self._apify_client.run(run_id=run_id)
 
         return run.dataset().list_items(clean=True).items
+
+
+# ---------------------------------------------------------------------------
+# Input schemas for the generic tools
+# ---------------------------------------------------------------------------
+
+
+class ApifyRunActorInput(BaseModel):
+    """Input schema for :class:`ApifyRunActorTool`."""
+
+    actor_id: str = Field(description='Actor ID or name (e.g. "apify/python-example").')
+    run_input: dict | None = Field(default=None, description='JSON-serialisable input for the Actor.')
+    timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the run to finish.')
+    memory_mbytes: int | None = Field(default=None, description='Memory limit in MB for the run, or null for default.')
+
+
+class ApifyGetDatasetItemsInput(BaseModel):
+    """Input schema for :class:`ApifyGetDatasetItemsTool`."""
+
+    dataset_id: str = Field(description='Apify dataset ID.')
+    limit: int = Field(default=100, description='Maximum number of items to return.')
+    offset: int = Field(default=0, description='Number of items to skip from the start.')
+
+
+class ApifyRunActorAndGetItemsInput(BaseModel):
+    """Input schema for :class:`ApifyRunActorAndGetItemsTool`."""
+
+    actor_id: str = Field(description='Actor ID or name (e.g. "apify/python-example").')
+    run_input: dict | None = Field(default=None, description='JSON-serialisable input for the Actor.')
+    timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the run to finish.')
+    memory_mbytes: int | None = Field(default=None, description='Memory limit in MB for the run, or null for default.')
+    dataset_items_limit: int = Field(default=100, description='Maximum number of dataset items to return.')
+
+
+class ApifyScrapeUrlInput(BaseModel):
+    """Input schema for :class:`ApifyScrapeUrlTool`."""
+
+    url: str = Field(description='The URL to scrape.')
+    timeout_secs: int = Field(default=120, description='Maximum time in seconds to wait for the crawl to finish.')
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _iso(value: str | None) -> str | None:
+    """Pass through an ISO timestamp or *None*."""
+    return value
+
+
+def _run_meta(run: dict) -> dict:
+    """Extract a compact metadata dict from an Apify run-details dict."""
+    return {
+        'run_id': run.get('id'),
+        'status': run.get('status'),
+        'dataset_id': run.get('defaultDatasetId'),
+        'started_at': _iso(run.get('startedAt')),
+        'finished_at': _iso(run.get('finishedAt')),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Generic tools
+# ---------------------------------------------------------------------------
+
+
+class ApifyRunActorTool(BaseTool):
+    """Run any Apify Actor by ID with an arbitrary JSON input.
+
+    Returns run metadata (run ID, status, dataset ID, timestamps) as a JSON
+    string.  Use :class:`ApifyGetDatasetItemsTool` afterwards to retrieve the
+    results from the dataset.
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyRunActorTool
+
+            tool = ApifyRunActorTool()
+            result = tool.invoke({
+                "actor_id": "apify/python-example",
+                "run_input": {"first_number": 2, "second_number": 3},
+            })
+    """
+
+    name: str = 'apify_run_actor'
+    description: str = (
+        'Run an Apify Actor synchronously and return run metadata'
+        ' (run_id, status, dataset_id, timestamps) as a JSON string.'
+    )
+    args_schema: type[BaseModel] = ApifyRunActorInput
+    handle_tool_error: bool = True
+
+    _client: ApifyToolsClient
+
+    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
+        super().__init__(**kwargs)
+        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
+
+    def _run(
+        self,
+        actor_id: str,
+        run_input: dict | None = None,
+        timeout_secs: int = 300,
+        memory_mbytes: int | None = None,
+        run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run = self._client.run_actor(actor_id, run_input, timeout_secs, memory_mbytes)
+        except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps(_run_meta(run))
+
+
+class ApifyGetDatasetItemsTool(BaseTool):
+    """Fetch items from an existing Apify dataset by ID.
+
+    Returns items as a JSON string.  When the dataset is empty the tool returns
+    an informative JSON message instead of raising an error.
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyGetDatasetItemsTool
+
+            tool = ApifyGetDatasetItemsTool()
+            result = tool.invoke({"dataset_id": "abc123", "limit": 10})
+    """
+
+    name: str = 'apify_get_dataset_items'
+    description: str = 'Fetch items from an Apify dataset by ID. Returns a JSON array of items.'
+    args_schema: type[BaseModel] = ApifyGetDatasetItemsInput
+    handle_tool_error: bool = True
+
+    _client: ApifyToolsClient
+
+    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
+        super().__init__(**kwargs)
+        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
+
+    def _run(
+        self,
+        dataset_id: str,
+        limit: int = 100,
+        offset: int = 0,
+        run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        items = self._client.get_dataset_items(dataset_id, limit, offset)
+        if not items:
+            return json.dumps({'items': [], 'message': 'Dataset is empty or not found.'})
+        return json.dumps(items)
+
+
+class ApifyRunActorAndGetItemsTool(BaseTool):
+    """Run any Apify Actor and return both run metadata and dataset items.
+
+    Combines :class:`ApifyRunActorTool` and :class:`ApifyGetDatasetItemsTool`
+    into a single call.  Returns a JSON string with ``run`` (metadata) and
+    ``items`` (list of dicts) keys.
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyRunActorAndGetItemsTool
+
+            tool = ApifyRunActorAndGetItemsTool()
+            result = tool.invoke({
+                "actor_id": "apify/python-example",
+                "run_input": {"first_number": 2, "second_number": 3},
+            })
+    """
+
+    name: str = 'apify_run_actor_and_get_items'
+    description: str = (
+        'Run an Apify Actor synchronously and return both run metadata and'
+        ' dataset items as a JSON string with "run" and "items" keys.'
+    )
+    args_schema: type[BaseModel] = ApifyRunActorAndGetItemsInput
+    handle_tool_error: bool = True
+
+    _client: ApifyToolsClient
+
+    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
+        super().__init__(**kwargs)
+        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
+
+    def _run(
+        self,
+        actor_id: str,
+        run_input: dict | None = None,
+        timeout_secs: int = 300,
+        memory_mbytes: int | None = None,
+        dataset_items_limit: int = 100,
+        run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.run_actor_and_get_items(
+                actor_id, run_input, timeout_secs, memory_mbytes, dataset_items_limit
+            )
+        except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps({'run': _run_meta(run), 'items': items})
+
+
+class ApifyScrapeUrlTool(BaseTool):
+    """Scrape a single URL and return its content as markdown.
+
+    Uses the ``apify/website-content-crawler`` Actor under the hood with
+    ``maxCrawlPages=1``.  Returns the page content as a plain markdown string
+    (not JSON).
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyScrapeUrlTool
+
+            tool = ApifyScrapeUrlTool()
+            markdown = tool.invoke({"url": "https://apify.com"})
+    """
+
+    name: str = 'apify_scrape_url'
+    description: str = (
+        'Scrape a single URL using Apify and return its content as markdown text.'
+    )
+    args_schema: type[BaseModel] = ApifyScrapeUrlInput
+    handle_tool_error: bool = True
+
+    _client: ApifyToolsClient
+
+    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
+        super().__init__(**kwargs)
+        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
+
+    def _run(
+        self,
+        url: str,
+        timeout_secs: int = 120,
+        run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            return self._client.scrape_url(url, timeout_secs)
+        except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc

@@ -4,7 +4,7 @@ import os
 
 from apify_client import ApifyClient
 
-from langchain_apify.error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+from langchain_apify._error_messages import ERROR_ACTOR_RUN_FAILED, ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET, ERROR_SCRAPE_EMPTY
 from langchain_apify.utils import create_apify_client
 
 _SCRAPE_ACTOR_ID = 'apify/website-content-crawler'
@@ -65,7 +65,7 @@ class ApifyToolsClient:
         self._check_run_status(run)
         return run
 
-    def get_dataset_items(self, dataset_id: str, limit: int = 100, offset: int = 0) -> list[dict]:
+    def get_dataset_items(self, dataset_id: str, limit: int = _DEFAULT_DATASET_ITEMS_LIMIT, offset: int = 0) -> list[dict]:
         """Fetch items from an existing dataset.
 
         Args:
@@ -191,12 +191,12 @@ class ApifyToolsClient:
             dataset_items_limit=1,
         )
         if not items:
-            msg = f'No content extracted from {url}.'
+            msg = ERROR_SCRAPE_EMPTY.format(url=url)
             raise RuntimeError(msg)
 
         content = items[0].get('markdown') or items[0].get('text') or ''
         if not content:
-            msg = f'No content extracted from {url}.'
+            msg = ERROR_SCRAPE_EMPTY.format(url=url)
             raise RuntimeError(msg)
         return content
 
@@ -206,5 +206,5 @@ class ApifyToolsClient:
         status = run.get('status')
         if status != _RUN_STATUS_SUCCEEDED:
             run_id = run.get('id', 'unknown')
-            msg = f'Actor run {run_id} ended with status {status}.'
+            msg = ERROR_ACTOR_RUN_FAILED.format(run_id=run_id, status=status)
             raise RuntimeError(msg)

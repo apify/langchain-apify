@@ -9,8 +9,7 @@ from apify_client.client import ApifyClient
 
 _MAX_DESCRIPTION_LEN: int = 350
 _REQUESTS_TIMEOUT_SECS: float = 10.0
-_APIFY_API_ENDPOINT_GET_DEFAULT_BUILD = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
-
+_APIFY_API_ENDPOINT_GET_DEFAULT_BUILD: str = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
 
 def prune_actor_input_schema(
     input_schema: dict,
