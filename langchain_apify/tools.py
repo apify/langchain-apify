@@ -400,7 +400,10 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):
         offset: int = 0,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
-        items = self._client.get_dataset_items(dataset_id, limit, offset)
+        try:
+            items = self._client.get_dataset_items(dataset_id, limit, offset)
+        except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc
         if not items:
             return json.dumps({'items': [], 'message': 'Dataset is empty or not found.'})
         return json.dumps(items)

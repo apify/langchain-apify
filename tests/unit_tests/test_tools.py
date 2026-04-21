@@ -266,6 +266,14 @@ def test_get_dataset_items_tool_empty_returns_message(mock_tools_client: MagicMo
     assert 'empty' in parsed['message'].lower()
 
 
+def test_get_dataset_items_tool_network_error_raises_tool_exception(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.get_dataset_items.side_effect = RuntimeError('Network error fetching dataset ds-bad: connection reset')
+    tool = _make_tool(ApifyGetDatasetItemsTool, mock_tools_client)
+
+    with pytest.raises(ToolException, match='Network error fetching dataset'):
+        tool._run(dataset_id='ds-bad')
+
+
 def test_get_dataset_items_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
     with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
