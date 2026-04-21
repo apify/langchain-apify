@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from langchain_apify._client import ApifyToolsClient
-from langchain_apify._error_messages import ERROR_ACTOR_RUN_FAILED, ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET, ERROR_SCRAPE_EMPTY
 
 _SUCCEEDED_RUN: dict = {
     'id': 'run-abc',
@@ -74,9 +73,7 @@ def test_run_actor_success(client: ApifyToolsClient, mock_apify_client: MagicMoc
     result = client.run_actor('apify/test-actor', run_input={'key': 'val'})
 
     mock_apify_client.actor.assert_called_once_with('apify/test-actor')
-    mock_apify_client.actor.return_value.call.assert_called_once_with(
-        run_input={'key': 'val'}, timeout_secs=300
-    )
+    mock_apify_client.actor.return_value.call.assert_called_once_with(run_input={'key': 'val'}, timeout_secs=300)
     assert result == _SUCCEEDED_RUN
 
 
@@ -146,9 +143,7 @@ def test_run_task_success(client: ApifyToolsClient, mock_apify_client: MagicMock
     result = client.run_task('user/my-task', task_input={'key': 'val'})
 
     mock_apify_client.task.assert_called_once_with('user/my-task')
-    mock_apify_client.task.return_value.call.assert_called_once_with(
-        task_input={'key': 'val'}, timeout_secs=300
-    )
+    mock_apify_client.task.return_value.call.assert_called_once_with(task_input={'key': 'val'}, timeout_secs=300)
     assert result == _SUCCEEDED_RUN
 
 
@@ -227,6 +222,5 @@ def test_check_run_status_succeeded() -> None:
 
 
 def test_check_run_status_failed() -> None:
-    expected_msg = ERROR_ACTOR_RUN_FAILED.format(run_id='run-bad', status='FAILED')
     with pytest.raises(RuntimeError, match='run-bad'):
         ApifyToolsClient._check_run_status({'id': 'run-bad', 'status': 'FAILED'})

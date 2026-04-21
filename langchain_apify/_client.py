@@ -4,7 +4,11 @@ import os
 
 from apify_client import ApifyClient
 
-from langchain_apify._error_messages import ERROR_ACTOR_RUN_FAILED, ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET, ERROR_SCRAPE_EMPTY
+from langchain_apify._error_messages import (
+    ERROR_ACTOR_RUN_FAILED,
+    ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET,
+    ERROR_SCRAPE_EMPTY,
+)
 from langchain_apify.utils import create_apify_client
 
 _SCRAPE_ACTOR_ID = 'apify/website-content-crawler'
@@ -62,10 +66,15 @@ class ApifyToolsClient:
             call_kwargs['memory_mbytes'] = memory_mbytes
 
         run = self._client.actor(actor_id).call(**call_kwargs)
+        if run is None:
+            msg = f'Actor {actor_id} call returned no run details.'
+            raise RuntimeError(msg)
         self._check_run_status(run)
         return run
 
-    def get_dataset_items(self, dataset_id: str, limit: int = _DEFAULT_DATASET_ITEMS_LIMIT, offset: int = 0) -> list[dict]:
+    def get_dataset_items(
+        self, dataset_id: str, limit: int = _DEFAULT_DATASET_ITEMS_LIMIT, offset: int = 0
+    ) -> list[dict]:
         """Fetch items from an existing dataset.
 
         Args:
@@ -133,6 +142,9 @@ class ApifyToolsClient:
             call_kwargs['memory_mbytes'] = memory_mbytes
 
         run = self._client.task(task_id).call(**call_kwargs)
+        if run is None:
+            msg = f'Task {task_id} call returned no run details.'
+            raise RuntimeError(msg)
         self._check_run_status(run)
         return run
 

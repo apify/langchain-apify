@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -119,7 +119,7 @@ def mock_tools_client() -> MagicMock:
     return MagicMock(spec=ApifyToolsClient)
 
 
-def _make_tool(tool_cls: type, mock_client: MagicMock) -> ApifyRunActorTool | ApifyGetDatasetItemsTool | ApifyRunActorAndGetItemsTool | ApifyScrapeUrlTool:
+def _make_tool(tool_cls: type, mock_client: MagicMock) -> Any:  # noqa: ANN401
     """Instantiate a generic tool with a mocked ApifyToolsClient."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         tool = tool_cls(apify_api_token='dummy-token')
@@ -204,13 +204,13 @@ def test_run_actor_and_get_items_tool_returns_json(mock_tools_client: MagicMock)
     assert parsed['run']['run_id'] == 'run-abc'
     assert parsed['run']['status'] == 'SUCCEEDED'
     assert len(parsed['items']) == 2
-    mock_tools_client.run_actor_and_get_items.assert_called_once_with(
-        'apify/test', {'q': '1'}, 300, None, 50
-    )
+    mock_tools_client.run_actor_and_get_items.assert_called_once_with('apify/test', {'q': '1'}, 300, None, 50)
 
 
 def test_run_actor_and_get_items_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.run_actor_and_get_items.side_effect = RuntimeError('Actor run run-bad ended with status TIMED-OUT.')
+    mock_tools_client.run_actor_and_get_items.side_effect = RuntimeError(
+        'Actor run run-bad ended with status TIMED-OUT.'
+    )
     tool = _make_tool(ApifyRunActorAndGetItemsTool, mock_tools_client)
 
     with pytest.raises(ToolException, match='TIMED-OUT'):

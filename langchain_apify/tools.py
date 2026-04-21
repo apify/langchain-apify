@@ -259,7 +259,7 @@ def _run_meta(run: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
-class ApifyRunActorTool(BaseTool):
+class ApifyRunActorTool(BaseTool):  # type: ignore[override]
     """Run any Apify Actor by ID with an arbitrary JSON input.
 
     Returns run metadata (run ID, status, dataset ID, timestamps) as a JSON
@@ -301,7 +301,7 @@ class ApifyRunActorTool(BaseTool):
         run_input: dict | None = None,
         timeout_secs: int = 300,
         memory_mbytes: int | None = None,
-        run_manager: CallbackManagerForToolRun | None = None,
+        _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
             run = self._client.run_actor(actor_id, run_input, timeout_secs, memory_mbytes)
@@ -310,7 +310,7 @@ class ApifyRunActorTool(BaseTool):
         return json.dumps(_run_meta(run))
 
 
-class ApifyGetDatasetItemsTool(BaseTool):
+class ApifyGetDatasetItemsTool(BaseTool):  # type: ignore[override]
     """Fetch items from an existing Apify dataset by ID.
 
     Returns items as a JSON string.  When the dataset is empty the tool returns
@@ -344,7 +344,7 @@ class ApifyGetDatasetItemsTool(BaseTool):
         dataset_id: str,
         limit: int = 100,
         offset: int = 0,
-        run_manager: CallbackManagerForToolRun | None = None,
+        _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         items = self._client.get_dataset_items(dataset_id, limit, offset)
         if not items:
@@ -352,7 +352,7 @@ class ApifyGetDatasetItemsTool(BaseTool):
         return json.dumps(items)
 
 
-class ApifyRunActorAndGetItemsTool(BaseTool):
+class ApifyRunActorAndGetItemsTool(BaseTool):  # type: ignore[override]
     """Run any Apify Actor and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunActorTool` and :class:`ApifyGetDatasetItemsTool`
@@ -395,7 +395,7 @@ class ApifyRunActorAndGetItemsTool(BaseTool):
         timeout_secs: int = 300,
         memory_mbytes: int | None = None,
         dataset_items_limit: int = 100,
-        run_manager: CallbackManagerForToolRun | None = None,
+        _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
             run, items = self._client.run_actor_and_get_items(
@@ -406,7 +406,7 @@ class ApifyRunActorAndGetItemsTool(BaseTool):
         return json.dumps({'run': _run_meta(run), 'items': items})
 
 
-class ApifyScrapeUrlTool(BaseTool):
+class ApifyScrapeUrlTool(BaseTool):  # type: ignore[override]
     """Scrape a single URL and return its content as markdown.
 
     Uses the ``apify/website-content-crawler`` Actor under the hood with
@@ -426,9 +426,7 @@ class ApifyScrapeUrlTool(BaseTool):
     """
 
     name: str = 'apify_scrape_url'
-    description: str = (
-        'Scrape a single URL using Apify and return its content as markdown text.'
-    )
+    description: str = 'Scrape a single URL using Apify and return its content as markdown text.'
     args_schema: type[BaseModel] = ApifyScrapeUrlInput
     handle_tool_error: bool = True
 
@@ -442,7 +440,7 @@ class ApifyScrapeUrlTool(BaseTool):
         self,
         url: str,
         timeout_secs: int = 120,
-        run_manager: CallbackManagerForToolRun | None = None,
+        _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
             return self._client.scrape_url(url, timeout_secs)

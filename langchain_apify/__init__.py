@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from importlib import metadata
 
 from langchain_apify.document_loaders import ApifyDatasetLoader
@@ -16,15 +18,9 @@ except metadata.PackageNotFoundError:
     __version__ = ''
 del metadata  # optional, avoids polluting the results of dir(__package__)
 
-# ---------------------------------------------------------------------------
 # Convenience tool-class lists for selective agent binding.
-#
-# Binding all tools at once overwhelms the LLM context window; pick the
-# group(s) relevant to your use case:
-#
-#   from langchain_apify import APIFY_CORE_TOOLS
-#   agent = create_react_agent(model, [t() for t in APIFY_CORE_TOOLS])
-# ---------------------------------------------------------------------------
+# Binding all tools at once overwhelms the LLM context window;
+# pick the group(s) relevant to your use case.
 
 APIFY_CORE_TOOLS: list[type] = [
     ApifyRunActorTool,
