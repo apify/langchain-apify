@@ -19,6 +19,7 @@ from langchain_apify.tools import (
     ApifyRunTaskAndGetItemsTool,
     ApifyRunTaskTool,
     ApifyScrapeUrlTool,
+    _ApifyGenericTool,
     _iso,
     _run_meta,
 )
@@ -433,6 +434,29 @@ def test_generic_tools_have_correct_metadata() -> None:
         assert tool.description
         assert tool.args_schema is not None
         assert tool.handle_tool_error is True
+
+
+# ---------------------------------------------------------------------------
+# _ApifyGenericTool inheritance
+# ---------------------------------------------------------------------------
+
+
+def test_all_generic_tools_inherit_from_base() -> None:
+    """Every generic tool must be a subclass of _ApifyGenericTool."""
+    for tool_cls in (
+        ApifyRunActorTool,
+        ApifyGetDatasetItemsTool,
+        ApifyRunActorAndGetItemsTool,
+        ApifyScrapeUrlTool,
+        ApifyRunTaskTool,
+        ApifyRunTaskAndGetItemsTool,
+    ):
+        assert issubclass(tool_cls, _ApifyGenericTool), f'{tool_cls.__name__} must extend _ApifyGenericTool'
+
+
+def test_legacy_tool_does_not_inherit_from_generic_base() -> None:
+    """ApifyActorsTool is legacy and must NOT inherit from _ApifyGenericTool."""
+    assert not issubclass(ApifyActorsTool, _ApifyGenericTool)
 
 
 # ---------------------------------------------------------------------------

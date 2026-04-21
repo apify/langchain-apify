@@ -276,11 +276,33 @@ def _run_meta(run: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Shared base for generic tools
+# ---------------------------------------------------------------------------
+
+
+class _ApifyGenericTool(BaseTool):  # type: ignore[override]
+    """Shared base for all generic Apify tools.
+
+    Handles ``ApifyToolsClient`` creation and sets ``handle_tool_error``.
+    Subclasses only need to declare ``name``, ``description``,
+    ``args_schema``, and ``_run()``.
+    """
+
+    handle_tool_error: bool = True
+
+    _client: ApifyToolsClient
+
+    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
+        super().__init__(**kwargs)
+        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
+
+
+# ---------------------------------------------------------------------------
 # Generic tools
 # ---------------------------------------------------------------------------
 
 
-class ApifyRunActorTool(BaseTool):  # type: ignore[override]
+class ApifyRunActorTool(_ApifyGenericTool):
     """Run any Apify Actor by ID with an arbitrary JSON input.
 
     Returns run metadata (run ID, status, dataset ID, timestamps) as a JSON
@@ -320,13 +342,6 @@ class ApifyRunActorTool(BaseTool):  # type: ignore[override]
         ' Use apify_get_dataset_items with the returned dataset_id to fetch results.'
     )
     args_schema: type[BaseModel] = ApifyRunActorInput
-    handle_tool_error: bool = True
-
-    _client: ApifyToolsClient
-
-    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
-        super().__init__(**kwargs)
-        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
 
     def _run(
         self,
@@ -343,7 +358,7 @@ class ApifyRunActorTool(BaseTool):  # type: ignore[override]
         return json.dumps(_run_meta(run))
 
 
-class ApifyGetDatasetItemsTool(BaseTool):  # type: ignore[override]
+class ApifyGetDatasetItemsTool(_ApifyGenericTool):
     """Fetch items from an existing Apify dataset by ID.
 
     Returns items as a JSON string.  When the dataset is empty the tool returns
@@ -377,13 +392,6 @@ class ApifyGetDatasetItemsTool(BaseTool):  # type: ignore[override]
         ' Returns an empty JSON object with a message when the dataset is empty.'
     )
     args_schema: type[BaseModel] = ApifyGetDatasetItemsInput
-    handle_tool_error: bool = True
-
-    _client: ApifyToolsClient
-
-    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
-        super().__init__(**kwargs)
-        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
 
     def _run(
         self,
@@ -398,7 +406,7 @@ class ApifyGetDatasetItemsTool(BaseTool):  # type: ignore[override]
         return json.dumps(items)
 
 
-class ApifyRunActorAndGetItemsTool(BaseTool):  # type: ignore[override]
+class ApifyRunActorAndGetItemsTool(_ApifyGenericTool):
     """Run any Apify Actor and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunActorTool` and :class:`ApifyGetDatasetItemsTool`
@@ -439,13 +447,6 @@ class ApifyRunActorAndGetItemsTool(BaseTool):  # type: ignore[override]
         ' and items (list of dataset item dicts).'
     )
     args_schema: type[BaseModel] = ApifyRunActorAndGetItemsInput
-    handle_tool_error: bool = True
-
-    _client: ApifyToolsClient
-
-    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
-        super().__init__(**kwargs)
-        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
 
     def _run(
         self,
@@ -465,7 +466,7 @@ class ApifyRunActorAndGetItemsTool(BaseTool):  # type: ignore[override]
         return json.dumps({'run': _run_meta(run), 'items': items})
 
 
-class ApifyScrapeUrlTool(BaseTool):  # type: ignore[override]
+class ApifyScrapeUrlTool(_ApifyGenericTool):
     """Scrape a single URL and return its content as markdown.
 
     Uses the ``apify/website-content-crawler`` Actor under the hood with
@@ -500,13 +501,6 @@ class ApifyScrapeUrlTool(BaseTool):  # type: ignore[override]
         ' Returns the page content as markdown (or plain text if markdown is unavailable).'
     )
     args_schema: type[BaseModel] = ApifyScrapeUrlInput
-    handle_tool_error: bool = True
-
-    _client: ApifyToolsClient
-
-    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
-        super().__init__(**kwargs)
-        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
 
     def _run(
         self,
@@ -520,7 +514,7 @@ class ApifyScrapeUrlTool(BaseTool):  # type: ignore[override]
             raise ToolException(str(exc)) from exc
 
 
-class ApifyRunTaskTool(BaseTool):  # type: ignore[override]
+class ApifyRunTaskTool(_ApifyGenericTool):
     """Run a saved Apify Actor task by ID and return run metadata.
 
     Actor tasks are pre-configured Actor runs saved in the Apify Console.
@@ -561,13 +555,6 @@ class ApifyRunTaskTool(BaseTool):  # type: ignore[override]
         ' Use apify_get_dataset_items with the returned dataset_id to fetch results.'
     )
     args_schema: type[BaseModel] = ApifyRunTaskInput
-    handle_tool_error: bool = True
-
-    _client: ApifyToolsClient
-
-    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
-        super().__init__(**kwargs)
-        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
 
     def _run(
         self,
@@ -584,7 +571,7 @@ class ApifyRunTaskTool(BaseTool):  # type: ignore[override]
         return json.dumps(_run_meta(run))
 
 
-class ApifyRunTaskAndGetItemsTool(BaseTool):  # type: ignore[override]
+class ApifyRunTaskAndGetItemsTool(_ApifyGenericTool):
     """Run a saved Apify Actor task and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunTaskTool` and :class:`ApifyGetDatasetItemsTool`
@@ -625,13 +612,6 @@ class ApifyRunTaskAndGetItemsTool(BaseTool):  # type: ignore[override]
         ' and items (list of dataset item dicts).'
     )
     args_schema: type[BaseModel] = ApifyRunTaskAndGetItemsInput
-    handle_tool_error: bool = True
-
-    _client: ApifyToolsClient
-
-    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
-        super().__init__(**kwargs)
-        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
 
     def _run(
         self,
