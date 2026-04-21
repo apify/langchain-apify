@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from typing import TYPE_CHECKING, Any
+from datetime import datetime
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool, ToolException
@@ -239,7 +240,8 @@ class ApifyScrapeUrlInput(BaseModel):
 
 
 def _iso(value: str | None) -> str | None:
-    """Pass through an ISO timestamp or *None*."""
+    if isinstance(value, datetime):
+        return value.isoformat()
     return value
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
@@ -16,6 +17,8 @@ from langchain_apify.tools import (
     ApifyRunActorAndGetItemsTool,
     ApifyRunActorTool,
     ApifyScrapeUrlTool,
+    _iso,
+    _run_meta,
 )
 from langchain_apify.utils import actor_id_to_tool_name
 
@@ -126,6 +129,76 @@ def _make_tool(tool_cls: type, mock_client: MagicMock) -> Any:  # noqa: ANN401
         tool = tool_cls(apify_api_token='dummy-token')
     tool._client = mock_client
     return tool
+
+
+# ---------------------------------------------------------------------------
+# _iso / _run_meta helpers
+# ---------------------------------------------------------------------------
+
+
+def test_iso_converts_datetime_to_string() -> None:
+    dt = datetime(2025, 6, 15, 12, 30, 45, tzinfo=timezone.utc)
+    assert _iso(dt) == '2025-06-15T12:30:45+00:00'
+
+
+def test_iso_passes_through_string() -> None:
+    assert _iso('2025-01-01T00:00:00.000Z') == '2025-01-01T00:00:00.000Z'
+
+
+def test_iso_passes_through_none() -> None:
+    assert _iso(None) is None
+
+
+def test_run_meta_with_datetime_values_is_json_serializable() -> None:
+    run = {
+        'id': 'run-dt',
+        'status': 'SUCCEEDED',
+        'defaultDatasetId': 'ds-dt',
+        'startedAt': datetime(2025, 3, 1, 10, 0, 0, tzinfo=timezone.utc),
+        'finishedAt': datetime(2025, 3, 1, 10, 1, 0, tzinfo=timezone.utc),
+    }
+    meta = _run_meta(run)
+    serialized = json.dumps(meta)
+    parsed = json.loads(serialized)
+    assert parsed['run_id'] == 'run-dt'
+    assert parsed['started_at'] == '2025-03-01T10:00:00+00:00'
+    assert parsed['finished_at'] == '2025-03-01T10:01:00+00:00'
+
+
+def test_run_meta_with_string_values_is_json_serializable() -> None:
+    meta = _run_meta(_SUCCEEDED_RUN)
+    serialized = json.dumps(meta)
+    parsed = json.loads(serialized)
+    assert parsed['started_at'] == '2025-01-01T00:00:00.000Z'
+    assert parsed['finished_at'] == '2025-01-01T00:01:00.000Z'
+
+
+def test_run_meta_with_missing_timestamps() -> None:
+    run = {'id': 'run-none', 'status': 'RUNNING', 'defaultDatasetId': 'ds-none'}
+    meta = _run_meta(run)
+    serialized = json.dumps(meta)
+    parsed = json.loads(serialized)
+    assert parsed['started_at'] is None
+    assert parsed['finished_at'] is None
+
+
+def test_run_actor_tool_with_datetime_run(mock_tools_client: MagicMock) -> None:
+    """End-to-end: ApifyRunActorTool returns valid JSON when the client returns datetime objects."""
+    mock_tools_client.run_actor.return_value = {
+        'id': 'run-real',
+        'status': 'SUCCEEDED',
+        'defaultDatasetId': 'ds-real',
+        'startedAt': datetime(2025, 6, 1, 8, 0, 0, tzinfo=timezone.utc),
+        'finishedAt': datetime(2025, 6, 1, 8, 5, 0, tzinfo=timezone.utc),
+    }
+    tool = _make_tool(ApifyRunActorTool, mock_tools_client)
+
+    result = tool._run(actor_id='apify/test')
+
+    parsed = json.loads(result)
+    assert parsed['run_id'] == 'run-real'
+    assert parsed['started_at'] == '2025-06-01T08:00:00+00:00'
+    assert parsed['finished_at'] == '2025-06-01T08:05:00+00:00'
 
 
 # ---------------------------------------------------------------------------
