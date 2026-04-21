@@ -16,6 +16,8 @@ from langchain_apify.tools import (
     ApifyGetDatasetItemsTool,
     ApifyRunActorAndGetItemsTool,
     ApifyRunActorTool,
+    ApifyRunTaskAndGetItemsTool,
+    ApifyRunTaskTool,
     ApifyScrapeUrlTool,
     _iso,
     _run_meta,
@@ -333,18 +335,88 @@ def test_scrape_url_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 # ---------------------------------------------------------------------------
+# ApifyRunTaskTool
+# ---------------------------------------------------------------------------
+
+
+def test_run_task_tool_returns_json(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.run_task.return_value = _SUCCEEDED_RUN
+    tool = _make_tool(ApifyRunTaskTool, mock_tools_client)
+
+    result = tool._run(task_id='user/my-task', task_input={'key': 'val'})
+
+    parsed = json.loads(result)
+    assert parsed['run_id'] == 'run-abc'
+    assert parsed['status'] == 'SUCCEEDED'
+    assert parsed['dataset_id'] == 'dataset-xyz'
+    assert parsed['started_at'] == '2025-01-01T00:00:00.000Z'
+    assert parsed['finished_at'] == '2025-01-01T00:01:00.000Z'
+    mock_tools_client.run_task.assert_called_once_with('user/my-task', {'key': 'val'}, 300, None)
+
+
+def test_run_task_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.run_task.side_effect = RuntimeError('Actor run run-bad ended with status FAILED.')
+    tool = _make_tool(ApifyRunTaskTool, mock_tools_client)
+
+    with pytest.raises(ToolException, match='FAILED'):
+        tool._run(task_id='user/my-task')
+
+
+def test_run_task_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+        ApifyRunTaskTool()
+
+
+# ---------------------------------------------------------------------------
+# ApifyRunTaskAndGetItemsTool
+# ---------------------------------------------------------------------------
+
+
+def test_run_task_and_get_items_tool_returns_json(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.run_task_and_get_items.return_value = (_SUCCEEDED_RUN, _SAMPLE_ITEMS)
+    tool = _make_tool(ApifyRunTaskAndGetItemsTool, mock_tools_client)
+
+    result = tool._run(task_id='user/my-task', task_input={'q': '1'}, dataset_items_limit=50)
+
+    parsed = json.loads(result)
+    assert parsed['run']['run_id'] == 'run-abc'
+    assert parsed['run']['status'] == 'SUCCEEDED'
+    assert len(parsed['items']) == 2
+    mock_tools_client.run_task_and_get_items.assert_called_once_with('user/my-task', {'q': '1'}, 300, None, 50)
+
+
+def test_run_task_and_get_items_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.run_task_and_get_items.side_effect = RuntimeError(
+        'Actor run run-bad ended with status TIMED-OUT.'
+    )
+    tool = _make_tool(ApifyRunTaskAndGetItemsTool, mock_tools_client)
+
+    with pytest.raises(ToolException, match='TIMED-OUT'):
+        tool._run(task_id='user/my-task')
+
+
+def test_run_task_and_get_items_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+        ApifyRunTaskAndGetItemsTool()
+
+
+# ---------------------------------------------------------------------------
 # Tool metadata assertions
 # ---------------------------------------------------------------------------
 
 
 def test_generic_tools_have_correct_metadata() -> None:
-    """Verify name, description, and args_schema are set on all 4 tools."""
+    """Verify name, description, and args_schema are set on all generic tools."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         tools = [
             ApifyRunActorTool(apify_api_token='dummy'),
             ApifyGetDatasetItemsTool(apify_api_token='dummy'),
             ApifyRunActorAndGetItemsTool(apify_api_token='dummy'),
             ApifyScrapeUrlTool(apify_api_token='dummy'),
+            ApifyRunTaskTool(apify_api_token='dummy'),
+            ApifyRunTaskAndGetItemsTool(apify_api_token='dummy'),
         ]
 
     expected_names = [
@@ -352,6 +424,8 @@ def test_generic_tools_have_correct_metadata() -> None:
         'apify_get_dataset_items',
         'apify_run_actor_and_get_items',
         'apify_scrape_url',
+        'apify_run_task',
+        'apify_run_task_and_get_items',
     ]
 
     for tool, expected_name in zip(tools, expected_names):
@@ -366,12 +440,14 @@ def test_generic_tools_have_correct_metadata() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_apify_core_tools_contains_all_four_classes() -> None:
-    """APIFY_CORE_TOOLS must list exactly the 4 generic tool classes."""
+def test_apify_core_tools_contains_all_generic_classes() -> None:
+    """APIFY_CORE_TOOLS must list exactly the 6 generic tool classes."""
     assert set(APIFY_CORE_TOOLS) == {
         ApifyRunActorTool,
         ApifyGetDatasetItemsTool,
         ApifyRunActorAndGetItemsTool,
         ApifyScrapeUrlTool,
+        ApifyRunTaskTool,
+        ApifyRunTaskAndGetItemsTool,
     }
-    assert len(APIFY_CORE_TOOLS) == 4
+    assert len(APIFY_CORE_TOOLS) == 6

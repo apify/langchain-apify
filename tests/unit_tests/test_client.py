@@ -73,7 +73,7 @@ def test_run_actor_success(client: ApifyToolsClient, mock_apify_client: MagicMoc
     result = client.run_actor('apify/test-actor', run_input={'key': 'val'})
 
     mock_apify_client.actor.assert_called_once_with('apify/test-actor')
-    mock_apify_client.actor.return_value.call.assert_called_once_with(run_input={'key': 'val'}, timeout_secs=300)
+    mock_apify_client.actor.return_value.call.assert_called_once_with(run_input={'key': 'val'}, timeout_secs=300, logger=None)
     assert result == _SUCCEEDED_RUN
 
 
@@ -83,7 +83,7 @@ def test_run_actor_with_memory(client: ApifyToolsClient, mock_apify_client: Magi
     client.run_actor('apify/test-actor', memory_mbytes=512)
 
     mock_apify_client.actor.return_value.call.assert_called_once_with(
-        run_input=None, timeout_secs=300, memory_mbytes=512
+        run_input=None, timeout_secs=300, logger=None, memory_mbytes=512
     )
 
 

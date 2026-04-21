@@ -234,6 +234,25 @@ class ApifyScrapeUrlInput(BaseModel):
     timeout_secs: int = Field(default=120, description='Maximum time in seconds to wait for the crawl to finish.')
 
 
+class ApifyRunTaskInput(BaseModel):
+    """Input schema for :class:`ApifyRunTaskTool`."""
+
+    task_id: str = Field(description='Task ID or name (e.g. "user/my-task").')
+    task_input: dict | None = Field(default=None, description='JSON-serialisable input that overrides the task\'s pre-saved input.')
+    timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the run to finish.')
+    memory_mbytes: int | None = Field(default=None, description='Memory limit in MB for the run, or null for task default.')
+
+
+class ApifyRunTaskAndGetItemsInput(BaseModel):
+    """Input schema for :class:`ApifyRunTaskAndGetItemsTool`."""
+
+    task_id: str = Field(description='Task ID or name (e.g. "user/my-task").')
+    task_input: dict | None = Field(default=None, description='JSON-serialisable input that overrides the task\'s pre-saved input.')
+    timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the run to finish.')
+    memory_mbytes: int | None = Field(default=None, description='Memory limit in MB for the run, or null for task default.')
+    dataset_items_limit: int = Field(default=100, description='Maximum number of dataset items to return.')
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -499,3 +518,134 @@ class ApifyScrapeUrlTool(BaseTool):  # type: ignore[override]
             return self._client.scrape_url(url, timeout_secs)
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
+
+
+class ApifyRunTaskTool(BaseTool):  # type: ignore[override]
+    """Run a saved Apify Actor task by ID and return run metadata.
+
+    Actor tasks are pre-configured Actor runs saved in the Apify Console.
+    This tool starts a task with optional input overrides and returns run
+    metadata (run ID, status, dataset ID, timestamps) as a JSON string.
+    Use :class:`ApifyGetDatasetItemsTool` afterwards to retrieve results.
+
+    Args:
+        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON string with keys ``run_id``, ``status``, ``dataset_id``,
+        ``started_at``, and ``finished_at``.
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyRunTaskTool
+
+            tool = ApifyRunTaskTool()
+            result = tool.invoke({
+                "task_id": "user/my-task",
+                "task_input": {"key": "value"},
+            })
+    """
+
+    name: str = 'apify_run_task'
+    description: str = (
+        'Run a saved Apify Actor task synchronously and return run metadata as a JSON string.'
+        ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
+        ' Optional: task_input (dict), timeout_secs (int, default 300),'
+        ' memory_mbytes (int|null).'
+        ' Returns JSON with keys: run_id, status, dataset_id, started_at, finished_at.'
+        ' Use apify_get_dataset_items with the returned dataset_id to fetch results.'
+    )
+    args_schema: type[BaseModel] = ApifyRunTaskInput
+    handle_tool_error: bool = True
+
+    _client: ApifyToolsClient
+
+    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
+        super().__init__(**kwargs)
+        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
+
+    def _run(
+        self,
+        task_id: str,
+        task_input: dict | None = None,
+        timeout_secs: int = 300,
+        memory_mbytes: int | None = None,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run = self._client.run_task(task_id, task_input, timeout_secs, memory_mbytes)
+        except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps(_run_meta(run))
+
+
+class ApifyRunTaskAndGetItemsTool(BaseTool):  # type: ignore[override]
+    """Run a saved Apify Actor task and return both run metadata and dataset items.
+
+    Combines :class:`ApifyRunTaskTool` and :class:`ApifyGetDatasetItemsTool`
+    into a single call.  Returns a JSON string with ``run`` (metadata) and
+    ``items`` (list of dicts) keys.
+
+    Args:
+        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
+        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (list
+        of dataset item dicts).
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyRunTaskAndGetItemsTool
+
+            tool = ApifyRunTaskAndGetItemsTool()
+            result = tool.invoke({
+                "task_id": "user/my-task",
+                "task_input": {"key": "value"},
+            })
+    """
+
+    name: str = 'apify_run_task_and_get_items'
+    description: str = (
+        'Run a saved Apify Actor task synchronously and return both run metadata and dataset items.'
+        ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
+        ' Optional: task_input (dict), timeout_secs (int, default 300),'
+        ' memory_mbytes (int|null), dataset_items_limit (int, default 100).'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at)'
+        ' and items (list of dataset item dicts).'
+    )
+    args_schema: type[BaseModel] = ApifyRunTaskAndGetItemsInput
+    handle_tool_error: bool = True
+
+    _client: ApifyToolsClient
+
+    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
+        super().__init__(**kwargs)
+        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
+
+    def _run(
+        self,
+        task_id: str,
+        task_input: dict | None = None,
+        timeout_secs: int = 300,
+        memory_mbytes: int | None = None,
+        dataset_items_limit: int = 100,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.run_task_and_get_items(
+                task_id, task_input, timeout_secs, memory_mbytes, dataset_items_limit
+            )
+        except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps({'run': _run_meta(run), 'items': items})

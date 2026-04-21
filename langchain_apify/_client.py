@@ -61,7 +61,7 @@ class ApifyToolsClient:
         Raises:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
-        call_kwargs: dict = {'run_input': run_input, 'timeout_secs': timeout_secs}
+        call_kwargs: dict = {'run_input': run_input, 'timeout_secs': timeout_secs, 'logger': None}
         if memory_mbytes is not None:
             call_kwargs['memory_mbytes'] = memory_mbytes
 

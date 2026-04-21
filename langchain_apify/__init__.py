@@ -8,6 +8,8 @@ from langchain_apify.tools import (
     ApifyGetDatasetItemsTool,
     ApifyRunActorAndGetItemsTool,
     ApifyRunActorTool,
+    ApifyRunTaskAndGetItemsTool,
+    ApifyRunTaskTool,
     ApifyScrapeUrlTool,
 )
 from langchain_apify.wrappers import ApifyWrapper
@@ -27,6 +29,8 @@ APIFY_CORE_TOOLS: list[type] = [
     ApifyGetDatasetItemsTool,
     ApifyRunActorAndGetItemsTool,
     ApifyScrapeUrlTool,
+    ApifyRunTaskTool,
+    ApifyRunTaskAndGetItemsTool,
 ]
 
 __all__ = [
@@ -38,6 +42,8 @@ __all__ = [
     'ApifyGetDatasetItemsTool',
     'ApifyRunActorAndGetItemsTool',
     'ApifyRunActorTool',
+    'ApifyRunTaskAndGetItemsTool',
+    'ApifyRunTaskTool',
     'ApifyScrapeUrlTool',
     # Tool group lists
     'APIFY_CORE_TOOLS',
