@@ -370,16 +370,16 @@ class ApifyRunActorTool(_ApifyGenericTool):
 class ApifyGetDatasetItemsTool(_ApifyGenericTool):
     """Fetch items from an existing Apify dataset by ID.
 
-    Returns items as a JSON string.  When the dataset is empty the tool returns
-    an informative JSON message instead of raising an error.
+    Returns a JSON object with an ``"items"`` key containing the list of item
+    dicts.  When the dataset is empty an additional ``"message"`` key is
+    included.
 
     Args:
         apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON array of item dicts, or ``{"items": [], "message": "..."}`` when
-        the dataset is empty.
+        JSON object ``{"items": [...]}``; includes ``"message"`` when empty.
 
     Example:
         .. code-block:: python
@@ -395,10 +395,9 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):
 
     name: str = 'apify_get_dataset_items'
     description: str = (
-        'Fetch items from an Apify dataset by ID. Returns a JSON array of item dicts.'
+        'Fetch items from an Apify dataset by ID. Returns a JSON object with an "items" array.'
         ' Required: dataset_id (str) — Apify dataset ID.'
         ' Optional: limit (int, default 100), offset (int, default 0).'
-        ' Returns an empty JSON object with a message when the dataset is empty.'
     )
     args_schema: type[BaseModel] = ApifyGetDatasetItemsInput
 
@@ -415,7 +414,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):
             raise ToolException(str(exc)) from exc
         if not items:
             return json.dumps({'items': [], 'message': 'Dataset is empty or not found.'})
-        return json.dumps(items)
+        return json.dumps({'items': items})
 
 
 class ApifyRunActorAndGetItemsTool(_ApifyGenericTool):
