@@ -119,7 +119,10 @@ class ApifyToolsClient:
         """
         # run_actor() raises RuntimeError on Actor failure; the except below only covers the dataset fetch.
         run = self.run_actor(actor_id, run_input, timeout_secs, memory_mbytes)
-        dataset_id = run.get('defaultDatasetId', '')
+        dataset_id = run.get('defaultDatasetId')
+        if not dataset_id:
+            msg = f'Actor {actor_id} run succeeded but returned no default dataset ID.'
+            raise RuntimeError(msg)
         try:
             items = self._client.dataset(dataset_id).list_items(limit=dataset_items_limit, clean=True).items
         except Exception as exc:
@@ -190,7 +193,10 @@ class ApifyToolsClient:
         """
         # run_task() raises RuntimeError on task failure; the except below only covers the dataset fetch.
         run = self.run_task(task_id, task_input, timeout_secs, memory_mbytes)
-        dataset_id = run.get('defaultDatasetId', '')
+        dataset_id = run.get('defaultDatasetId')
+        if not dataset_id:
+            msg = f'Task {task_id} run succeeded but returned no default dataset ID.'
+            raise RuntimeError(msg)
         try:
             items = self._client.dataset(dataset_id).list_items(limit=dataset_items_limit, clean=True).items
         except Exception as exc:

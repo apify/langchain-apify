@@ -132,6 +132,14 @@ def test_run_actor_and_get_items_success(client: ApifyToolsClient, mock_apify_cl
     mock_apify_client.dataset.assert_called_once_with('dataset-xyz')
 
 
+def test_run_actor_and_get_items_missing_dataset_id_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    run_no_dataset = {**_SUCCEEDED_RUN, 'defaultDatasetId': None}
+    mock_apify_client.actor.return_value.call.return_value = run_no_dataset
+
+    with pytest.raises(RuntimeError, match='no default dataset ID'):
+        client.run_actor_and_get_items('apify/test-actor')
+
+
 # ---------------------------------------------------------------------------
 # run_task
 # ---------------------------------------------------------------------------
@@ -167,6 +175,14 @@ def test_run_task_and_get_items_success(client: ApifyToolsClient, mock_apify_cli
 
     assert run == _SUCCEEDED_RUN
     assert items == _SAMPLE_ITEMS
+
+
+def test_run_task_and_get_items_missing_dataset_id_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    run_no_dataset = {**_SUCCEEDED_RUN, 'defaultDatasetId': None}
+    mock_apify_client.task.return_value.call.return_value = run_no_dataset
+
+    with pytest.raises(RuntimeError, match='no default dataset ID'):
+        client.run_task_and_get_items('user/my-task')
 
 
 # ---------------------------------------------------------------------------
