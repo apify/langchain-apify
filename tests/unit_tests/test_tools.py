@@ -1,12 +1,21 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+from langchain_core.tools import ToolException
 from pydantic import BaseModel
 
-from langchain_apify.tools import ApifyActorsTool
+from langchain_apify._client import ApifyToolsClient
+from langchain_apify.tools import (
+    ApifyActorsTool,
+    ApifyGetDatasetItemsTool,
+    ApifyRunActorAndGetItemsTool,
+    ApifyRunActorTool,
+    ApifyScrapeUrlTool,
+)
 from langchain_apify.utils import actor_id_to_tool_name
 
 if TYPE_CHECKING:
@@ -85,3 +94,176 @@ def apify_actors_tool_fixture() -> Generator[ApifyActorsTool, None, None]:
 
         tool = ApifyActorsTool(actor_id='apify/python-example', apify_api_token='dummy-token')
         yield tool
+
+
+# ---------------------------------------------------------------------------
+# Shared test data for generic tools
+# ---------------------------------------------------------------------------
+
+_SUCCEEDED_RUN: dict = {
+    'id': 'run-abc',
+    'status': 'SUCCEEDED',
+    'defaultDatasetId': 'dataset-xyz',
+    'startedAt': '2025-01-01T00:00:00.000Z',
+    'finishedAt': '2025-01-01T00:01:00.000Z',
+}
+
+_SAMPLE_ITEMS: list[dict] = [
+    {'text': 'item-1', 'url': 'https://example.com/1'},
+    {'text': 'item-2', 'url': 'https://example.com/2'},
+]
+
+
+@pytest.fixture
+def mock_tools_client() -> MagicMock:
+    return MagicMock(spec=ApifyToolsClient)
+
+
+def _make_tool(tool_cls: type, mock_client: MagicMock) -> ApifyRunActorTool | ApifyGetDatasetItemsTool | ApifyRunActorAndGetItemsTool | ApifyScrapeUrlTool:
+    """Instantiate a generic tool with a mocked ApifyToolsClient."""
+    with patch.object(ApifyToolsClient, '__init__', return_value=None):
+        tool = tool_cls(apify_api_token='dummy-token')
+    tool._client = mock_client
+    return tool
+
+
+# ---------------------------------------------------------------------------
+# ApifyRunActorTool
+# ---------------------------------------------------------------------------
+
+
+def test_run_actor_tool_returns_json(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.run_actor.return_value = _SUCCEEDED_RUN
+    tool = _make_tool(ApifyRunActorTool, mock_tools_client)
+
+    result = tool._run(actor_id='apify/test', run_input={'key': 'val'})
+
+    parsed = json.loads(result)
+    assert parsed['run_id'] == 'run-abc'
+    assert parsed['status'] == 'SUCCEEDED'
+    assert parsed['dataset_id'] == 'dataset-xyz'
+    assert parsed['started_at'] == '2025-01-01T00:00:00.000Z'
+    assert parsed['finished_at'] == '2025-01-01T00:01:00.000Z'
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', {'key': 'val'}, 300, None)
+
+
+def test_run_actor_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.run_actor.side_effect = RuntimeError('Actor run run-bad ended with status FAILED.')
+    tool = _make_tool(ApifyRunActorTool, mock_tools_client)
+
+    with pytest.raises(ToolException, match='FAILED'):
+        tool._run(actor_id='apify/test')
+
+
+def test_run_actor_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+        ApifyRunActorTool()
+
+
+# ---------------------------------------------------------------------------
+# ApifyGetDatasetItemsTool
+# ---------------------------------------------------------------------------
+
+
+def test_get_dataset_items_tool_returns_json_array(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.get_dataset_items.return_value = _SAMPLE_ITEMS
+    tool = _make_tool(ApifyGetDatasetItemsTool, mock_tools_client)
+
+    result = tool._run(dataset_id='dataset-xyz', limit=50, offset=5)
+
+    parsed = json.loads(result)
+    assert len(parsed) == 2
+    assert parsed[0]['text'] == 'item-1'
+    mock_tools_client.get_dataset_items.assert_called_once_with('dataset-xyz', 50, 5)
+
+
+def test_get_dataset_items_tool_empty_returns_message(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.get_dataset_items.return_value = []
+    tool = _make_tool(ApifyGetDatasetItemsTool, mock_tools_client)
+
+    result = tool._run(dataset_id='dataset-empty')
+
+    parsed = json.loads(result)
+    assert parsed['items'] == []
+    assert 'empty' in parsed['message'].lower()
+
+
+# ---------------------------------------------------------------------------
+# ApifyRunActorAndGetItemsTool
+# ---------------------------------------------------------------------------
+
+
+def test_run_actor_and_get_items_tool_returns_json(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.run_actor_and_get_items.return_value = (_SUCCEEDED_RUN, _SAMPLE_ITEMS)
+    tool = _make_tool(ApifyRunActorAndGetItemsTool, mock_tools_client)
+
+    result = tool._run(actor_id='apify/test', run_input={'q': '1'}, dataset_items_limit=50)
+
+    parsed = json.loads(result)
+    assert parsed['run']['run_id'] == 'run-abc'
+    assert parsed['run']['status'] == 'SUCCEEDED'
+    assert len(parsed['items']) == 2
+    mock_tools_client.run_actor_and_get_items.assert_called_once_with(
+        'apify/test', {'q': '1'}, 300, None, 50
+    )
+
+
+def test_run_actor_and_get_items_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.run_actor_and_get_items.side_effect = RuntimeError('Actor run run-bad ended with status TIMED-OUT.')
+    tool = _make_tool(ApifyRunActorAndGetItemsTool, mock_tools_client)
+
+    with pytest.raises(ToolException, match='TIMED-OUT'):
+        tool._run(actor_id='apify/test')
+
+
+# ---------------------------------------------------------------------------
+# ApifyScrapeUrlTool
+# ---------------------------------------------------------------------------
+
+
+def test_scrape_url_tool_returns_markdown(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.scrape_url.return_value = '# Hello World'
+    tool = _make_tool(ApifyScrapeUrlTool, mock_tools_client)
+
+    result = tool._run(url='https://example.com')
+
+    assert result == '# Hello World'
+    mock_tools_client.scrape_url.assert_called_once_with('https://example.com', 120)
+
+
+def test_scrape_url_tool_empty_raises_tool_exception(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.scrape_url.side_effect = RuntimeError('No content extracted from https://example.com.')
+    tool = _make_tool(ApifyScrapeUrlTool, mock_tools_client)
+
+    with pytest.raises(ToolException, match='No content extracted'):
+        tool._run(url='https://example.com')
+
+
+# ---------------------------------------------------------------------------
+# Tool metadata assertions
+# ---------------------------------------------------------------------------
+
+
+def test_generic_tools_have_correct_metadata() -> None:
+    """Verify name, description, and args_schema are set on all 4 tools."""
+    with patch.object(ApifyToolsClient, '__init__', return_value=None):
+        tools = [
+            ApifyRunActorTool(apify_api_token='dummy'),
+            ApifyGetDatasetItemsTool(apify_api_token='dummy'),
+            ApifyRunActorAndGetItemsTool(apify_api_token='dummy'),
+            ApifyScrapeUrlTool(apify_api_token='dummy'),
+        ]
+
+    expected_names = [
+        'apify_run_actor',
+        'apify_get_dataset_items',
+        'apify_run_actor_and_get_items',
+        'apify_scrape_url',
+    ]
+
+    for tool, expected_name in zip(tools, expected_names):
+        assert tool.name == expected_name
+        assert tool.description
+        assert tool.args_schema is not None
+        assert tool.handle_tool_error is True

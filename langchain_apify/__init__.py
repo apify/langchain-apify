@@ -22,11 +22,11 @@ del metadata  # optional, avoids polluting the results of dir(__package__)
 # Binding all tools at once overwhelms the LLM context window; pick the
 # group(s) relevant to your use case:
 #
-#   from langchain_apify import CORE_TOOLS
-#   agent = create_react_agent(model, [t() for t in CORE_TOOLS])
+#   from langchain_apify import APIFY_CORE_TOOLS
+#   agent = create_react_agent(model, [t() for t in APIFY_CORE_TOOLS])
 # ---------------------------------------------------------------------------
 
-CORE_TOOLS: list[type] = [
+APIFY_CORE_TOOLS: list[type] = [
     ApifyRunActorTool,
     ApifyGetDatasetItemsTool,
     ApifyRunActorAndGetItemsTool,
@@ -44,7 +44,7 @@ __all__ = [
     'ApifyRunActorTool',
     'ApifyScrapeUrlTool',
     # Tool group lists
-    'CORE_TOOLS',
+    'APIFY_CORE_TOOLS',
     # Meta
     '__version__',
 ]
