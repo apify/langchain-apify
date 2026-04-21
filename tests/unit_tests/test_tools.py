@@ -243,15 +243,15 @@ def test_run_actor_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_get_dataset_items_tool_returns_json_array(mock_tools_client: MagicMock) -> None:
+def test_get_dataset_items_tool_returns_json_object(mock_tools_client: MagicMock) -> None:
     mock_tools_client.get_dataset_items.return_value = _SAMPLE_ITEMS
     tool = _make_tool(ApifyGetDatasetItemsTool, mock_tools_client)
 
     result = tool._run(dataset_id='dataset-xyz', limit=50, offset=5)
 
     parsed = json.loads(result)
-    assert len(parsed) == 2
-    assert parsed[0]['text'] == 'item-1'
+    assert len(parsed['items']) == 2
+    assert parsed['items'][0]['text'] == 'item-1'
     mock_tools_client.get_dataset_items.assert_called_once_with('dataset-xyz', 50, 5)
 
 
