@@ -5,36 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from langchain_apify._client import ApifyToolsClient
-
-_SUCCEEDED_RUN: dict = {
-    'id': 'run-abc',
-    'status': 'SUCCEEDED',
-    'defaultDatasetId': 'dataset-xyz',
-    'startedAt': '2025-01-01T00:00:00.000Z',
-    'finishedAt': '2025-01-01T00:01:00.000Z',
-}
-
-_FAILED_RUN: dict = {
-    'id': 'run-fail',
-    'status': 'FAILED',
-    'defaultDatasetId': 'dataset-xyz',
-}
-
-_SAMPLE_ITEMS: list[dict] = [
-    {'text': 'item-1', 'url': 'https://example.com/1'},
-    {'text': 'item-2', 'url': 'https://example.com/2'},
-]
-
-
-@pytest.fixture
-def mock_apify_client() -> MagicMock:
-    return MagicMock()
-
-
-@pytest.fixture
-def client(mock_apify_client: MagicMock) -> ApifyToolsClient:
-    with patch('langchain_apify._client.create_apify_client', return_value=mock_apify_client):
-        return ApifyToolsClient(apify_api_token='dummy-token')
+from tests.unit_tests.conftest import FAILED_RUN, SAMPLE_ITEMS, SUCCEEDED_RUN
 
 
 # ---------------------------------------------------------------------------
@@ -68,17 +39,17 @@ def test_init_missing_token_raises(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_run_actor_success(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.actor.return_value.call.return_value = _SUCCEEDED_RUN
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
 
     result = client.run_actor('apify/test-actor', run_input={'key': 'val'})
 
     mock_apify_client.actor.assert_called_once_with('apify/test-actor')
     mock_apify_client.actor.return_value.call.assert_called_once_with(run_input={'key': 'val'}, timeout_secs=300, logger=None)
-    assert result == _SUCCEEDED_RUN
+    assert result == SUCCEEDED_RUN
 
 
 def test_run_actor_with_memory(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.actor.return_value.call.return_value = _SUCCEEDED_RUN
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
 
     client.run_actor('apify/test-actor', memory_mbytes=512)
 
@@ -88,7 +59,7 @@ def test_run_actor_with_memory(client: ApifyToolsClient, mock_apify_client: Magi
 
 
 def test_run_actor_failed_status_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.actor.return_value.call.return_value = _FAILED_RUN
+    mock_apify_client.actor.return_value.call.return_value = FAILED_RUN
 
     with pytest.raises(RuntimeError, match='run-fail'):
         client.run_actor('apify/test-actor')
@@ -100,13 +71,13 @@ def test_run_actor_failed_status_raises(client: ApifyToolsClient, mock_apify_cli
 
 
 def test_get_dataset_items_success(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.dataset.return_value.list_items.return_value.items = _SAMPLE_ITEMS
+    mock_apify_client.dataset.return_value.list_items.return_value.items = SAMPLE_ITEMS
 
     items = client.get_dataset_items('dataset-xyz', limit=50, offset=10)
 
     mock_apify_client.dataset.assert_called_once_with('dataset-xyz')
     mock_apify_client.dataset.return_value.list_items.assert_called_once_with(limit=50, offset=10, clean=True)
-    assert items == _SAMPLE_ITEMS
+    assert items == SAMPLE_ITEMS
 
 
 def test_get_dataset_items_empty(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
@@ -122,18 +93,18 @@ def test_get_dataset_items_empty(client: ApifyToolsClient, mock_apify_client: Ma
 
 
 def test_run_actor_and_get_items_success(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.actor.return_value.call.return_value = _SUCCEEDED_RUN
-    mock_apify_client.dataset.return_value.list_items.return_value.items = _SAMPLE_ITEMS
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = SAMPLE_ITEMS
 
     run, items = client.run_actor_and_get_items('apify/test-actor', run_input={'q': '1'})
 
-    assert run == _SUCCEEDED_RUN
-    assert items == _SAMPLE_ITEMS
+    assert run == SUCCEEDED_RUN
+    assert items == SAMPLE_ITEMS
     mock_apify_client.dataset.assert_called_once_with('dataset-xyz')
 
 
 def test_run_actor_and_get_items_missing_dataset_id_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    run_no_dataset = {**_SUCCEEDED_RUN, 'defaultDatasetId': None}
+    run_no_dataset = {**SUCCEEDED_RUN, 'defaultDatasetId': None}
     mock_apify_client.actor.return_value.call.return_value = run_no_dataset
 
     with pytest.raises(RuntimeError, match='no default dataset ID'):
@@ -146,17 +117,17 @@ def test_run_actor_and_get_items_missing_dataset_id_raises(client: ApifyToolsCli
 
 
 def test_run_task_success(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.task.return_value.call.return_value = _SUCCEEDED_RUN
+    mock_apify_client.task.return_value.call.return_value = SUCCEEDED_RUN
 
     result = client.run_task('user/my-task', task_input={'key': 'val'})
 
     mock_apify_client.task.assert_called_once_with('user/my-task')
     mock_apify_client.task.return_value.call.assert_called_once_with(task_input={'key': 'val'}, timeout_secs=300)
-    assert result == _SUCCEEDED_RUN
+    assert result == SUCCEEDED_RUN
 
 
 def test_run_task_failed_status_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.task.return_value.call.return_value = _FAILED_RUN
+    mock_apify_client.task.return_value.call.return_value = FAILED_RUN
 
     with pytest.raises(RuntimeError, match='run-fail'):
         client.run_task('user/my-task')
@@ -168,17 +139,17 @@ def test_run_task_failed_status_raises(client: ApifyToolsClient, mock_apify_clie
 
 
 def test_run_task_and_get_items_success(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.task.return_value.call.return_value = _SUCCEEDED_RUN
-    mock_apify_client.dataset.return_value.list_items.return_value.items = _SAMPLE_ITEMS
+    mock_apify_client.task.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = SAMPLE_ITEMS
 
     run, items = client.run_task_and_get_items('user/my-task')
 
-    assert run == _SUCCEEDED_RUN
-    assert items == _SAMPLE_ITEMS
+    assert run == SUCCEEDED_RUN
+    assert items == SAMPLE_ITEMS
 
 
 def test_run_task_and_get_items_missing_dataset_id_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    run_no_dataset = {**_SUCCEEDED_RUN, 'defaultDatasetId': None}
+    run_no_dataset = {**SUCCEEDED_RUN, 'defaultDatasetId': None}
     mock_apify_client.task.return_value.call.return_value = run_no_dataset
 
     with pytest.raises(RuntimeError, match='no default dataset ID'):
@@ -191,7 +162,7 @@ def test_run_task_and_get_items_missing_dataset_id_raises(client: ApifyToolsClie
 
 
 def test_scrape_url_returns_markdown(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.actor.return_value.call.return_value = _SUCCEEDED_RUN
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = [
         {'markdown': '# Hello', 'text': 'Hello', 'url': 'https://example.com'},
     ]
@@ -201,7 +172,7 @@ def test_scrape_url_returns_markdown(client: ApifyToolsClient, mock_apify_client
 
 
 def test_scrape_url_falls_back_to_text(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.actor.return_value.call.return_value = _SUCCEEDED_RUN
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = [
         {'text': 'Plain text content', 'url': 'https://example.com'},
     ]
@@ -211,7 +182,7 @@ def test_scrape_url_falls_back_to_text(client: ApifyToolsClient, mock_apify_clie
 
 
 def test_scrape_url_empty_items_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.actor.return_value.call.return_value = _SUCCEEDED_RUN
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = []
 
     with pytest.raises(RuntimeError, match='No content extracted'):
@@ -219,7 +190,7 @@ def test_scrape_url_empty_items_raises(client: ApifyToolsClient, mock_apify_clie
 
 
 def test_scrape_url_empty_content_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.actor.return_value.call.return_value = _SUCCEEDED_RUN
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = [
         {'markdown': '', 'text': '', 'url': 'https://example.com'},
     ]

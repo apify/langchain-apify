@@ -16,6 +16,8 @@ from langchain_apify import (
     ApifyGetDatasetItemsTool,
     ApifyRunActorAndGetItemsTool,
     ApifyRunActorTool,
+    ApifyRunTaskAndGetItemsTool,
+    ApifyRunTaskTool,
     ApifyScrapeUrlTool,
 )
 
@@ -66,3 +68,27 @@ def test_scrape_url_tool_smoke() -> None:
 
     assert isinstance(result, str)
     assert len(result) > 0
+
+
+_TASK_ID = os.getenv('APIFY_TASK_ID', '')
+
+
+@pytest.mark.skipif(not _TASK_ID, reason='APIFY_TASK_ID not set')
+def test_run_task_tool_smoke() -> None:
+    tool = ApifyRunTaskTool()
+    result = tool.invoke({'task_id': _TASK_ID})
+
+    parsed = json.loads(result)
+    assert parsed['status'] == 'SUCCEEDED'
+    assert parsed['run_id']
+    assert parsed['dataset_id']
+
+
+@pytest.mark.skipif(not _TASK_ID, reason='APIFY_TASK_ID not set')
+def test_run_task_and_get_items_tool_smoke() -> None:
+    tool = ApifyRunTaskAndGetItemsTool()
+    result = tool.invoke({'task_id': _TASK_ID})
+
+    parsed = json.loads(result)
+    assert parsed['run']['status'] == 'SUCCEEDED'
+    assert isinstance(parsed['items'], list)

@@ -267,6 +267,7 @@ class ApifyRunTaskAndGetItemsInput(BaseModel):
 
 
 def _iso(value: str | datetime | None) -> str | None:
+    """Coerce a possible ``datetime`` to an ISO-8601 string."""
     if isinstance(value, datetime):
         return value.isoformat()
     return value
@@ -291,19 +292,36 @@ def _run_meta(run: dict) -> dict:
 class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     """Shared base for all generic Apify tools.
 
-    Handles ``ApifyToolsClient`` creation and sets ``handle_tool_error``.
+    Handles ``ApifyToolsClient`` creation, sets ``handle_tool_error``,
+    and defines developer-controlled safety limits that clamp values the
+    LLM may provide at invocation time.
+
     Subclasses only need to declare ``name``, ``description``,
     ``args_schema``, and ``_run()``.
     """
 
     handle_tool_error: bool = True
 
+    max_timeout_secs: int = Field(default=600, description='Upper bound for timeout_secs the LLM may request.')
+    max_memory_mbytes: int = Field(default=32768, description='Upper bound for memory_mbytes the LLM may request.')
+    max_items: int = Field(default=1000, description='Upper bound for limit / dataset_items_limit the LLM may request.')
+
     _client: ApifyToolsClient
 
     def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
         super().__init__(**kwargs)
-        # Token validation (missing env var, empty string) is handled inside ApifyToolsClient.__init__.
         self._client = ApifyToolsClient(apify_api_token=apify_api_token)
+
+    def _clamp_timeout(self, value: int) -> int:
+        return min(value, self.max_timeout_secs)
+
+    def _clamp_memory(self, value: int | None) -> int | None:
+        if value is None:
+            return None
+        return min(value, self.max_memory_mbytes)
+
+    def _clamp_items(self, value: int) -> int:
+        return min(value, self.max_items)
 
 
 # ---------------------------------------------------------------------------
@@ -361,7 +379,9 @@ class ApifyRunActorTool(_ApifyGenericTool):
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            run = self._client.run_actor(actor_id, run_input, timeout_secs, memory_mbytes)
+            run = self._client.run_actor(
+                actor_id, run_input, self._clamp_timeout(timeout_secs), self._clamp_memory(memory_mbytes)
+            )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps(_run_meta(run))
@@ -409,7 +429,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            items = self._client.get_dataset_items(dataset_id, limit, offset)
+            items = self._client.get_dataset_items(dataset_id, self._clamp_items(limit), offset)
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
         if not items:
@@ -470,7 +490,11 @@ class ApifyRunActorAndGetItemsTool(_ApifyGenericTool):
     ) -> str:
         try:
             run, items = self._client.run_actor_and_get_items(
-                actor_id, run_input, timeout_secs, memory_mbytes, dataset_items_limit
+                actor_id,
+                run_input,
+                self._clamp_timeout(timeout_secs),
+                self._clamp_memory(memory_mbytes),
+                self._clamp_items(dataset_items_limit),
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
@@ -520,7 +544,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            return self._client.scrape_url(url, timeout_secs)
+            return self._client.scrape_url(url, self._clamp_timeout(timeout_secs))
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
 
@@ -576,7 +600,9 @@ class ApifyRunTaskTool(_ApifyGenericTool):
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            run = self._client.run_task(task_id, task_input, timeout_secs, memory_mbytes)
+            run = self._client.run_task(
+                task_id, task_input, self._clamp_timeout(timeout_secs), self._clamp_memory(memory_mbytes)
+            )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps(_run_meta(run))
@@ -635,7 +661,11 @@ class ApifyRunTaskAndGetItemsTool(_ApifyGenericTool):
     ) -> str:
         try:
             run, items = self._client.run_task_and_get_items(
-                task_id, task_input, timeout_secs, memory_mbytes, dataset_items_limit
+                task_id,
+                task_input,
+                self._clamp_timeout(timeout_secs),
+                self._clamp_memory(memory_mbytes),
+                self._clamp_items(dataset_items_limit),
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
