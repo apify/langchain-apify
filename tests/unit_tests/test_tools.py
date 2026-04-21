@@ -8,6 +8,7 @@ import pytest
 from langchain_core.tools import ToolException
 from pydantic import BaseModel
 
+from langchain_apify import APIFY_CORE_TOOLS
 from langchain_apify._client import ApifyToolsClient
 from langchain_apify.tools import (
     ApifyActorsTool,
@@ -189,6 +190,12 @@ def test_get_dataset_items_tool_empty_returns_message(mock_tools_client: MagicMo
     assert 'empty' in parsed['message'].lower()
 
 
+def test_get_dataset_items_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+        ApifyGetDatasetItemsTool()
+
+
 # ---------------------------------------------------------------------------
 # ApifyRunActorAndGetItemsTool
 # ---------------------------------------------------------------------------
@@ -217,6 +224,12 @@ def test_run_actor_and_get_items_tool_failure_raises_tool_exception(mock_tools_c
         tool._run(actor_id='apify/test')
 
 
+def test_run_actor_and_get_items_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+        ApifyRunActorAndGetItemsTool()
+
+
 # ---------------------------------------------------------------------------
 # ApifyScrapeUrlTool
 # ---------------------------------------------------------------------------
@@ -238,6 +251,12 @@ def test_scrape_url_tool_empty_raises_tool_exception(mock_tools_client: MagicMoc
 
     with pytest.raises(ToolException, match='No content extracted'):
         tool._run(url='https://example.com')
+
+
+def test_scrape_url_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+        ApifyScrapeUrlTool()
 
 
 # ---------------------------------------------------------------------------
@@ -267,3 +286,19 @@ def test_generic_tools_have_correct_metadata() -> None:
         assert tool.description
         assert tool.args_schema is not None
         assert tool.handle_tool_error is True
+
+
+# ---------------------------------------------------------------------------
+# APIFY_CORE_TOOLS list
+# ---------------------------------------------------------------------------
+
+
+def test_apify_core_tools_contains_all_four_classes() -> None:
+    """APIFY_CORE_TOOLS must list exactly the 4 generic tool classes."""
+    assert set(APIFY_CORE_TOOLS) == {
+        ApifyRunActorTool,
+        ApifyGetDatasetItemsTool,
+        ApifyRunActorAndGetItemsTool,
+        ApifyScrapeUrlTool,
+    }
+    assert len(APIFY_CORE_TOOLS) == 4

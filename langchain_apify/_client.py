@@ -65,7 +65,11 @@ class ApifyToolsClient:
         if memory_mbytes is not None:
             call_kwargs['memory_mbytes'] = memory_mbytes
 
-        run = self._client.actor(actor_id).call(**call_kwargs)
+        try:
+            run = self._client.actor(actor_id).call(**call_kwargs)
+        except Exception as exc:
+            msg = f'Network error calling Actor {actor_id}: {exc}'
+            raise RuntimeError(msg) from exc
         if run is None:
             msg = f'Actor {actor_id} call returned no run details.'
             raise RuntimeError(msg)
@@ -85,7 +89,11 @@ class ApifyToolsClient:
         Returns:
             List of dataset item dicts (may be empty).
         """
-        return self._client.dataset(dataset_id).list_items(limit=limit, offset=offset, clean=True).items
+        try:
+            return self._client.dataset(dataset_id).list_items(limit=limit, offset=offset, clean=True).items
+        except Exception as exc:
+            msg = f'Network error fetching dataset {dataset_id}: {exc}'
+            raise RuntimeError(msg) from exc
 
     def run_actor_and_get_items(
         self,
@@ -112,7 +120,11 @@ class ApifyToolsClient:
         """
         run = self.run_actor(actor_id, run_input, timeout_secs, memory_mbytes)
         dataset_id = run.get('defaultDatasetId', '')
-        items = self._client.dataset(dataset_id).list_items(limit=dataset_items_limit, clean=True).items
+        try:
+            items = self._client.dataset(dataset_id).list_items(limit=dataset_items_limit, clean=True).items
+        except Exception as exc:
+            msg = f'Network error fetching dataset {dataset_id}: {exc}'
+            raise RuntimeError(msg) from exc
         return run, items
 
     def run_task(
@@ -141,7 +153,11 @@ class ApifyToolsClient:
         if memory_mbytes is not None:
             call_kwargs['memory_mbytes'] = memory_mbytes
 
-        run = self._client.task(task_id).call(**call_kwargs)
+        try:
+            run = self._client.task(task_id).call(**call_kwargs)
+        except Exception as exc:
+            msg = f'Network error calling task {task_id}: {exc}'
+            raise RuntimeError(msg) from exc
         if run is None:
             msg = f'Task {task_id} call returned no run details.'
             raise RuntimeError(msg)
@@ -174,7 +190,11 @@ class ApifyToolsClient:
         """
         run = self.run_task(task_id, task_input, timeout_secs, memory_mbytes)
         dataset_id = run.get('defaultDatasetId', '')
-        items = self._client.dataset(dataset_id).list_items(limit=dataset_items_limit, clean=True).items
+        try:
+            items = self._client.dataset(dataset_id).list_items(limit=dataset_items_limit, clean=True).items
+        except Exception as exc:
+            msg = f'Network error fetching dataset {dataset_id}: {exc}'
+            raise RuntimeError(msg) from exc
         return run, items
 
     def scrape_url(self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS) -> str:
