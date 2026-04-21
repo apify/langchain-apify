@@ -14,7 +14,6 @@ from langchain_apify.utils import create_apify_client
 _SCRAPE_ACTOR_ID = 'apify/website-content-crawler'
 _DEFAULT_RUN_TIMEOUT_SECS = 300
 _DEFAULT_SCRAPE_TIMEOUT_SECS = 120
-_DEFAULT_TASK_TIMEOUT_SECS = 300
 _DEFAULT_DATASET_ITEMS_LIMIT = 100
 _RUN_STATUS_SUCCEEDED = 'SUCCEEDED'
 
@@ -23,7 +22,7 @@ class ApifyToolsClient:
     """Internal helper that wraps ``ApifyClient`` for the tools layer.
 
     One convenience method per tool operation. All methods are synchronous and
-    block until the Actor run finishes.,
+    block until the Actor run finishes.
 
     Args:
         apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
@@ -118,6 +117,7 @@ class ApifyToolsClient:
         Raises:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
+        # run_actor() raises RuntimeError on Actor failure; the except below only covers the dataset fetch.
         run = self.run_actor(actor_id, run_input, timeout_secs, memory_mbytes)
         dataset_id = run.get('defaultDatasetId', '')
         try:
@@ -168,7 +168,7 @@ class ApifyToolsClient:
         self,
         task_id: str,
         task_input: dict | None = None,
-        timeout_secs: int = _DEFAULT_TASK_TIMEOUT_SECS,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
         dataset_items_limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
     ) -> tuple[dict, list[dict]]:
@@ -188,6 +188,7 @@ class ApifyToolsClient:
         Raises:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
+        # run_task() raises RuntimeError on task failure; the except below only covers the dataset fetch.
         run = self.run_task(task_id, task_input, timeout_secs, memory_mbytes)
         dataset_id = run.get('defaultDatasetId', '')
         try:

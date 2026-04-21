@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-from typing import TYPE_CHECKING, Any
 from datetime import datetime
+from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool, ToolException
@@ -238,18 +238,26 @@ class ApifyRunTaskInput(BaseModel):
     """Input schema for :class:`ApifyRunTaskTool`."""
 
     task_id: str = Field(description='Task ID or name (e.g. "user/my-task").')
-    task_input: dict | None = Field(default=None, description='JSON-serialisable input that overrides the task\'s pre-saved input.')
+    task_input: dict | None = Field(
+        default=None, description="JSON-serialisable input that overrides the task's pre-saved input."
+    )
     timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the run to finish.')
-    memory_mbytes: int | None = Field(default=None, description='Memory limit in MB for the run, or null for task default.')
+    memory_mbytes: int | None = Field(
+        default=None, description='Memory limit in MB for the run, or null for task default.'
+    )
 
 
 class ApifyRunTaskAndGetItemsInput(BaseModel):
     """Input schema for :class:`ApifyRunTaskAndGetItemsTool`."""
 
     task_id: str = Field(description='Task ID or name (e.g. "user/my-task").')
-    task_input: dict | None = Field(default=None, description='JSON-serialisable input that overrides the task\'s pre-saved input.')
+    task_input: dict | None = Field(
+        default=None, description="JSON-serialisable input that overrides the task's pre-saved input."
+    )
     timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the run to finish.')
-    memory_mbytes: int | None = Field(default=None, description='Memory limit in MB for the run, or null for task default.')
+    memory_mbytes: int | None = Field(
+        default=None, description='Memory limit in MB for the run, or null for task default.'
+    )
     dataset_items_limit: int = Field(default=100, description='Maximum number of dataset items to return.')
 
 
@@ -258,7 +266,7 @@ class ApifyRunTaskAndGetItemsInput(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _iso(value: str | None) -> str | None:
+def _iso(value: str | datetime | None) -> str | None:
     if isinstance(value, datetime):
         return value.isoformat()
     return value
@@ -294,6 +302,7 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
 
     def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
         super().__init__(**kwargs)
+        # Token validation (missing env var, empty string) is handled inside ApifyToolsClient.__init__.
         self._client = ApifyToolsClient(apify_api_token=apify_api_token)
 
 
