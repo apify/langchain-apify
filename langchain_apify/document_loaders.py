@@ -8,7 +8,7 @@ from apify_client import ApifyClient
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document  # noqa: TCH002
 from langchain_core.utils import get_from_dict_or_env
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from langchain_apify._client import ApifyToolsClient
 from langchain_apify.utils import create_apify_client
@@ -151,14 +151,6 @@ class ApifyCrawlLoader(BaseLoader):
             documents = loader.load()
     """
 
-    url: str
-    max_crawl_pages: int = Field(default=10)
-    max_crawl_depth: int = Field(default=1)
-    crawler_type: str = Field(default='cheerio')
-    timeout_secs: int = Field(default=300)
-
-    _client: ApifyToolsClient = PrivateAttr()
-
     def __init__(
         self,
         url: str,
@@ -169,13 +161,11 @@ class ApifyCrawlLoader(BaseLoader):
         crawler_type: str = 'cheerio',
         timeout_secs: int = 300,
     ) -> None:
-        super().__init__(
-            url=url,
-            max_crawl_pages=max_crawl_pages,
-            max_crawl_depth=max_crawl_depth,
-            crawler_type=crawler_type,
-            timeout_secs=timeout_secs,
-        )
+        self.url = url
+        self.max_crawl_pages = max_crawl_pages
+        self.max_crawl_depth = max_crawl_depth
+        self.crawler_type = crawler_type
+        self.timeout_secs = timeout_secs
         self._client = ApifyToolsClient(apify_api_token=apify_api_token)
 
     def lazy_load(self) -> Iterator[Document]:
