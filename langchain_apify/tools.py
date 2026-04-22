@@ -234,6 +234,25 @@ class ApifyScrapeUrlInput(BaseModel):
     timeout_secs: int = Field(default=120, description='Maximum time in seconds to wait for the crawl to finish.')
 
 
+class ApifyGoogleSearchInput(BaseModel):
+    """Input schema for :class:`ApifyGoogleSearchTool`."""
+
+    query: str = Field(description='Search query string.')
+    max_results: int = Field(default=10, description='Maximum number of search results to return.')
+    country_code: str | None = Field(default=None, description='Two-letter country code for localised results.')
+    language_code: str | None = Field(default=None, description='Two-letter language code.')
+
+
+class ApifyWebCrawlerInput(BaseModel):
+    """Input schema for :class:`ApifyWebCrawlerTool`."""
+
+    url: str = Field(description='Seed URL to start crawling from.')
+    max_crawl_pages: int = Field(default=10, description='Maximum number of pages to crawl.')
+    max_crawl_depth: int = Field(default=1, description='Maximum link-follow depth from the seed URL.')
+    crawler_type: str = Field(default='cheerio', description='Crawler engine (e.g. "cheerio", "playwright").')
+    timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the crawl to finish.')
+
+
 class ApifyRunTaskInput(BaseModel):
     """Input schema for :class:`ApifyRunTaskTool`."""
 
