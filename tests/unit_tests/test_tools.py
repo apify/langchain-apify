@@ -237,7 +237,9 @@ def test_get_dataset_items_tool_empty_returns_message(mock_tools_client: MagicMo
 
 
 def test_get_dataset_items_tool_network_error_raises_tool_exception(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.get_dataset_items.side_effect = RuntimeError('Network error fetching dataset ds-bad: connection reset')
+    mock_tools_client.get_dataset_items.side_effect = RuntimeError(
+        'Network error fetching dataset ds-bad: connection reset'
+    )
     tool = make_tool(ApifyGetDatasetItemsTool, mock_tools_client)
 
     with pytest.raises(ToolException, match='Network error fetching dataset'):
@@ -489,12 +491,12 @@ def test_generic_tools_have_correct_metadata() -> None:
     """Verify name, description, and args_schema are set on all generic tools."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         tools = [
-            ApifyRunActorTool(apify_api_token='dummy'),
-            ApifyGetDatasetItemsTool(apify_api_token='dummy'),
-            ApifyRunActorAndGetItemsTool(apify_api_token='dummy'),
-            ApifyScrapeUrlTool(apify_api_token='dummy'),
-            ApifyRunTaskTool(apify_api_token='dummy'),
-            ApifyRunTaskAndGetItemsTool(apify_api_token='dummy'),
+            ApifyRunActorTool(apify_api_token='dummy'),  # type: ignore[call-arg]
+            ApifyGetDatasetItemsTool(apify_api_token='dummy'),  # type: ignore[call-arg]
+            ApifyRunActorAndGetItemsTool(apify_api_token='dummy'),  # type: ignore[call-arg]
+            ApifyScrapeUrlTool(apify_api_token='dummy'),  # type: ignore[call-arg]
+            ApifyRunTaskTool(apify_api_token='dummy'),  # type: ignore[call-arg]
+            ApifyRunTaskAndGetItemsTool(apify_api_token='dummy'),  # type: ignore[call-arg]
         ]
 
     expected_names = [

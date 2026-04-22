@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool, ToolException
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field, PrivateAttr, create_model
 
 from langchain_apify._client import ApifyToolsClient
 from langchain_apify._error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
@@ -306,7 +306,7 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     max_memory_mbytes: int = Field(default=32768, description='Upper bound for memory_mbytes the LLM may request.')
     max_items: int = Field(default=1000, description='Upper bound for limit / dataset_items_limit the LLM may request.')
 
-    _client: ApifyToolsClient
+    _client: ApifyToolsClient = PrivateAttr()
 
     def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
         super().__init__(**kwargs)
@@ -329,7 +329,7 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
 # ---------------------------------------------------------------------------
 
 
-class ApifyRunActorTool(_ApifyGenericTool):
+class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
     """Run any Apify Actor by ID with an arbitrary JSON input.
 
     Returns run metadata (run ID, status, dataset ID, timestamps) as a JSON
@@ -387,7 +387,7 @@ class ApifyRunActorTool(_ApifyGenericTool):
         return json.dumps(_run_meta(run))
 
 
-class ApifyGetDatasetItemsTool(_ApifyGenericTool):
+class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
     """Fetch items from an existing Apify dataset by ID.
 
     Returns a JSON object with an ``"items"`` key containing the list of item
@@ -437,7 +437,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):
         return json.dumps({'items': items})
 
 
-class ApifyRunActorAndGetItemsTool(_ApifyGenericTool):
+class ApifyRunActorAndGetItemsTool(_ApifyGenericTool):  # type: ignore[override]
     """Run any Apify Actor and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunActorTool` and :class:`ApifyGetDatasetItemsTool`
@@ -501,7 +501,7 @@ class ApifyRunActorAndGetItemsTool(_ApifyGenericTool):
         return json.dumps({'run': _run_meta(run), 'items': items})
 
 
-class ApifyScrapeUrlTool(_ApifyGenericTool):
+class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
     """Scrape a single URL and return its content as markdown.
 
     Uses the ``apify/website-content-crawler`` Actor under the hood with
@@ -549,7 +549,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):
             raise ToolException(str(exc)) from exc
 
 
-class ApifyRunTaskTool(_ApifyGenericTool):
+class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
     """Run a saved Apify Actor task by ID and return run metadata.
 
     Actor tasks are pre-configured Actor runs saved in the Apify Console.
@@ -608,7 +608,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):
         return json.dumps(_run_meta(run))
 
 
-class ApifyRunTaskAndGetItemsTool(_ApifyGenericTool):
+class ApifyRunTaskAndGetItemsTool(_ApifyGenericTool):  # type: ignore[override]
     """Run a saved Apify Actor task and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunTaskTool` and :class:`ApifyGetDatasetItemsTool`
