@@ -5,11 +5,11 @@ import os
 from apify_client import ApifyClient
 
 from langchain_apify._error_messages import (
-    ERROR_ACTOR_RUN_FAILED,
-    ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET,
-    ERROR_SCRAPE_EMPTY,
+    _ERROR_ACTOR_RUN_FAILED,
+    _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET,
+    _ERROR_SCRAPE_EMPTY,
 )
-from langchain_apify.utils import create_apify_client
+from langchain_apify._utils import _create_apify_client
 
 _SCRAPE_ACTOR_ID = 'apify/website-content-crawler'
 _DEFAULT_RUN_TIMEOUT_SECS = 300
@@ -35,9 +35,9 @@ class ApifyToolsClient:
     def __init__(self, apify_api_token: str | None = None) -> None:
         token = apify_api_token or os.getenv('APIFY_API_TOKEN')
         if not token:
-            msg = ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+            msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self._client = create_apify_client(ApifyClient, token)
+        self._client = _create_apify_client(ApifyClient, token)
 
     def run_actor(
         self,
@@ -230,12 +230,12 @@ class ApifyToolsClient:
             dataset_items_limit=1,
         )
         if not items:
-            msg = ERROR_SCRAPE_EMPTY.format(url=url)
+            msg = _ERROR_SCRAPE_EMPTY.format(url=url)
             raise RuntimeError(msg)
 
         content = items[0].get('markdown') or items[0].get('text') or ''
         if not content:
-            msg = ERROR_SCRAPE_EMPTY.format(url=url)
+            msg = _ERROR_SCRAPE_EMPTY.format(url=url)
             raise RuntimeError(msg)
         return content
 
@@ -245,5 +245,5 @@ class ApifyToolsClient:
         status = run.get('status')
         if status != _RUN_STATUS_SUCCEEDED:
             run_id = run.get('id', 'unknown')
-            msg = ERROR_ACTOR_RUN_FAILED.format(run_id=run_id, status=status)
+            msg = _ERROR_ACTOR_RUN_FAILED.format(run_id=run_id, status=status)
             raise RuntimeError(msg)

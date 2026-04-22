@@ -10,13 +10,13 @@ from langchain_core.tools import BaseTool, ToolException
 from pydantic import BaseModel, Field, PrivateAttr, create_model
 
 from langchain_apify._client import ApifyToolsClient
-from langchain_apify._error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
-from langchain_apify.utils import (
+from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+from langchain_apify._utils import (
     _MAX_DESCRIPTION_LEN,
-    actor_id_to_tool_name,
-    create_apify_client,
-    get_actor_latest_build,
-    prune_actor_input_schema,
+    _actor_id_to_tool_name,
+    _create_apify_client,
+    _get_actor_latest_build,
+    _prune_actor_input_schema,
 )
 
 if TYPE_CHECKING:
@@ -57,6 +57,9 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
                 chunk["messages"][-1].pretty_print()
     """
 
+    _apify_client: ApifyClient = PrivateAttr()
+    _actor_id: str = PrivateAttr()
+
     def __init__(
         self,
         actor_id: str,
@@ -77,14 +80,14 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         """
         apify_api_token = apify_api_token or os.getenv('APIFY_API_TOKEN')
         if not apify_api_token:
-            msg = ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+            msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
 
-        apify_client = create_apify_client(ApifyClient, apify_api_token)
+        apify_client = _create_apify_client(ApifyClient, apify_api_token)
 
         kwargs.update(
             {
-                'name': actor_id_to_tool_name(actor_id),
+                'name': _actor_id_to_tool_name(actor_id),
                 'description': self._create_description(apify_client, actor_id),
                 'args_schema': self._build_tool_args_schema_model(
                     apify_client,
@@ -127,7 +130,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Returns:
             str: The description.
         """
-        build = get_actor_latest_build(apify_client, actor_id)
+        build = _get_actor_latest_build(apify_client, actor_id)
         actor_description = build.get('actorDefinition', {}).get('description', '')
         if len(actor_description) > _MAX_DESCRIPTION_LEN:
             actor_description = actor_description[:_MAX_DESCRIPTION_LEN] + '...(TRUNCATED, TOO LONG)'
@@ -150,12 +153,12 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Raises:
             ValueError: If the input schema is not found in the Actor build.
         """
-        build = get_actor_latest_build(apify_client, actor_id)
+        build = _get_actor_latest_build(apify_client, actor_id)
         if not (actor_input := build.get('actorDefinition', {}).get('input')):
             msg = f'Input schema not found in the Actor build for Actor: {actor_id}'
             raise ValueError(msg)
 
-        properties, required = prune_actor_input_schema(actor_input)
+        properties, required = _prune_actor_input_schema(actor_input)
         properties = {'run_input': properties}
 
         description = (

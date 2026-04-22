@@ -13,7 +13,7 @@ from tests.unit_tests.conftest import FAILED_RUN, SAMPLE_ITEMS, SUCCEEDED_RUN
 
 
 def test_init_with_explicit_token(mock_apify_client: MagicMock) -> None:
-    with patch('langchain_apify._client.create_apify_client', return_value=mock_apify_client) as mock_create:
+    with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client) as mock_create:
         c = ApifyToolsClient(apify_api_token='my-token')
         mock_create.assert_called_once()
         assert c._client is mock_apify_client
@@ -21,7 +21,7 @@ def test_init_with_explicit_token(mock_apify_client: MagicMock) -> None:
 
 def test_init_with_env_token(monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock) -> None:
     monkeypatch.setenv('APIFY_API_TOKEN', 'env-token')
-    with patch('langchain_apify._client.create_apify_client', return_value=mock_apify_client):
+    with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client):
         c = ApifyToolsClient()
         assert c._client is mock_apify_client
 

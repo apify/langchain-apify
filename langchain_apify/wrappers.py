@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient, ApifyClientAsync
 from langchain_core.utils import get_from_dict_or_env
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from langchain_apify._utils import _create_apify_client
 from langchain_apify.document_loaders import ApifyDatasetLoader
-from langchain_apify.utils import create_apify_client
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -53,8 +53,8 @@ class ApifyWrapper(BaseModel):
     # allow arbitrary types in the model config for the apify client fields
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    apify_client: ApifyClient
-    apify_client_async: ApifyClientAsync
+    apify_client: ApifyClient = Field(default=None, exclude=True)
+    apify_client_async: ApifyClientAsync = Field(default=None, exclude=True)
     apify_api_token: str | None = None
 
     def __init__(
@@ -90,8 +90,8 @@ class ApifyWrapper(BaseModel):
         """
         apify_api_token = get_from_dict_or_env(values, 'apify_api_token', 'APIFY_API_TOKEN')
 
-        values['apify_client'] = create_apify_client(ApifyClient, apify_api_token)
-        values['apify_client_async'] = create_apify_client(ApifyClientAsync, apify_api_token)
+        values['apify_client'] = _create_apify_client(ApifyClient, apify_api_token)
+        values['apify_client_async'] = _create_apify_client(ApifyClientAsync, apify_api_token)
 
         return values
 

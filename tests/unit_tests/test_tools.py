@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from langchain_apify import APIFY_CORE_TOOLS
 from langchain_apify._client import ApifyToolsClient
+from langchain_apify._utils import _actor_id_to_tool_name
 from langchain_apify.tools import (
     ApifyActorsTool,
     ApifyGetDatasetItemsTool,
@@ -23,7 +24,6 @@ from langchain_apify.tools import (
     _iso,
     _run_meta,
 )
-from langchain_apify.utils import actor_id_to_tool_name
 from tests.unit_tests.conftest import SAMPLE_ITEMS, SUCCEEDED_RUN, make_tool
 
 if TYPE_CHECKING:
@@ -57,7 +57,7 @@ def test_apify_actors_tool_instance() -> None:
         tool = ApifyActorsTool(actor_id=actor_id, apify_api_token='dummy-token')
         assert isinstance(tool, ApifyActorsTool)
         assert tool.description == 'Mocked description'
-        assert tool.name == actor_id_to_tool_name(actor_id)
+        assert tool.name == _actor_id_to_tool_name(actor_id)
         assert tool.args_schema == DummyModel
 
 

@@ -8,9 +8,9 @@ from apify_client import ApifyClient
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document  # noqa: TCH002
 from langchain_core.utils import get_from_dict_or_env
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from langchain_apify.utils import create_apify_client
+from langchain_apify._utils import _create_apify_client
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -42,8 +42,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    apify_client: ApifyClient
-    """An instance of the ApifyClient class from the apify-client Python package."""
+    apify_client: ApifyClient = Field(default=None, exclude=True)
     dataset_id: str
     """The ID of the dataset on the Apify platform."""
     dataset_mapping_function: Callable[[dict], Document]
@@ -86,7 +85,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         # when running at Apify platform, use APIFY_TOKEN environment variable
         apify_api_token = apify_api_token or os.getenv('APIFY_TOKEN', '')
 
-        client = create_apify_client(ApifyClient, apify_api_token)
+        client = _create_apify_client(ApifyClient, apify_api_token)
 
         values['apify_client'] = client
 

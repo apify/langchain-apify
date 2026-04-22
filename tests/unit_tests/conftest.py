@@ -39,7 +39,7 @@ def mock_apify_client() -> MagicMock:
 
 @pytest.fixture
 def client(mock_apify_client: MagicMock) -> ApifyToolsClient:
-    with patch('langchain_apify._client.create_apify_client', return_value=mock_apify_client):
+    with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client):
         return ApifyToolsClient(apify_api_token='dummy-token')
 
 

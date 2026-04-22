@@ -12,7 +12,7 @@ _REQUESTS_TIMEOUT_SECS: float = 10.0
 _APIFY_API_ENDPOINT_GET_DEFAULT_BUILD: str = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
 
 
-def prune_actor_input_schema(
+def _prune_actor_input_schema(
     input_schema: dict,
     max_description_len: int = _MAX_DESCRIPTION_LEN,
 ) -> tuple[dict, list[str]]:
@@ -48,7 +48,7 @@ def prune_actor_input_schema(
 T = TypeVar('T', ApifyClient, ApifyClientAsync)
 
 
-def create_apify_client(client_cls: type[T], token: str) -> T:
+def _create_apify_client(client_cls: type[T], token: str) -> T:
     """Create an Apify client instance with a custom user-agent.
 
     Args:
@@ -79,7 +79,7 @@ def create_apify_client(client_cls: type[T], token: str) -> T:
     return client
 
 
-def actor_id_to_tool_name(actor_id: str) -> str:
+def _actor_id_to_tool_name(actor_id: str) -> str:
     """Turn actor_id into a valid tool name.
 
     Tool name must only contain letters, numbers, underscores, dashes,
@@ -95,7 +95,7 @@ def actor_id_to_tool_name(actor_id: str) -> str:
     return 'apify_actor_' + ''.join(char if char in valid_chars else '_' for char in actor_id)
 
 
-def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
+def _get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
     """Get the latest build of an Actor from the default build tag.
 
     Args:
