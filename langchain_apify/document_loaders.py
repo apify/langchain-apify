@@ -8,8 +8,9 @@ from apify_client import ApifyClient
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document  # noqa: TCH002
 from langchain_core.utils import get_from_dict_or_env
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
+from langchain_apify._client import ApifyToolsClient
 from langchain_apify.utils import create_apify_client
 
 if TYPE_CHECKING:
@@ -112,3 +113,89 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         )
         for item in dataset_items:
             yield self.dataset_mapping_function(item)
+
+
+class ApifyCrawlLoader(BaseLoader):
+    """Crawl a website and load pages as LangChain Documents.
+
+    Wraps the ``apify/website-content-crawler`` Actor.  Runs a crawl starting
+    from the seed URL and converts each crawled page into a ``Document`` with
+    markdown content and metadata (source URL, title, crawl depth).
+
+    Args:
+        url: Seed URL to start crawling from.
+        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+            environment variable when *None*.
+        max_crawl_pages: Maximum number of pages to crawl.
+        max_crawl_depth: Maximum link-follow depth from the seed URL.
+        crawler_type: Crawler engine (e.g. ``"cheerio"``, ``"playwright"``).
+        timeout_secs: Maximum time in seconds to wait for the crawl.
+
+    Returns:
+        Iterator (or list) of ``Document`` objects.  ``page_content`` contains
+        the page markdown; ``metadata`` includes ``source``, ``title``, and
+        ``crawl_depth``.
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyCrawlLoader
+
+            loader = ApifyCrawlLoader(
+                url="https://docs.apify.com",
+                max_crawl_pages=5,
+            )
+            documents = loader.load()
+    """
+
+    url: str
+    max_crawl_pages: int = Field(default=10)
+    max_crawl_depth: int = Field(default=1)
+    crawler_type: str = Field(default='cheerio')
+    timeout_secs: int = Field(default=300)
+
+    _client: ApifyToolsClient = PrivateAttr()
+
+    def __init__(
+        self,
+        url: str,
+        apify_api_token: str | None = None,
+        *,
+        max_crawl_pages: int = 10,
+        max_crawl_depth: int = 1,
+        crawler_type: str = 'cheerio',
+        timeout_secs: int = 300,
+    ) -> None:
+        super().__init__(
+            url=url,
+            max_crawl_pages=max_crawl_pages,
+            max_crawl_depth=max_crawl_depth,
+            crawler_type=crawler_type,
+            timeout_secs=timeout_secs,
+        )
+        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
+
+    def lazy_load(self) -> Iterator[Document]:
+        """Crawl the website and yield Documents lazily.
+
+        Yields:
+            Document: One document per crawled page.
+        """
+        items = self._client.crawl_website(
+            self.url,
+            max_crawl_pages=self.max_crawl_pages,
+            max_crawl_depth=self.max_crawl_depth,
+            crawler_type=self.crawler_type,
+            timeout_secs=self.timeout_secs,
+        )
+        for item in items:
+            page_content = item.get('markdown') or item.get('text') or ''
+            metadata: dict[str, Any] = {
+                'source': item.get('url', ''),
+                'title': item.get('metadata', {}).get('title', '') if isinstance(item.get('metadata'), dict) else '',
+                'crawl_depth': item.get('crawlDepth', 0),
+            }
+            yield Document(page_content=page_content, metadata=metadata)
