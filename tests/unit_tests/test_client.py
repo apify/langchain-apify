@@ -281,3 +281,154 @@ def test_run_task_and_get_items_dataset_fetch_network_error(
 
     with pytest.raises(RuntimeError, match='Network error fetching dataset'):
         client.run_task_and_get_items('user/my-task')
+
+
+# ---------------------------------------------------------------------------
+# google_search
+# ---------------------------------------------------------------------------
+
+GOOGLE_SEARCH_ITEMS: list[dict] = [
+    {
+        'organicResults': [
+            {'title': 'Result 1', 'url': 'https://example.com/1', 'description': 'Desc 1'},
+            {'title': 'Result 2', 'url': 'https://example.com/2', 'description': 'Desc 2'},
+        ],
+    },
+]
+
+
+def test_google_search_success(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = GOOGLE_SEARCH_ITEMS
+
+    results = client.google_search('test query', max_results=5)
+
+    assert len(results) == 2
+    assert results[0] == {'title': 'Result 1', 'url': 'https://example.com/1', 'description': 'Desc 1'}
+    assert results[1] == {'title': 'Result 2', 'url': 'https://example.com/2', 'description': 'Desc 2'}
+
+
+def test_google_search_with_locale(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = GOOGLE_SEARCH_ITEMS
+
+    client.google_search('test', country_code='us', language_code='en')
+
+    call_args = mock_apify_client.actor.return_value.call.call_args
+    run_input = call_args.kwargs['run_input']
+    assert run_input['countryCode'] == 'us'
+    assert run_input['languageCode'] == 'en'
+
+
+def test_google_search_caps_results(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    many_results = [{'title': f'R{i}', 'url': f'https://example.com/{i}', 'description': f'D{i}'} for i in range(20)]
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = [{'organicResults': many_results}]
+
+    results = client.google_search('test', max_results=3)
+
+    assert len(results) == 3
+
+
+def test_google_search_empty_results(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = [{'organicResults': []}]
+
+    results = client.google_search('test')
+
+    assert results == []
+
+
+def test_google_search_failed_run_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = FAILED_RUN
+
+    with pytest.raises(RuntimeError, match='run-fail'):
+        client.google_search('test')
+
+
+# ---------------------------------------------------------------------------
+# rag_web_search
+# ---------------------------------------------------------------------------
+
+RAG_SEARCH_ITEMS: list[dict] = [
+    {'crawledUrl': 'https://example.com/1', 'text': 'Page 1 content', 'metadata': {'title': 'Page 1'}},
+    {'crawledUrl': 'https://example.com/2', 'text': 'Page 2 content', 'metadata': {'title': 'Page 2'}},
+]
+
+
+def test_rag_web_search_success(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = RAG_SEARCH_ITEMS
+
+    items = client.rag_web_search('test query', max_results=5)
+
+    assert len(items) == 2
+    assert items[0]['crawledUrl'] == 'https://example.com/1'
+    assert items[1]['text'] == 'Page 2 content'
+
+
+def test_rag_web_search_empty(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = []
+
+    items = client.rag_web_search('test')
+
+    assert items == []
+
+
+def test_rag_web_search_failed_run_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = FAILED_RUN
+
+    with pytest.raises(RuntimeError, match='run-fail'):
+        client.rag_web_search('test')
+
+
+# ---------------------------------------------------------------------------
+# crawl_website
+# ---------------------------------------------------------------------------
+
+CRAWL_ITEMS: list[dict] = [
+    {'url': 'https://example.com/', 'markdown': '# Home', 'text': 'Home', 'metadata': {'title': 'Home'}},
+    {'url': 'https://example.com/about', 'markdown': '# About', 'text': 'About', 'metadata': {'title': 'About'}},
+]
+
+
+def test_crawl_website_success(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = CRAWL_ITEMS
+
+    items = client.crawl_website('https://example.com')
+
+    assert len(items) == 2
+    assert items[0]['url'] == 'https://example.com/'
+    assert items[1]['markdown'] == '# About'
+
+
+def test_crawl_website_passes_params(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = []
+
+    client.crawl_website('https://example.com', max_crawl_pages=5, max_crawl_depth=2, crawler_type='playwright')
+
+    call_args = mock_apify_client.actor.return_value.call.call_args
+    run_input = call_args.kwargs['run_input']
+    assert run_input['startUrls'] == [{'url': 'https://example.com'}]
+    assert run_input['maxCrawlPages'] == 5
+    assert run_input['maxCrawlDepth'] == 2
+    assert run_input['crawlerType'] == 'playwright'
+
+
+def test_crawl_website_empty(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = []
+
+    items = client.crawl_website('https://example.com')
+
+    assert items == []
+
+
+def test_crawl_website_failed_run_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = FAILED_RUN
+
+    with pytest.raises(RuntimeError, match='run-fail'):
+        client.crawl_website('https://example.com')
