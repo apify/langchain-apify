@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from importlib import metadata
 
-from langchain_apify.document_loaders import ApifyDatasetLoader
+from langchain_apify._actor_tools import ApifyGoogleSearchTool, ApifyWebCrawlerTool
+from langchain_apify.document_loaders import ApifyCrawlLoader, ApifyDatasetLoader
+from langchain_apify.retrievers import ApifySearchRetriever
 from langchain_apify.tools import (
     ApifyActorsTool,
     ApifyGetDatasetItemsTool,
@@ -33,6 +35,11 @@ APIFY_CORE_TOOLS: list[type] = [
     ApifyRunTaskAndGetItemsTool,
 ]
 
+APIFY_ACTOR_TOOLS: list[type] = [
+    ApifyGoogleSearchTool,
+    ApifyWebCrawlerTool,
+]
+
 __all__ = [
     # Existing components (backward-compatible)
     'ApifyActorsTool',
@@ -45,7 +52,15 @@ __all__ = [
     'ApifyRunTaskAndGetItemsTool',
     'ApifyRunTaskTool',
     'ApifyScrapeUrlTool',
+    # Actor-specific tools
+    'ApifyGoogleSearchTool',
+    'ApifyWebCrawlerTool',
+    # Retriever
+    'ApifySearchRetriever',
+    # Loaders
+    'ApifyCrawlLoader',
     # Tool group lists
+    'APIFY_ACTOR_TOOLS',
     'APIFY_CORE_TOOLS',
     # Meta
     '__version__',
