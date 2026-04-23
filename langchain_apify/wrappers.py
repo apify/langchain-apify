@@ -75,7 +75,10 @@ class ApifyWrapper(BaseModel):
             *args: Any: Additional positional arguments forwarded to Pydantic.
             **kwargs: Any: Additional keyword arguments forwarded to Pydantic.
         """
-        kwargs.update({'apify_api_token': apify_api_token})
+        # Only forward the token when explicitly provided; otherwise let the
+        # Pydantic ``default_factory`` read it from the environment.
+        if apify_api_token is not None:
+            kwargs['apify_api_token'] = apify_api_token
         super().__init__(*args, **kwargs)
 
     @model_validator(mode='after')

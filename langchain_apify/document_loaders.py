@@ -70,11 +70,15 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
             apify_api_token (str): Apify API token. Falls back to the
                 ``APIFY_API_TOKEN`` / ``APIFY_TOKEN`` environment variables.
         """
-        super().__init__(
-            dataset_id=dataset_id,
-            dataset_mapping_function=dataset_mapping_function,
-            apify_api_token=apify_api_token,
-        )
+        init_kwargs: dict[str, Any] = {
+            'dataset_id': dataset_id,
+            'dataset_mapping_function': dataset_mapping_function,
+        }
+        # Only forward the token when explicitly provided; otherwise let the
+        # Pydantic ``default_factory`` read it from the environment.
+        if apify_api_token is not None:
+            init_kwargs['apify_api_token'] = apify_api_token
+        super().__init__(**init_kwargs)
 
     @model_validator(mode='after')
     def _init_client(self) -> 'ApifyDatasetLoader':
