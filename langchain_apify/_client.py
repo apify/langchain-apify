@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 
 from apify_client import ApifyClient
+from pydantic import SecretStr
 
 from langchain_apify._error_messages import (
     _ERROR_ACTOR_RUN_FAILED,
@@ -32,12 +33,17 @@ class ApifyToolsClient:
         ValueError: If no token is provided and the env var is not set.
     """
 
-    def __init__(self, apify_api_token: str | None = None) -> None:
-        token = apify_api_token or os.getenv('APIFY_API_TOKEN')
-        if not token:
+    def __init__(self, apify_api_token: SecretStr | str | None = None) -> None:
+        _token: str | None = None
+        if isinstance(apify_api_token, SecretStr):
+            _token = apify_api_token.get_secret_value()
+        else:
+            _token = apify_api_token or os.getenv('APIFY_API_TOKEN')
+        
+        if not _token:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self._client = _create_apify_client(ApifyClient, token)
+        self._client = _create_apify_client(ApifyClient, _token)
 
     def run_actor(
         self,
@@ -117,17 +123,12 @@ class ApifyToolsClient:
         Raises:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
-        # run_actor() raises RuntimeError on Actor failure; the except below only covers the dataset fetch.
         run = self.run_actor(actor_id, run_input, timeout_secs, memory_mbytes)
         dataset_id = run.get('defaultDatasetId')
         if not dataset_id:
             msg = f'Actor {actor_id} run succeeded but returned no default dataset ID.'
             raise RuntimeError(msg)
-        try:
-            items = self._client.dataset(dataset_id).list_items(limit=dataset_items_limit, clean=True).items
-        except Exception as exc:
-            msg = f'Network error fetching dataset {dataset_id}: {exc}'
-            raise RuntimeError(msg) from exc
+        items = self._list_items_or_raise(dataset_id, dataset_items_limit)
         return run, items
 
     def run_task(
@@ -191,17 +192,12 @@ class ApifyToolsClient:
         Raises:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
-        # run_task() raises RuntimeError on task failure; the except below only covers the dataset fetch.
         run = self.run_task(task_id, task_input, timeout_secs, memory_mbytes)
         dataset_id = run.get('defaultDatasetId')
         if not dataset_id:
             msg = f'Task {task_id} run succeeded but returned no default dataset ID.'
             raise RuntimeError(msg)
-        try:
-            items = self._client.dataset(dataset_id).list_items(limit=dataset_items_limit, clean=True).items
-        except Exception as exc:
-            msg = f'Network error fetching dataset {dataset_id}: {exc}'
-            raise RuntimeError(msg) from exc
+        items = self._list_items_or_raise(dataset_id, dataset_items_limit)
         return run, items
 
     def scrape_url(self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS) -> str:
@@ -238,6 +234,14 @@ class ApifyToolsClient:
             msg = _ERROR_SCRAPE_EMPTY.format(url=url)
             raise RuntimeError(msg)
         return content
+
+    def _list_items_or_raise(self, dataset_id: str, limit: int) -> list[dict]:
+        """Fetch dataset items, wrapping any network error in a RuntimeError."""
+        try:
+            return self._client.dataset(dataset_id).list_items(limit=limit, clean=True).items
+        except Exception as exc:
+            msg = f'Network error fetching dataset {dataset_id}: {exc}'
+            raise RuntimeError(msg) from exc
 
     @staticmethod
     def _check_run_status(run: dict) -> None:
