@@ -49,7 +49,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         exclude=True,
         repr=False,
     )
-    apify_client: ApifyClient = Field(default=None, exclude=True)
+    apify_client: ApifyClient = Field(default=None, exclude=True)  # type: ignore[assignment]
     dataset_id: str
     """The ID of the dataset on the Apify platform."""
     dataset_mapping_function: Callable[[dict], Document]
@@ -83,7 +83,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         super().__init__(**init_kwargs)
 
     @model_validator(mode='after')
-    def _init_client(self) -> 'ApifyDatasetLoader':
+    def _init_client(self) -> ApifyDatasetLoader:
         """Resolve the Apify API token and initialise the client.
 
         Checks ``APIFY_TOKEN`` as a secondary fallback for code running on the

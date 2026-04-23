@@ -64,7 +64,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
     def __init__(
         self,
         actor_id: str,
-        apify_api_token: str | None = None,
+        apify_api_token: str | SecretStr | None = None,
         *args: Any,  # noqa: ANN401
         **kwargs: Any,  # noqa: ANN401
     ) -> None:

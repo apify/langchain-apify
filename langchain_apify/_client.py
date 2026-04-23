@@ -39,7 +39,7 @@ class ApifyToolsClient:
             _token = apify_api_token.get_secret_value()
         else:
             _token = apify_api_token or os.getenv('APIFY_API_TOKEN')
-        
+
         if not _token:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)

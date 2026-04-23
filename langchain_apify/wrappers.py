@@ -60,8 +60,8 @@ class ApifyWrapper(BaseModel):
         exclude=True,
         repr=False,
     )
-    apify_client: ApifyClient = Field(default=None, exclude=True)
-    apify_client_async: ApifyClientAsync = Field(default=None, exclude=True)
+    apify_client: ApifyClient = Field(default=None, exclude=True)  # type: ignore[assignment]
+    apify_client_async: ApifyClientAsync = Field(default=None, exclude=True)  # type: ignore[assignment]
 
     def __init__(
         self,
@@ -84,7 +84,7 @@ class ApifyWrapper(BaseModel):
         super().__init__(*args, **kwargs)
 
     @model_validator(mode='after')
-    def _init_clients(self) -> 'ApifyWrapper':
+    def _init_clients(self) -> ApifyWrapper:
         """Validate the token and initialise both sync and async Apify clients.
 
         Returns:
