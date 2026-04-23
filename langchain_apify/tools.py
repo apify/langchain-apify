@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool, ToolException
-from pydantic import BaseModel, Field, PrivateAttr, create_model
+from langchain_core.utils import secret_from_env
+from pydantic import BaseModel, Field, PrivateAttr, SecretStr, create_model
 
 from langchain_apify._client import ApifyToolsClient
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
@@ -78,12 +79,16 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Raises:
             ValueError: If the `APIFY_API_TOKEN` environment variable is not set
         """
-        apify_api_token = apify_api_token or os.getenv('APIFY_API_TOKEN')
-        if not apify_api_token:
+        _raw_token: str | None = (
+            apify_api_token.get_secret_value()
+            if isinstance(apify_api_token, SecretStr)
+            else apify_api_token or os.getenv('APIFY_API_TOKEN')
+        )
+        if not _raw_token:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
 
-        apify_client = _create_apify_client(ApifyClient, apify_api_token)
+        apify_client = _create_apify_client(ApifyClient, _raw_token)
 
         kwargs.update(
             {
@@ -305,15 +310,22 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
 
     handle_tool_error: bool = True
 
+    apify_api_token: SecretStr | None = Field(
+        default_factory=secret_from_env('APIFY_API_TOKEN', default=None),
+        description='Apify API token. Falls back to the APIFY_API_TOKEN environment variable when None.',
+    )
     max_timeout_secs: int = Field(default=600, description='Upper bound for timeout_secs the LLM may request.')
     max_memory_mbytes: int = Field(default=32768, description='Upper bound for memory_mbytes the LLM may request.')
     max_items: int = Field(default=1000, description='Upper bound for limit / dataset_items_limit the LLM may request.')
 
     _client: ApifyToolsClient = PrivateAttr()
 
-    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
-        super().__init__(**kwargs)
-        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
+    def model_post_init(self, __context: Any) -> None:  # noqa: ANN401
+        if self.apify_api_token is None:
+            msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+            raise ValueError(msg)
+        self._client = ApifyToolsClient(apify_api_token=self.apify_api_token.get_secret_value())
+        super().model_post_init(__context)
 
     def _clamp_timeout(self, value: int) -> int:
         return min(value, self.max_timeout_secs)
