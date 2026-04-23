@@ -313,6 +313,8 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     apify_api_token: SecretStr | None = Field(
         default_factory=secret_from_env('APIFY_API_TOKEN', default=None),
         description='Apify API token. Falls back to the APIFY_API_TOKEN environment variable when None.',
+        exclude=True,
+        repr=False,
     )
     max_timeout_secs: int = Field(default=600, description='Upper bound for timeout_secs the LLM may request.')
     max_memory_mbytes: int = Field(default=32768, description='Upper bound for memory_mbytes the LLM may request.')
@@ -328,15 +330,15 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
         super().model_post_init(__context)
 
     def _clamp_timeout(self, value: int) -> int:
-        return min(value, self.max_timeout_secs)
+        return max(1, min(value, self.max_timeout_secs))
 
     def _clamp_memory(self, value: int | None) -> int | None:
         if value is None:
             return None
-        return min(value, self.max_memory_mbytes)
+        return max(1, min(value, self.max_memory_mbytes))
 
     def _clamp_items(self, value: int) -> int:
-        return min(value, self.max_items)
+        return max(1, min(value, self.max_items))
 
 
 # ---------------------------------------------------------------------------
