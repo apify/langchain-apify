@@ -18,7 +18,7 @@ def _prune_actor_input_schema(
 ) -> tuple[dict, list[str]]:
     """Get the input schema from the Actor build.
 
-    Trim the description to 250 characters.
+    Trim descriptions to ``_MAX_DESCRIPTION_LEN`` characters.
 
     Args:
         input_schema (dict): The input schema from the Actor build.
