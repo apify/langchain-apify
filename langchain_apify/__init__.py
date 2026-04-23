@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from importlib import metadata
+from typing import TYPE_CHECKING
 
 from langchain_apify.document_loaders import ApifyDatasetLoader
 from langchain_apify.tools import (
@@ -14,6 +15,9 @@ from langchain_apify.tools import (
 )
 from langchain_apify.wrappers import ApifyWrapper
 
+if TYPE_CHECKING:
+    from langchain_core.tools import BaseTool
+
 try:
     __version__ = metadata.version(__package__)
 except metadata.PackageNotFoundError:
@@ -24,7 +28,7 @@ del metadata  # optional, avoids polluting the results of dir(__package__)
 # Binding all tools at once overwhelms the LLM context window;
 # pick the group(s) relevant to your use case.
 
-APIFY_CORE_TOOLS: list[type] = [
+APIFY_CORE_TOOLS: list[type[BaseTool]] = [
     ApifyRunActorTool,
     ApifyGetDatasetItemsTool,
     ApifyRunActorAndGetItemsTool,
