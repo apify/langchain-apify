@@ -46,6 +46,8 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
     apify_api_token: SecretStr | None = Field(
         default_factory=secret_from_env('APIFY_API_TOKEN', default=None),
         description='Apify API token. Falls back to APIFY_API_TOKEN / APIFY_TOKEN environment variables.',
+        exclude=True,
+        repr=False,
     )
     apify_client: ApifyClient = Field(default=None, exclude=True)
     dataset_id: str
