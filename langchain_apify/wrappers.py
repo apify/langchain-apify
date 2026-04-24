@@ -65,15 +65,15 @@ class ApifyWrapper(BaseModel):
 
     def __init__(
         self,
-        apify_api_token: str | None = None,
+        apify_api_token: str | SecretStr | None = None,
         *args: Any,  # noqa: ANN401
         **kwargs: Any,  # noqa: ANN401
     ) -> None:
         """Initialise the wrapper.
 
         Args:
-            apify_api_token (Optional[str]): Apify API token. Falls back to the
-                ``APIFY_API_TOKEN`` environment variable when *None*.
+            apify_api_token (Optional[str | SecretStr]): Apify API token. Falls
+                back to the ``APIFY_API_TOKEN`` environment variable when *None*.
             *args: Any: Additional positional arguments forwarded to Pydantic.
             **kwargs: Any: Additional keyword arguments forwarded to Pydantic.
         """

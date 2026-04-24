@@ -60,7 +60,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         self,
         dataset_id: str,
         dataset_mapping_function: Callable[[dict], Document],
-        apify_api_token: str | None = None,
+        apify_api_token: str | SecretStr | None = None,
     ) -> None:
         """Initialize the loader with an Apify dataset ID and a mapping function.
 
@@ -69,7 +69,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
             dataset_mapping_function (Callable): A function that takes a single
                 dictionary (an Apify dataset item) and converts it to an instance
                 of the Document class.
-            apify_api_token (str): Apify API token. Falls back to the
+            apify_api_token (str | SecretStr): Apify API token. Falls back to the
                 ``APIFY_API_TOKEN`` / ``APIFY_TOKEN`` environment variables.
         """
         init_kwargs: dict[str, Any] = {
