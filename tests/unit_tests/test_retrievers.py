@@ -98,6 +98,7 @@ def test_sync_passes_correct_input() -> None:
     mock_client.actor.return_value.call.assert_called_once_with(
         run_input={'query': 'my search', 'maxResults': 3},
         timeout_secs=60,
+        logger=None,
     )
     mock_client.dataset.return_value.list_items.assert_called_once_with(
         limit=3,
