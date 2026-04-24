@@ -11,7 +11,6 @@ import json
 from typing import TYPE_CHECKING
 
 from langchain_core.tools import ToolException
-from pydantic import BaseModel
 
 from langchain_apify.tools import (
     ApifyGoogleSearchInput,
@@ -21,6 +20,7 @@ from langchain_apify.tools import (
 
 if TYPE_CHECKING:
     from langchain_core.callbacks import CallbackManagerForToolRun
+    from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
 # Search & Crawling tools

@@ -281,14 +281,15 @@ class ApifyToolsClient:
             timeout_secs=timeout_secs,
             dataset_items_limit=max_results,
         )
-        results: list[dict] = []
-        for item in items:
-            for organic in item.get('organicResults', []):
-                results.append({
-                    'title': organic.get('title', ''),
-                    'url': organic.get('url', ''),
-                    'description': organic.get('description', ''),
-                })
+        results: list[dict] = [
+            {
+                'title': organic.get('title', ''),
+                'url': organic.get('url', ''),
+                'description': organic.get('description', ''),
+            }
+            for item in items
+            for organic in item.get('organicResults', [])
+        ]
         return results[:max_results]
 
     def rag_web_search(

@@ -60,7 +60,7 @@ def test_init_custom_params() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _get_relevant_documents (sync)
+# Sync retrieval
 # ---------------------------------------------------------------------------
 
 
@@ -100,7 +100,8 @@ def test_sync_passes_correct_input() -> None:
         timeout_secs=60,
     )
     mock_client.dataset.return_value.list_items.assert_called_once_with(
-        limit=3, clean=True,
+        limit=3,
+        clean=True,
     )
 
 
@@ -145,11 +146,13 @@ def test_sync_no_dataset_id_returns_empty() -> None:
 @pytest.mark.asyncio
 async def test_async_returns_documents() -> None:
     mock_async = MagicMock()
-    mock_async.actor.return_value.call = AsyncMock(return_value={
-        'id': 'run-1',
-        'status': 'SUCCEEDED',
-        'defaultDatasetId': 'ds-1',
-    })
+    mock_async.actor.return_value.call = AsyncMock(
+        return_value={
+            'id': 'run-1',
+            'status': 'SUCCEEDED',
+            'defaultDatasetId': 'ds-1',
+        }
+    )
     mock_list_items = AsyncMock()
     mock_list_items.return_value.items = RAG_ITEMS
     mock_async.dataset.return_value.list_items = mock_list_items

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -85,7 +86,7 @@ CRAWL_ITEMS: list[dict] = [
 
 def _make_crawl_loader(
     mock_client: MagicMock,
-    **kwargs: object,
+    **kwargs: Any,  # noqa: ANN401
 ) -> ApifyCrawlLoader:
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         loader = ApifyCrawlLoader(url='https://example.com', apify_api_token='dummy', **kwargs)
@@ -184,7 +185,7 @@ def test_crawl_loader_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
         ApifyCrawlLoader(url='https://example.com')
 
 
-def test_crawl_loader_failure_raises(mock_tools_client: MagicMock) -> None:
+def test_crawl_loader_failure_raises() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
     mock_client.crawl_website.side_effect = RuntimeError('Actor run run-bad ended with status FAILED.')
     loader = _make_crawl_loader(mock_client)

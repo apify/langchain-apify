@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.document_loaders.base import BaseLoader
-from langchain_core.documents import Document  # noqa: TCH002
+from langchain_core.documents import Document
 from langchain_core.utils import secret_from_env
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
@@ -166,7 +166,7 @@ class ApifyCrawlLoader(BaseLoader):
             documents = loader.load()
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         url: str,
         apify_api_token: str | None = None,

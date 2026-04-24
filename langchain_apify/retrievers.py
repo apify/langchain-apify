@@ -71,7 +71,7 @@ class ApifySearchRetriever(BaseRetriever):
         self,
         query: str,
         *,
-        run_manager: CallbackManagerForRetrieverRun | None = None,
+        run_manager: CallbackManagerForRetrieverRun | None = None,  # noqa: ARG002
     ) -> list[Document]:
         run_input = {
             'query': query,
@@ -89,16 +89,21 @@ class ApifySearchRetriever(BaseRetriever):
         if not dataset_id:
             return []
 
-        items = self._sync_client.dataset(dataset_id).list_items(
-            limit=self.max_results, clean=True,
-        ).items
+        items = (
+            self._sync_client.dataset(dataset_id)
+            .list_items(
+                limit=self.max_results,
+                clean=True,
+            )
+            .items
+        )
         return self._items_to_documents(items)
 
     async def _aget_relevant_documents(
         self,
         query: str,
         *,
-        run_manager: AsyncCallbackManagerForRetrieverRun | None = None,
+        run_manager: AsyncCallbackManagerForRetrieverRun | None = None,  # noqa: ARG002
     ) -> list[Document]:
         run_input = {
             'query': query,
@@ -118,7 +123,8 @@ class ApifySearchRetriever(BaseRetriever):
 
         items = (
             await self._async_client.dataset(dataset_id).list_items(
-                limit=self.max_results, clean=True,
+                limit=self.max_results,
+                clean=True,
             )
         ).items
         return self._items_to_documents(items)

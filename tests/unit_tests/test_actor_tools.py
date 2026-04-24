@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain_core.tools import ToolException
+from pydantic import SecretStr
 
 from langchain_apify import APIFY_ACTOR_TOOLS, ApifyGoogleSearchTool, ApifyWebCrawlerTool
 from langchain_apify._client import ApifyToolsClient
@@ -167,8 +168,8 @@ def test_actor_tools_inherit_from_generic_base() -> None:
 def test_actor_tools_have_correct_metadata() -> None:
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         tools = [
-            ApifyGoogleSearchTool(apify_api_token='dummy'),
-            ApifyWebCrawlerTool(apify_api_token='dummy'),
+            ApifyGoogleSearchTool(apify_api_token=SecretStr('dummy')),
+            ApifyWebCrawlerTool(apify_api_token=SecretStr('dummy')),
         ]
 
     expected_names = ['apify_google_search', 'apify_web_crawler']
