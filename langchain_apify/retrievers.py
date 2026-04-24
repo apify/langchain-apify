@@ -80,6 +80,7 @@ class ApifySearchRetriever(BaseRetriever):
         run = self._sync_client.actor(_RAG_WEB_BROWSER_ACTOR_ID).call(
             run_input=run_input,
             timeout_secs=self.timeout_secs,
+            logger=None,
         )
         if run is None:
             return []
@@ -106,6 +107,7 @@ class ApifySearchRetriever(BaseRetriever):
         run = await self._async_client.actor(_RAG_WEB_BROWSER_ACTOR_ID).call(
             run_input=run_input,
             timeout_secs=self.timeout_secs,
+            logger=None,
         )
         if run is None:
             return []
