@@ -28,7 +28,7 @@ def _make_retriever(
 ) -> ApifySearchRetriever:
     """Create a retriever with mocked Apify clients."""
     with (
-        patch('langchain_apify.retrievers.create_apify_client') as mock_create,
+        patch('langchain_apify.retrievers._create_apify_client') as mock_create,
     ):
         mock_create.side_effect = [mock_sync_client, mock_async_client or MagicMock()]
         return ApifySearchRetriever(apify_api_token='dummy-token', **kwargs)
@@ -46,14 +46,14 @@ def test_missing_token_raises(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_init_with_explicit_token() -> None:
-    with patch('langchain_apify.retrievers.create_apify_client'):
+    with patch('langchain_apify.retrievers._create_apify_client'):
         retriever = ApifySearchRetriever(apify_api_token='my-token')
         assert retriever.max_results == 5
         assert retriever.timeout_secs == 300
 
 
 def test_init_custom_params() -> None:
-    with patch('langchain_apify.retrievers.create_apify_client'):
+    with patch('langchain_apify.retrievers._create_apify_client'):
         retriever = ApifySearchRetriever(apify_api_token='t', max_results=3, timeout_secs=60)
         assert retriever.max_results == 3
         assert retriever.timeout_secs == 60

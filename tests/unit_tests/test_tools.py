@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from langchain_apify import APIFY_CORE_TOOLS
 from langchain_apify._client import ApifyToolsClient
+from langchain_apify._utils import _actor_id_to_tool_name
 from langchain_apify.tools import (
     ApifyActorsTool,
     ApifyGetDatasetItemsTool,
@@ -23,7 +24,6 @@ from langchain_apify.tools import (
     _iso,
     _run_meta,
 )
-from langchain_apify.utils import actor_id_to_tool_name
 from tests.unit_tests.conftest import SAMPLE_ITEMS, SUCCEEDED_RUN, make_tool
 
 if TYPE_CHECKING:
@@ -57,7 +57,7 @@ def test_apify_actors_tool_instance() -> None:
         tool = ApifyActorsTool(actor_id=actor_id, apify_api_token='dummy-token')
         assert isinstance(tool, ApifyActorsTool)
         assert tool.description == 'Mocked description'
-        assert tool.name == actor_id_to_tool_name(actor_id)
+        assert tool.name == _actor_id_to_tool_name(actor_id)
         assert tool.args_schema == DummyModel
 
 
@@ -472,6 +472,42 @@ def test_run_task_and_get_items_tool_clamps_all(mock_tools_client: MagicMock) ->
     mock_tools_client.run_task_and_get_items.assert_called_once_with('t/1', None, 30, 256, 5)
 
 
+def test_clamp_timeout_floor_is_one(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
+    tool = make_tool(ApifyRunActorTool, mock_tools_client, max_timeout_secs=600)
+
+    tool._run(actor_id='apify/test', timeout_secs=-1)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 1, None)
+
+    mock_tools_client.run_actor.reset_mock()
+    tool._run(actor_id='apify/test', timeout_secs=0)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 1, None)
+
+
+def test_clamp_memory_floor_is_one(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
+    tool = make_tool(ApifyRunActorTool, mock_tools_client, max_memory_mbytes=4096)
+
+    tool._run(actor_id='apify/test', memory_mbytes=-1)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, 1)
+
+    mock_tools_client.run_actor.reset_mock()
+    tool._run(actor_id='apify/test', memory_mbytes=0)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, 1)
+
+
+def test_clamp_items_floor_is_one(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.get_dataset_items.return_value = SAMPLE_ITEMS
+    tool = make_tool(ApifyGetDatasetItemsTool, mock_tools_client, max_items=100)
+
+    tool._run(dataset_id='ds-1', limit=-1)
+    mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 1, 0)
+
+    mock_tools_client.get_dataset_items.reset_mock()
+    tool._run(dataset_id='ds-1', limit=0)
+    mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 1, 0)
+
+
 def test_values_below_max_pass_through(mock_tools_client: MagicMock) -> None:
     """When LLM values are within limits they should pass through unchanged."""
     mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
@@ -491,12 +527,12 @@ def test_generic_tools_have_correct_metadata() -> None:
     """Verify name, description, and args_schema are set on all generic tools."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         tools = [
-            ApifyRunActorTool(apify_api_token='dummy'),  # type: ignore[call-arg]
-            ApifyGetDatasetItemsTool(apify_api_token='dummy'),  # type: ignore[call-arg]
-            ApifyRunActorAndGetItemsTool(apify_api_token='dummy'),  # type: ignore[call-arg]
-            ApifyScrapeUrlTool(apify_api_token='dummy'),  # type: ignore[call-arg]
-            ApifyRunTaskTool(apify_api_token='dummy'),  # type: ignore[call-arg]
-            ApifyRunTaskAndGetItemsTool(apify_api_token='dummy'),  # type: ignore[call-arg]
+            ApifyRunActorTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyGetDatasetItemsTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyRunActorAndGetItemsTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyScrapeUrlTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyRunTaskTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyRunTaskAndGetItemsTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
         ]
 
     expected_names = [
@@ -513,6 +549,14 @@ def test_generic_tools_have_correct_metadata() -> None:
         assert tool.description
         assert tool.args_schema is not None
         assert tool.handle_tool_error is True
+
+
+def test_apify_api_token_excluded_from_model_dump() -> None:
+    """The apify_api_token field must not appear in model_dump() output."""
+    with patch.object(ApifyToolsClient, '__init__', return_value=None):
+        tool = ApifyRunActorTool(apify_api_token='x')  # type: ignore[call-arg,arg-type]
+    dumped = tool.model_dump()
+    assert 'apify_api_token' not in dumped
 
 
 # ---------------------------------------------------------------------------

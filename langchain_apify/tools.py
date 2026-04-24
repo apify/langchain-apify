@@ -7,16 +7,17 @@ from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool, ToolException
-from pydantic import BaseModel, Field, PrivateAttr, create_model
+from langchain_core.utils import secret_from_env
+from pydantic import BaseModel, Field, PrivateAttr, SecretStr, create_model
 
 from langchain_apify._client import ApifyToolsClient
-from langchain_apify._error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
-from langchain_apify.utils import (
+from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+from langchain_apify._utils import (
     _MAX_DESCRIPTION_LEN,
-    actor_id_to_tool_name,
-    create_apify_client,
-    get_actor_latest_build,
-    prune_actor_input_schema,
+    _actor_id_to_tool_name,
+    _create_apify_client,
+    _get_actor_latest_build,
+    _prune_actor_input_schema,
 )
 
 if TYPE_CHECKING:
@@ -57,10 +58,13 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
                 chunk["messages"][-1].pretty_print()
     """
 
+    _apify_client: ApifyClient = PrivateAttr()
+    _actor_id: str = PrivateAttr()
+
     def __init__(
         self,
         actor_id: str,
-        apify_api_token: str | None = None,
+        apify_api_token: str | SecretStr | None = None,
         *args: Any,  # noqa: ANN401
         **kwargs: Any,  # noqa: ANN401
     ) -> None:
@@ -75,16 +79,20 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Raises:
             ValueError: If the `APIFY_API_TOKEN` environment variable is not set
         """
-        apify_api_token = apify_api_token or os.getenv('APIFY_API_TOKEN')
-        if not apify_api_token:
-            msg = ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+        _raw_token: str | None = (
+            apify_api_token.get_secret_value()
+            if isinstance(apify_api_token, SecretStr)
+            else apify_api_token or os.getenv('APIFY_API_TOKEN')
+        )
+        if not _raw_token:
+            msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
 
-        apify_client = create_apify_client(ApifyClient, apify_api_token)
+        apify_client = _create_apify_client(ApifyClient, _raw_token)
 
         kwargs.update(
             {
-                'name': actor_id_to_tool_name(actor_id),
+                'name': _actor_id_to_tool_name(actor_id),
                 'description': self._create_description(apify_client, actor_id),
                 'args_schema': self._build_tool_args_schema_model(
                     apify_client,
@@ -127,7 +135,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Returns:
             str: The description.
         """
-        build = get_actor_latest_build(apify_client, actor_id)
+        build = _get_actor_latest_build(apify_client, actor_id)
         actor_description = build.get('actorDefinition', {}).get('description', '')
         if len(actor_description) > _MAX_DESCRIPTION_LEN:
             actor_description = actor_description[:_MAX_DESCRIPTION_LEN] + '...(TRUNCATED, TOO LONG)'
@@ -150,12 +158,12 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Raises:
             ValueError: If the input schema is not found in the Actor build.
         """
-        build = get_actor_latest_build(apify_client, actor_id)
+        build = _get_actor_latest_build(apify_client, actor_id)
         if not (actor_input := build.get('actorDefinition', {}).get('input')):
             msg = f'Input schema not found in the Actor build for Actor: {actor_id}'
             raise ValueError(msg)
 
-        properties, required = prune_actor_input_schema(actor_input)
+        properties, required = _prune_actor_input_schema(actor_input)
         properties = {'run_input': properties}
 
         description = (
@@ -321,26 +329,35 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
 
     handle_tool_error: bool = True
 
+    apify_api_token: SecretStr | None = Field(
+        default_factory=secret_from_env('APIFY_API_TOKEN', default=None),
+        description='Apify API token. Falls back to the APIFY_API_TOKEN environment variable when None.',
+        exclude=True,
+        repr=False,
+    )
     max_timeout_secs: int = Field(default=600, description='Upper bound for timeout_secs the LLM may request.')
     max_memory_mbytes: int = Field(default=32768, description='Upper bound for memory_mbytes the LLM may request.')
     max_items: int = Field(default=1000, description='Upper bound for limit / dataset_items_limit the LLM may request.')
 
     _client: ApifyToolsClient = PrivateAttr()
 
-    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
-        super().__init__(**kwargs)
-        self._client = ApifyToolsClient(apify_api_token=apify_api_token)
+    def model_post_init(self, __context: Any) -> None:  # noqa: ANN401
+        if self.apify_api_token is None:
+            msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+            raise ValueError(msg)
+        self._client = ApifyToolsClient(apify_api_token=self.apify_api_token.get_secret_value())
+        super().model_post_init(__context)
 
     def _clamp_timeout(self, value: int) -> int:
-        return min(value, self.max_timeout_secs)
+        return max(1, min(value, self.max_timeout_secs))
 
     def _clamp_memory(self, value: int | None) -> int | None:
         if value is None:
             return None
-        return min(value, self.max_memory_mbytes)
+        return max(1, min(value, self.max_memory_mbytes))
 
     def _clamp_items(self, value: int) -> int:
-        return min(value, self.max_items)
+        return max(1, min(value, self.max_items))
 
 
 # ---------------------------------------------------------------------------

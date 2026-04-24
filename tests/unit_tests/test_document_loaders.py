@@ -191,3 +191,27 @@ def test_crawl_loader_failure_raises(mock_tools_client: MagicMock) -> None:
 
     with pytest.raises(RuntimeError, match='FAILED'):
         loader.load()
+
+
+def test_apify_dataset_loader_apify_token_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Loader should accept APIFY_TOKEN as a secondary env-var fallback."""
+    monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+    monkeypatch.setenv('APIFY_TOKEN', 'platform-token')
+
+    with patch.object(DatasetClient, 'list_items') as mock_list_items:
+        mock_list_items.return_value = ListPage(data={'items': []})
+        loader = ApifyDatasetLoader(
+            dataset_id='d',
+            dataset_mapping_function=lambda _item: Document(page_content='x'),
+        )
+        assert loader.load() == []
+
+
+def test_apify_dataset_loader_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+        ApifyDatasetLoader(
+            dataset_id='d',
+            dataset_mapping_function=lambda _item: Document(page_content='x'),
+        )

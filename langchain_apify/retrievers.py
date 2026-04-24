@@ -10,8 +10,8 @@ from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from pydantic import Field, PrivateAttr
 
-from langchain_apify._error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
-from langchain_apify.utils import create_apify_client
+from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+from langchain_apify._utils import _create_apify_client
 
 if TYPE_CHECKING:
     from langchain_core.callbacks import (
@@ -62,10 +62,10 @@ class ApifySearchRetriever(BaseRetriever):
         super().__init__(**kwargs)
         token = apify_api_token or os.getenv('APIFY_API_TOKEN')
         if not token:
-            msg = ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+            msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self._sync_client = create_apify_client(ApifyClient, token)
-        self._async_client = create_apify_client(ApifyClientAsync, token)
+        self._sync_client = _create_apify_client(ApifyClient, token)
+        self._async_client = _create_apify_client(ApifyClientAsync, token)
 
     def _get_relevant_documents(
         self,
