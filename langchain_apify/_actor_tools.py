@@ -247,3 +247,58 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps({'run': _run_meta(run), 'items': items})
+
+
+class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[override]
+    """Search for LinkedIn profiles by keyword or criteria.
+
+    Uses the ``harvestapi/linkedin-profile-search`` Actor under the hood.
+
+    Args:
+        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
+        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (list
+        of profile dicts).
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyLinkedInProfileSearchTool
+
+            tool = ApifyLinkedInProfileSearchTool()
+            result = tool.invoke({
+                "query": "Founder",
+                "max_results": 10,
+            })
+    """
+
+    name: str = 'apify_linkedin_profile_search'
+    description: str = (
+        'Search for LinkedIn profiles by keyword (name, title, company) and return matching profiles as JSON.'
+        ' Required: query (str — search keywords).'
+        ' Optional: max_results (int, default 10).'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
+    )
+    args_schema: type[BaseModel] = ApifyLinkedInProfileSearchInput
+
+    def _run(
+        self,
+        query: str,
+        max_results: int = 10,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.linkedin_profile_search(
+                query=query,
+                max_results=self._clamp_items(max_results),
+                timeout_secs=self.max_timeout_secs,
+            )
+        except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps({'run': _run_meta(run), 'items': items})
