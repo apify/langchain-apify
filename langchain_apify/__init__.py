@@ -3,6 +3,15 @@ from __future__ import annotations
 from importlib import metadata
 from typing import TYPE_CHECKING
 
+from langchain_apify._actor_tools import (
+    ApifyFacebookPostsScraperTool,
+    ApifyInstagramScraperTool,
+    ApifyLinkedInProfileDetailTool,
+    ApifyLinkedInProfilePostsTool,
+    ApifyLinkedInProfileSearchTool,
+    ApifyTikTokScraperTool,
+    ApifyTwitterScraperTool,
+)
 from langchain_apify.document_loaders import ApifyDatasetLoader
 from langchain_apify.tools import (
     ApifyActorsTool,
@@ -37,6 +46,16 @@ APIFY_CORE_TOOLS: list[type[BaseTool]] = [
     ApifyRunTaskAndGetItemsTool,
 ]
 
+APIFY_SOCIAL_TOOLS: list[type[BaseTool]] = [
+    ApifyInstagramScraperTool,
+    ApifyLinkedInProfilePostsTool,
+    ApifyLinkedInProfileSearchTool,
+    ApifyLinkedInProfileDetailTool,
+    ApifyTwitterScraperTool,
+    ApifyTikTokScraperTool,
+    ApifyFacebookPostsScraperTool,
+]
+
 __all__ = [
     # Existing components (backward-compatible)
     'ApifyActorsTool',
@@ -49,8 +68,17 @@ __all__ = [
     'ApifyRunTaskAndGetItemsTool',
     'ApifyRunTaskTool',
     'ApifyScrapeUrlTool',
+    # Social media Actor tools
+    'ApifyFacebookPostsScraperTool',
+    'ApifyInstagramScraperTool',
+    'ApifyLinkedInProfileDetailTool',
+    'ApifyLinkedInProfilePostsTool',
+    'ApifyLinkedInProfileSearchTool',
+    'ApifyTikTokScraperTool',
+    'ApifyTwitterScraperTool',
     # Tool group lists
     'APIFY_CORE_TOOLS',
+    'APIFY_SOCIAL_TOOLS',
     # Meta
     '__version__',
 ]
