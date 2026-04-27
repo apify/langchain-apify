@@ -192,3 +192,58 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps({'run': _run_meta(run), 'items': items})
+
+
+class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override]
+    """Extract posts from a LinkedIn profile.
+
+    Uses the ``apimaestro/linkedin-profile-posts`` Actor under the hood.
+
+    Args:
+        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
+        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (list
+        of post dicts).
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyLinkedInProfilePostsTool
+
+            tool = ApifyLinkedInProfilePostsTool()
+            result = tool.invoke({
+                "profile_url": "https://www.linkedin.com/in/satyanadella",
+                "max_results": 10,
+            })
+    """
+
+    name: str = 'apify_linkedin_profile_posts'
+    description: str = (
+        'Extract posts from a LinkedIn profile and return them as JSON.'
+        ' Required: profile_url (str — LinkedIn profile URL or username, e.g. "satyanadella").'
+        ' Optional: max_results (int, default 20).'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
+    )
+    args_schema: type[BaseModel] = ApifyLinkedInProfilePostsInput
+
+    def _run(
+        self,
+        profile_url: str,
+        max_results: int = 20,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.linkedin_profile_posts(
+                profile_url=profile_url,
+                max_results=self._clamp_items(max_results),
+                timeout_secs=self.max_timeout_secs,
+            )
+        except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps({'run': _run_meta(run), 'items': items})
