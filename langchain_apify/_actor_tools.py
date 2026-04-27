@@ -480,3 +480,63 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps({'run': _run_meta(run), 'items': items})
+
+
+class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override]
+    """Scrape public Facebook page posts.
+
+    Uses the ``apify/facebook-posts-scraper`` Actor under the hood.
+    Only public Facebook pages are supported - personal profiles cannot
+    be scraped.
+
+    Args:
+        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
+        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (list
+        of post dicts).
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyFacebookPostsScraperTool
+
+            tool = ApifyFacebookPostsScraperTool()
+            result = tool.invoke({
+                "page_url": "https://www.facebook.com/humansofnewyork/",
+                "max_results": 20,
+            })
+    """
+
+    name: str = 'apify_facebook_posts_scraper'
+    description: str = (
+        'Scrape posts from a public Facebook page and return them as JSON.'
+        ' Required: page_url (str - Facebook page URL; personal profiles are not supported).'
+        ' Optional: max_results (int, default 20),'
+        ' only_posts_newer_than (str - date filter, e.g. "2025-01-01" or "1 week").'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
+    )
+    args_schema: type[BaseModel] = ApifyFacebookPostsScraperInput
+
+    def _run(
+        self,
+        page_url: str,
+        max_results: int = 20,
+        only_posts_newer_than: str | None = None,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.facebook_posts_scrape(
+                page_url=page_url,
+                max_results=self._clamp_items(max_results),
+                only_posts_newer_than=only_posts_newer_than,
+                timeout_secs=self.max_timeout_secs,
+            )
+        except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps({'run': _run_meta(run), 'items': items})
