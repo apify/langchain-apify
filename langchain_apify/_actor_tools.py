@@ -302,3 +302,57 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[overrid
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps({'run': _run_meta(run), 'items': items})
+
+
+class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[override]
+    """Retrieve detailed information from a specific LinkedIn profile.
+
+    Uses the ``apimaestro/linkedin-profile-detail`` Actor under the hood.
+
+    Args:
+        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
+        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (typically
+        a single-element list with the profile dict).
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyLinkedInProfileDetailTool
+
+            tool = ApifyLinkedInProfileDetailTool()
+            result = tool.invoke({
+                "profile_url": "https://www.linkedin.com/in/neal-mohan",
+            })
+    """
+
+    name: str = 'apify_linkedin_profile_detail'
+    description: str = (
+        'Retrieve detailed information from a specific LinkedIn profile and return it as JSON.'
+        ' Required: profile_url (str — LinkedIn profile URL, username, or URN, e.g. "neal-mohan").'
+        ' Optional: include_email (bool, default False — include profile email if available).'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
+    )
+    args_schema: type[BaseModel] = ApifyLinkedInProfileDetailInput
+
+    def _run(
+        self,
+        profile_url: str,
+        include_email: bool = False,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.linkedin_profile_detail(
+                profile_url=profile_url,
+                include_email=include_email,
+                timeout_secs=self.max_timeout_secs,
+            )
+        except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps({'run': _run_meta(run), 'items': items})
