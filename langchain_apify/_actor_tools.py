@@ -91,11 +91,11 @@ class ApifyTwitterScraperInput(BaseModel):
     max_results: int = Field(default=20, description='Maximum number of tweets to return.')
     start: str | None = Field(
         default=None,
-        description='Optional start date — only return tweets newer than this date.',
+        description='Optional start date - only return tweets newer than this date.',
     )
     end: str | None = Field(
         default=None,
-        description='Optional end date — only return tweets older than this date.',
+        description='Optional end date - only return tweets older than this date.',
     )
 
 
@@ -166,9 +166,9 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
     description: str = (
         'Scrape Instagram profiles, hashtags, posts, or comments and return the results as JSON.'
         ' Required: search_type (one of "user", "hashtag", "post", "comments"),'
-        ' search_query (str — username, hashtag, or post URL).'
+        ' search_query (str - username, hashtag, or post URL).'
         ' Optional: max_results (int, default 20),'
-        ' only_posts_newer_than (str — date filter, e.g. "2025-01-01" or "1 week").'
+        ' only_posts_newer_than (str - date filter, e.g. "2025-01-01" or "1 week").'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
     )
     args_schema: type[BaseModel] = ApifyInstagramScraperInput
@@ -226,7 +226,7 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override
     name: str = 'apify_linkedin_profile_posts'
     description: str = (
         'Extract posts from a LinkedIn profile and return them as JSON.'
-        ' Required: profile_url (str — LinkedIn profile URL or username, e.g. "satyanadella").'
+        ' Required: profile_url (str - LinkedIn profile URL or username, e.g. "satyanadella").'
         ' Optional: max_results (int, default 20).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
     )
@@ -281,7 +281,7 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[overrid
     name: str = 'apify_linkedin_profile_search'
     description: str = (
         'Search for LinkedIn profiles by keyword (name, title, company) and return matching profiles as JSON.'
-        ' Required: query (str — search keywords).'
+        ' Required: query (str - search keywords).'
         ' Optional: max_results (int, default 10).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
     )
@@ -335,8 +335,8 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[overrid
     name: str = 'apify_linkedin_profile_detail'
     description: str = (
         'Retrieve detailed information from a specific LinkedIn profile and return it as JSON.'
-        ' Required: profile_url (str — LinkedIn profile URL, username, or URN, e.g. "neal-mohan").'
-        ' Optional: include_email (bool, default False — include profile email if available).'
+        ' Required: profile_url (str - LinkedIn profile URL, username, or URN, e.g. "neal-mohan").'
+        ' Optional: include_email (bool, default False - include profile email if available).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
     )
     args_schema: type[BaseModel] = ApifyLinkedInProfileDetailInput
@@ -354,5 +354,70 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[overrid
                 timeout_secs=self.max_timeout_secs,
             )
         except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps({'run': _run_meta(run), 'items': items})
+
+
+class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
+    """Scrape tweets, profiles, or replies from Twitter/X.
+
+    Uses the ``apidojo/twitter-scraper-lite`` Actor under the hood.
+
+    Args:
+        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
+        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (list
+        of tweet dicts).
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyTwitterScraperTool
+
+            tool = ApifyTwitterScraperTool()
+            result = tool.invoke({
+                "search_query": "apify",
+                "search_mode": "search",
+                "max_results": 20,
+            })
+    """
+
+    name: str = 'apify_twitter_scraper'
+    description: str = (
+        'Scrape tweets from Twitter/X by search term, user handle, or tweet URL and return them as JSON.'
+        ' Required: search_query (str - search term, handle, or tweet URL).'
+        ' Optional: search_mode (one of "search", "user", "replies"; default "search"),'
+        ' max_results (int, default 20),'
+        ' start (str - ISO date, only return tweets newer than this date),'
+        ' end (str - ISO date, only return tweets older than this date).'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
+    )
+    args_schema: type[BaseModel] = ApifyTwitterScraperInput
+
+    def _run(
+        self,
+        search_query: str,
+        search_mode: Literal['search', 'user', 'replies'] = 'search',
+        max_results: int = 20,
+        start: str | None = None,
+        end: str | None = None,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.twitter_scrape(
+                search_query=search_query,
+                search_mode=search_mode,
+                max_results=self._clamp_items(max_results),
+                start=start,
+                end=end,
+                timeout_secs=self.max_timeout_secs,
+            )
+        except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps({'run': _run_meta(run), 'items': items})
