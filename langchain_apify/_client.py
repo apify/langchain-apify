@@ -364,6 +364,7 @@ class ApifyToolsClient:
     def linkedin_profile_detail(
         self,
         profile_url: str,
+        *,
         include_email: bool = False,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
     ) -> tuple[dict, list[dict]]:
@@ -393,7 +394,7 @@ class ApifyToolsClient:
             dataset_items_limit=1,
         )
 
-    def twitter_scrape(
+    def twitter_scrape(  # noqa: PLR0913
         self,
         search_query: str,
         search_mode: str = 'search',
@@ -429,10 +430,7 @@ class ApifyToolsClient:
         elif search_mode == 'replies':
             run_input['startUrls'] = [search_query]
         else:
-            msg = (
-                f'Unsupported Twitter search_mode {search_mode!r}. '
-                "Expected one of: ['search', 'user', 'replies']."
-            )
+            msg = f"Unsupported Twitter search_mode {search_mode!r}. Expected one of: ['search', 'user', 'replies']."
             raise ValueError(msg)
         if start is not None:
             run_input['start'] = start
@@ -475,10 +473,7 @@ class ApifyToolsClient:
         elif search_type == 'hashtag':
             run_input['hashtags'] = [search_query.lstrip('#')]
         else:
-            msg = (
-                f'Unsupported TikTok search_type {search_type!r}. '
-                "Expected one of: ['search', 'user', 'hashtag']."
-            )
+            msg = f"Unsupported TikTok search_type {search_type!r}. Expected one of: ['search', 'user', 'hashtag']."
             raise ValueError(msg)
         return self.run_actor_and_get_items(
             _TIKTOK_ACTOR_ID,

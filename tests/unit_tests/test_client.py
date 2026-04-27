@@ -331,9 +331,7 @@ def test_instagram_scrape_comments_uses_comments_results_type(
     assert call_kwargs['run_input']['directUrls'] == ['https://www.instagram.com/p/ABC123/']
 
 
-def test_instagram_scrape_passes_only_posts_newer_than(
-    client: ApifyToolsClient, mock_apify_client: MagicMock
-) -> None:
+def test_instagram_scrape_passes_only_posts_newer_than(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     _setup_run_and_items(mock_apify_client)
 
     client.instagram_scrape('user', 'apify', only_posts_newer_than='1 week')
@@ -382,9 +380,7 @@ def test_linkedin_profile_search_maps_input(client: ApifyToolsClient, mock_apify
     assert call_kwargs['run_input'] == {'searchQuery': 'Founder', 'maxItems': 25}
 
 
-def test_linkedin_profile_search_default_max_results(
-    client: ApifyToolsClient, mock_apify_client: MagicMock
-) -> None:
+def test_linkedin_profile_search_default_max_results(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     _setup_run_and_items(mock_apify_client)
 
     client.linkedin_profile_search('CTO')
@@ -445,9 +441,7 @@ def test_twitter_scrape_user_mode_strips_at(client: ApifyToolsClient, mock_apify
     assert call_kwargs['run_input'] == {'maxItems': 10, 'twitterHandles': ['apify']}
 
 
-def test_twitter_scrape_replies_mode_uses_start_urls(
-    client: ApifyToolsClient, mock_apify_client: MagicMock
-) -> None:
+def test_twitter_scrape_replies_mode_uses_start_urls(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     _setup_run_and_items(mock_apify_client)
 
     client.twitter_scrape('https://x.com/apify/status/123', search_mode='replies')
@@ -570,8 +564,7 @@ def test_build_instagram_url_user() -> None:
 
 def test_build_instagram_url_hashtag() -> None:
     assert (
-        ApifyToolsClient._build_instagram_url('hashtag', '#travel')
-        == 'https://www.instagram.com/explore/tags/travel/'
+        ApifyToolsClient._build_instagram_url('hashtag', '#travel') == 'https://www.instagram.com/explore/tags/travel/'
     )
 
 

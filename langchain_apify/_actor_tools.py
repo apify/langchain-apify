@@ -108,7 +108,7 @@ class ApifyTikTokScraperInput(BaseModel):
         default='search',
         description=(
             'Type of content to scrape: "search" for keyword search, "user" for '
-            "a profile's videos, \"hashtag\" for videos under a tag."
+            'a profile\'s videos, "hashtag" for videos under a tag.'
         ),
     )
     max_results: int = Field(default=20, description='Maximum number of items to return.')
@@ -345,6 +345,7 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[overrid
     def _run(
         self,
         profile_url: str,
+        *,
         include_email: bool = False,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
