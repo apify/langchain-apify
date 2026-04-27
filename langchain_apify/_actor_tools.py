@@ -7,9 +7,16 @@ needing to know Actor IDs or raw input schemas.
 
 from __future__ import annotations
 
-from typing import Literal
+import json
+from typing import TYPE_CHECKING, Literal
 
+from langchain_core.tools import ToolException
 from pydantic import BaseModel, Field
+
+from langchain_apify.tools import _ApifyGenericTool, _run_meta
+
+if TYPE_CHECKING:
+    from langchain_core.callbacks import CallbackManagerForToolRun
 
 # ---------------------------------------------------------------------------
 # Input schemas
@@ -118,3 +125,70 @@ class ApifyFacebookPostsScraperInput(BaseModel):
             'values like "1 day", "2 months", "3 years".'
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# Tools
+# ---------------------------------------------------------------------------
+
+
+class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
+    """Scrape Instagram profiles, hashtags, posts, or comments.
+
+    Uses the ``apify/instagram-scraper`` Actor under the hood.
+
+    Args:
+        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
+        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (list
+        of scraped item dicts).
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyInstagramScraperTool
+
+            tool = ApifyInstagramScraperTool()
+            result = tool.invoke({
+                "search_type": "user",
+                "search_query": "apify",
+                "max_results": 10,
+            })
+    """
+
+    name: str = 'apify_instagram_scraper'
+    description: str = (
+        'Scrape Instagram profiles, hashtags, posts, or comments and return the results as JSON.'
+        ' Required: search_type (one of "user", "hashtag", "post", "comments"),'
+        ' search_query (str — username, hashtag, or post URL).'
+        ' Optional: max_results (int, default 20),'
+        ' only_posts_newer_than (str — date filter, e.g. "2025-01-01" or "1 week").'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
+    )
+    args_schema: type[BaseModel] = ApifyInstagramScraperInput
+
+    def _run(
+        self,
+        search_type: Literal['user', 'hashtag', 'post', 'comments'],
+        search_query: str,
+        max_results: int = 20,
+        only_posts_newer_than: str | None = None,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.instagram_scrape(
+                search_type=search_type,
+                search_query=search_query,
+                max_results=self._clamp_items(max_results),
+                only_posts_newer_than=only_posts_newer_than,
+                timeout_secs=self.max_timeout_secs,
+            )
+        except (RuntimeError, ValueError) as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps({'run': _run_meta(run), 'items': items})
