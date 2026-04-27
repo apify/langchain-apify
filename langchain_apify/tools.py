@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
@@ -18,6 +17,7 @@ from langchain_apify._utils import (
     _create_apify_client,
     _get_actor_latest_build,
     _prune_actor_input_schema,
+    _run_meta,
 )
 
 if TYPE_CHECKING:
@@ -267,29 +267,6 @@ class ApifyRunTaskAndGetItemsInput(BaseModel):
         default=None, description='Memory limit in MB for the run, or null for task default.'
     )
     dataset_items_limit: int = Field(default=100, description='Maximum number of dataset items to return.')
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _iso(value: str | datetime | None) -> str | None:
-    """Coerce a possible ``datetime`` to an ISO-8601 string."""
-    if isinstance(value, datetime):
-        return value.isoformat()
-    return value
-
-
-def _run_meta(run: dict) -> dict:
-    """Extract a compact metadata dict from an Apify run-details dict."""
-    return {
-        'run_id': run.get('id'),
-        'status': run.get('status'),
-        'dataset_id': run.get('defaultDatasetId'),
-        'started_at': _iso(run.get('startedAt')),
-        'finished_at': _iso(run.get('finishedAt')),
-    }
 
 
 # ---------------------------------------------------------------------------

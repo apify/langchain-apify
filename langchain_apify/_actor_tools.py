@@ -13,7 +13,8 @@ from typing import TYPE_CHECKING, Literal
 from langchain_core.tools import ToolException
 from pydantic import BaseModel, Field
 
-from langchain_apify.tools import _ApifyGenericTool, _run_meta
+from langchain_apify._utils import _run_meta
+from langchain_apify.tools import _ApifyGenericTool
 
 if TYPE_CHECKING:
     from langchain_core.callbacks import CallbackManagerForToolRun

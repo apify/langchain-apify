@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import string
+from datetime import datetime
 from typing import TypeVar
 
 import requests
@@ -130,3 +131,21 @@ def _get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
         raise ValueError(msg)
 
     return data
+
+
+def _iso(value: str | datetime | None) -> str | None:
+    """Coerce a possible ``datetime`` to an ISO-8601 string."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value
+
+
+def _run_meta(run: dict) -> dict:
+    """Extract a compact metadata dict from an Apify run-details dict."""
+    return {
+        'run_id': run.get('id'),
+        'status': run.get('status'),
+        'dataset_id': run.get('defaultDatasetId'),
+        'started_at': _iso(run.get('startedAt')),
+        'finished_at': _iso(run.get('finishedAt')),
+    }
