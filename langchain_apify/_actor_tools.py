@@ -421,3 +421,62 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps({'run': _run_meta(run), 'items': items})
+
+
+class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
+    """Scrape TikTok videos, profiles, or hashtag content.
+
+    Uses the ``clockworks/tiktok-scraper`` Actor under the hood.
+
+    Args:
+        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
+        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (list
+        of TikTok item dicts).
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+            from langchain_apify import ApifyTikTokScraperTool
+
+            tool = ApifyTikTokScraperTool()
+            result = tool.invoke({
+                "search_query": "cooking",
+                "search_type": "search",
+                "max_results": 20,
+            })
+    """
+
+    name: str = 'apify_tiktok_scraper'
+    description: str = (
+        'Scrape TikTok by search keyword, profile, or hashtag and return the results as JSON.'
+        ' Required: search_query (str - keyword, username, or hashtag).'
+        ' Optional: search_type (one of "search", "user", "hashtag"; default "search"),'
+        ' max_results (int, default 20).'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
+    )
+    args_schema: type[BaseModel] = ApifyTikTokScraperInput
+
+    def _run(
+        self,
+        search_query: str,
+        search_type: Literal['search', 'user', 'hashtag'] = 'search',
+        max_results: int = 20,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.tiktok_scrape(
+                search_query=search_query,
+                search_type=search_type,
+                max_results=self._clamp_items(max_results),
+                timeout_secs=self.max_timeout_secs,
+            )
+        except (RuntimeError, ValueError) as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps({'run': _run_meta(run), 'items': items})
