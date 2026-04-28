@@ -9,9 +9,9 @@ from langchain_apify.retrievers import ApifySearchRetriever
 from langchain_apify.tools import (
     ApifyActorsTool,
     ApifyGetDatasetItemsTool,
-    ApifyRunActorAndGetItemsTool,
+    ApifyRunActorAndGetDatasetTool,
     ApifyRunActorTool,
-    ApifyRunTaskAndGetItemsTool,
+    ApifyRunTaskAndGetDatasetTool,
     ApifyRunTaskTool,
     ApifyScrapeUrlTool,
 )
@@ -33,10 +33,10 @@ del metadata  # optional, avoids polluting the results of dir(__package__)
 APIFY_CORE_TOOLS: list[type[BaseTool]] = [
     ApifyRunActorTool,
     ApifyGetDatasetItemsTool,
-    ApifyRunActorAndGetItemsTool,
+    ApifyRunActorAndGetDatasetTool,
     ApifyScrapeUrlTool,
     ApifyRunTaskTool,
-    ApifyRunTaskAndGetItemsTool,
+    ApifyRunTaskAndGetDatasetTool,
 ]
 
 APIFY_ACTOR_TOOLS: list[type] = [
@@ -51,9 +51,9 @@ __all__ = [
     'ApifyWrapper',
     # Core generic tools
     'ApifyGetDatasetItemsTool',
-    'ApifyRunActorAndGetItemsTool',
+    'ApifyRunActorAndGetDatasetTool',
     'ApifyRunActorTool',
-    'ApifyRunTaskAndGetItemsTool',
+    'ApifyRunTaskAndGetDatasetTool',
     'ApifyRunTaskTool',
     'ApifyScrapeUrlTool',
     # Actor-specific tools
