@@ -219,6 +219,13 @@ def test_check_run_status_failed() -> None:
         ApifyToolsClient._check_run_status({'id': 'run-bad', 'status': 'FAILED'})
 
 
+def test_check_run_status_failed_includes_status_message() -> None:
+    with pytest.raises(RuntimeError, match='Actor exited out of memory'):
+        ApifyToolsClient._check_run_status(
+            {'id': 'run-oom', 'status': 'FAILED', 'statusMessage': 'Actor exited out of memory'},
+        )
+
+
 # ---------------------------------------------------------------------------
 # None returns from actor/task .call()
 # ---------------------------------------------------------------------------

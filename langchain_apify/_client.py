@@ -550,4 +550,6 @@ class ApifyToolsClient:
         if status != _RUN_STATUS_SUCCEEDED:
             run_id = run.get('id', 'unknown')
             msg = _ERROR_ACTOR_RUN_FAILED.format(run_id=run_id, status=status)
+            if status_message := run.get('statusMessage'):
+                msg = f'{msg} {status_message}'
             raise RuntimeError(msg)
