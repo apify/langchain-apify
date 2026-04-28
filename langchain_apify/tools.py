@@ -340,12 +340,12 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
 
     _client: ApifyToolsClient = PrivateAttr()
 
-    def model_post_init(self, __context: Any) -> None:  # noqa: ANN401
+    def model_post_init(self, context: Any) -> None:  # noqa: ANN401
         if self.apify_api_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
         self._client = ApifyToolsClient(apify_api_token=self.apify_api_token.get_secret_value())
-        super().model_post_init(__context)
+        super().model_post_init(context)
 
     def _clamp_timeout(self, value: int) -> int:
         return max(1, min(value, self.max_timeout_secs))
