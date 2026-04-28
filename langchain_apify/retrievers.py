@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-import os
+import asyncio
 from typing import TYPE_CHECKING, Any
 
-from apify_client import ApifyClient, ApifyClientAsync
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
-from pydantic import Field, PrivateAttr
+from langchain_core.utils import secret_from_env
+from pydantic import Field, PrivateAttr, SecretStr
 
-from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
-from langchain_apify._utils import _create_apify_client
+from langchain_apify._client import ApifyToolsClient
 
 if TYPE_CHECKING:
     from langchain_core.callbacks import (
@@ -19,7 +18,6 @@ if TYPE_CHECKING:
         CallbackManagerForRetrieverRun,
     )
 
-_RAG_WEB_BROWSER_ACTOR_ID = 'apify/rag-web-browser'
 _DEFAULT_TIMEOUT_SECS = 300
 
 
@@ -52,20 +50,25 @@ class ApifySearchRetriever(BaseRetriever):
             docs = retriever.invoke("What is LangChain?")
     """
 
+    apify_api_token: SecretStr | None = Field(
+        default_factory=secret_from_env('APIFY_API_TOKEN', default=None),
+        description='Apify API token. Falls back to the APIFY_API_TOKEN environment variable when None.',
+        exclude=True,
+        repr=False,
+    )
     max_results: int = Field(default=5, description='Maximum number of documents to return.')
     timeout_secs: int = Field(default=_DEFAULT_TIMEOUT_SECS, description='Maximum Actor run time in seconds.')
 
-    _sync_client: ApifyClient = PrivateAttr()
-    _async_client: ApifyClientAsync = PrivateAttr()
+    _client: ApifyToolsClient = PrivateAttr()
 
-    def __init__(self, apify_api_token: str | None = None, **kwargs: Any) -> None:  # noqa: ANN401
-        super().__init__(**kwargs)
-        token = apify_api_token or os.getenv('APIFY_API_TOKEN')
-        if not token:
-            msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
-            raise ValueError(msg)
-        self._sync_client = _create_apify_client(ApifyClient, token)
-        self._async_client = _create_apify_client(ApifyClientAsync, token)
+    def model_post_init(self, context: Any) -> None:  # noqa: ANN401
+        """Construct the underlying ``ApifyToolsClient``.
+
+        The helper handles ``None`` / ``SecretStr`` / env-fallback and raises
+        ``ValueError`` if no token is available.
+        """
+        self._client = ApifyToolsClient(apify_api_token=self.apify_api_token)
+        super().model_post_init(context)
 
     def _get_relevant_documents(
         self,
@@ -73,29 +76,10 @@ class ApifySearchRetriever(BaseRetriever):
         *,
         run_manager: CallbackManagerForRetrieverRun | None = None,  # noqa: ARG002
     ) -> list[Document]:
-        run_input = {
-            'query': query,
-            'maxResults': self.max_results,
-        }
-        run = self._sync_client.actor(_RAG_WEB_BROWSER_ACTOR_ID).call(
-            run_input=run_input,
+        items = self._client.rag_web_search(
+            query,
+            max_results=self.max_results,
             timeout_secs=self.timeout_secs,
-            logger=None,
-        )
-        if run is None:
-            return []
-
-        dataset_id = run.get('defaultDatasetId')
-        if not dataset_id:
-            return []
-
-        items = (
-            self._sync_client.dataset(dataset_id)
-            .list_items(
-                limit=self.max_results,
-                clean=True,
-            )
-            .items
         )
         return self._items_to_documents(items)
 
@@ -105,28 +89,13 @@ class ApifySearchRetriever(BaseRetriever):
         *,
         run_manager: AsyncCallbackManagerForRetrieverRun | None = None,  # noqa: ARG002
     ) -> list[Document]:
-        run_input = {
-            'query': query,
-            'maxResults': self.max_results,
-        }
-        run = await self._async_client.actor(_RAG_WEB_BROWSER_ACTOR_ID).call(
-            run_input=run_input,
+        # ApifyToolsClient is sync-only.
+        items = await asyncio.to_thread(
+            self._client.rag_web_search,
+            query,
+            max_results=self.max_results,
             timeout_secs=self.timeout_secs,
-            logger=None,
         )
-        if run is None:
-            return []
-
-        dataset_id = run.get('defaultDatasetId')
-        if not dataset_id:
-            return []
-
-        items = (
-            await self._async_client.dataset(dataset_id).list_items(
-                limit=self.max_results,
-                clean=True,
-            )
-        ).items
         return self._items_to_documents(items)
 
     @staticmethod

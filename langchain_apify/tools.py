@@ -46,7 +46,6 @@ if TYPE_CHECKING:
 CrawlerType = Literal['cheerio', 'playwright:adaptive', 'playwright:firefox']
 
 
-
 class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
     """Tool that runs Apify Actors.
 
