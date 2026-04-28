@@ -7,6 +7,7 @@ import pytest
 from apify_client._types import ListPage
 from apify_client.clients import DatasetClient
 from langchain_core.documents import Document
+from pydantic import SecretStr
 
 from langchain_apify import ApifyCrawlLoader, ApifyDatasetLoader
 from langchain_apify._client import ApifyToolsClient
@@ -183,6 +184,12 @@ def test_crawl_loader_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
     with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
         ApifyCrawlLoader(url='https://example.com')
+
+
+def test_crawl_loader_accepts_secretstr_token() -> None:
+    with patch('langchain_apify._client._create_apify_client'):
+        loader = ApifyCrawlLoader(url='https://example.com', apify_api_token=SecretStr('s'))
+    assert loader.url == 'https://example.com'
 
 
 def test_crawl_loader_failure_raises() -> None:

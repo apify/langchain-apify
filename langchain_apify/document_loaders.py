@@ -171,7 +171,7 @@ class ApifyCrawlLoader(BaseLoader):
     def __init__(  # noqa: PLR0913
         self,
         url: str,
-        apify_api_token: str | None = None,
+        apify_api_token: str | SecretStr | None = None,
         *,
         max_crawl_pages: int = 10,
         max_crawl_depth: int = 1,
