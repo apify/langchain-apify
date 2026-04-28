@@ -453,7 +453,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
         if not items:
-            return json.dumps({'items': [], 'message': 'Dataset is empty or not found.'})
+            return json.dumps({'items': [], 'message': f'Dataset {dataset_id} is empty.'})
         return json.dumps({'items': items})
 
 
