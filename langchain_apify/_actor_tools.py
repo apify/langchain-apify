@@ -1,8 +1,8 @@
-"""Actor-specific tool subclasses (search, social-media, etc.).
+"""Actor-specific tool subclasses.
 
-Downstream feature branches add concrete tools here.  They inherit from
-:class:`~langchain_apify.tools._ApifyGenericTool` and use
-:func:`~langchain_apify.tools._run_meta` to format run metadata.
+Tools in this module wrap a single Apify Actor behind a simplified,
+LLM-friendly interface. They inherit from
+:class:`~langchain_apify.tools._ApifyGenericTool`.
 """
 
 from __future__ import annotations
@@ -153,8 +153,3 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
             for item in items
         ]
         return json.dumps(pages)
-
-
-# ---------------------------------------------------------------------------
-# Social-media tools
-# ---------------------------------------------------------------------------
