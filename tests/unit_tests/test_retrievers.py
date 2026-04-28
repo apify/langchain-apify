@@ -184,6 +184,21 @@ def test_items_to_documents_uses_url_fallback() -> None:
     assert docs[0].metadata['source'] == 'https://fallback.com'
 
 
+def test_items_to_documents_uses_metadata_url_fallback() -> None:
+    """apify/rag-web-browser nests the page URL under metadata.url."""
+    items = [
+        {
+            'metadata': {'url': 'https://nested.example.com', 'title': 'Nested'},
+            'text': 'content',
+        },
+    ]
+
+    docs = ApifySearchRetriever._items_to_documents(items)
+
+    assert docs[0].metadata['source'] == 'https://nested.example.com'
+    assert docs[0].metadata['title'] == 'Nested'
+
+
 def test_items_to_documents_uses_markdown_fallback() -> None:
     items = [{'crawledUrl': 'https://example.com', 'markdown': '# MD content', 'metadata': {'title': 'T'}}]
 

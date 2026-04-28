@@ -104,9 +104,13 @@ class ApifySearchRetriever(BaseRetriever):
         docs: list[Document] = []
         for item in items:
             page_content = item.get('text') or item.get('markdown') or ''
+            raw_meta = item.get('metadata')
+            item_metadata: dict = raw_meta if isinstance(raw_meta, dict) else {}
             metadata: dict[str, Any] = {
-                'source': item.get('crawledUrl') or item.get('url', ''),
-                'title': item.get('metadata', {}).get('title', '') if isinstance(item.get('metadata'), dict) else '',
+                # apify/rag-web-browser nests url/title under "metadata"; older
+                # Actors and tests use top-level keys. Both are supported.
+                'source': item.get('crawledUrl') or item.get('url') or item_metadata.get('url', ''),
+                'title': item_metadata.get('title', ''),
             }
             docs.append(Document(page_content=page_content, metadata=metadata))
         return docs
