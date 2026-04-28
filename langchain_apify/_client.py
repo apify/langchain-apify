@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import os
+
 import httpx
 from apify_client import ApifyClient
 from apify_client.errors import ApifyClientError
+from pydantic import SecretStr
 
 from langchain_apify._error_messages import (
     _ERROR_ACTOR_RUN_FAILED,
@@ -28,17 +31,23 @@ class ApifyToolsClient:
     block until the Actor run finishes.
 
     Args:
-        apify_api_token: Apify API token.
+        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+            environment variable when *None*.
 
     Raises:
-        ValueError: If the token is empty.
+        ValueError: If no token is provided and the env var is not set.
     """
 
-    def __init__(self, apify_api_token: str) -> None:
-        if not apify_api_token:
+    def __init__(self, apify_api_token: SecretStr | str | None = None) -> None:
+        if isinstance(apify_api_token, SecretStr):
+            _token: str | None = apify_api_token.get_secret_value()
+        else:
+            _token = apify_api_token or os.getenv('APIFY_API_TOKEN')
+
+        if not _token:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self._client = _create_apify_client(ApifyClient, apify_api_token)
+        self._client = _create_apify_client(ApifyClient, _token)
 
     def run_actor(
         self,
