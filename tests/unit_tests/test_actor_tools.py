@@ -360,3 +360,25 @@ def test_social_tool_runtime_error_raises_tool_exception(
 
     with pytest.raises(ToolException, match='run-XYZ'):
         tool._run(**run_kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Per-tool empty-dataset coverage
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(('tool_cls', 'method_name', 'run_kwargs'), _TOOL_INVOCATIONS)
+def test_social_tool_returns_valid_json_for_empty_items(
+    tool_cls: type,
+    method_name: str,
+    run_kwargs: dict,
+    mock_tools_client: MagicMock,
+) -> None:
+    getattr(mock_tools_client, method_name).return_value = (SUCCEEDED_RUN, [])
+    tool = make_tool(tool_cls, mock_tools_client)
+
+    result = tool._run(**run_kwargs)
+    parsed = json.loads(result)
+
+    assert parsed['items'] == []
+    assert parsed['run'] == EXPECTED_RUN_META
