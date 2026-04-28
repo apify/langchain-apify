@@ -171,7 +171,7 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
         ' Optional: max_results (int, default 20),'
         ' only_posts_newer_than (str - date filter, e.g. "2025-01-01" or "1 week").'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
-        ' Use only the data returned; do not halucinate missing fields.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: type[BaseModel] = ApifyInstagramScraperInput
 
@@ -231,7 +231,7 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override
         ' Required: profile_url (str - LinkedIn profile URL or username, e.g. "satyanadella").'
         ' Optional: max_results (int, default 20).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
-        ' Use only the data returned; do not halucinate missing fields.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: type[BaseModel] = ApifyLinkedInProfilePostsInput
 
@@ -287,7 +287,7 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[overrid
         ' Required: query (str - search keywords).'
         ' Optional: max_results (int, default 10).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
-        ' Use only the data returned; do not halucinate missing fields.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: type[BaseModel] = ApifyLinkedInProfileSearchInput
 
@@ -342,7 +342,7 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[overrid
         ' Required: profile_url (str - LinkedIn profile URL, username, or URN, e.g. "neal-mohan").'
         ' Optional: include_email (bool, default False - include profile email if available).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
-        ' Use only the data returned; do not halucinate missing fields.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: type[BaseModel] = ApifyLinkedInProfileDetailInput
 
@@ -403,7 +403,7 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
         ' start (str - ISO date, only return tweets newer than this date),'
         ' end (str - ISO date, only return tweets older than this date).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
-        ' Use only the data returned; do not halucinate missing fields.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: type[BaseModel] = ApifyTwitterScraperInput
 
@@ -467,7 +467,7 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
         ' Optional: search_type (one of "search", "user", "hashtag"; default "search"),'
         ' max_results (int, default 20).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
-        ' Use only the data returned; do not halucinate missing fields.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: type[BaseModel] = ApifyTikTokScraperInput
 
@@ -528,7 +528,7 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override
         ' Optional: max_results (int, default 20),'
         ' only_posts_newer_than (str - date filter, e.g. "2025-01-01" or "1 week").'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
-        ' Use only the data returned; do not halucinate missing fields.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: type[BaseModel] = ApifyFacebookPostsScraperInput
 
