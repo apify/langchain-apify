@@ -290,12 +290,14 @@ def test_run_task_and_get_items_dataset_fetch_network_error(
     with pytest.raises(RuntimeError, match='Apify dataset fetch failed'):
         client.run_task_and_get_items('user/my-task')
 
+
 def test_run_actor_programming_error_propagates(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     """Non-transport exceptions (programming errors) must NOT be wrapped as RuntimeError."""
     mock_apify_client.actor.return_value.call.side_effect = AttributeError('bug in SDK')
 
     with pytest.raises(AttributeError, match='bug in SDK'):
         client.run_actor('apify/test-actor')
+
 
 # ---------------------------------------------------------------------------
 # instagram_scrape
