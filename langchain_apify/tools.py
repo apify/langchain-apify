@@ -1,3 +1,21 @@
+"""LangChain tools for the Apify platform.
+
+All tools require an Apify API token. Set it via the ``APIFY_API_TOKEN``
+environment variable, or pass ``apify_api_token`` to the tool constructor:
+
+.. code-block:: python
+
+    import os
+    os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+
+    from langchain_apify import ApifyRunActorTool
+
+    tool = ApifyRunActorTool()
+    result = tool.invoke({"actor_id": "apify/python-example"})
+
+For details, see https://docs.apify.com/platform/integrations/langchain
+"""
+
 from __future__ import annotations
 
 import json
