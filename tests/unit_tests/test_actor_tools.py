@@ -36,15 +36,24 @@ def test_google_search_tool_passes_params(mock_tools_client: MagicMock) -> None:
     mock_tools_client.google_search.return_value = []
     tool = make_tool(ApifyGoogleSearchTool, mock_tools_client)
 
-    tool._run(query='test', max_results=5, country_code='us', language_code='en')
+    tool._run(query='test', max_results=5, country_code='us', language_code='en', timeout_secs=120)
 
     mock_tools_client.google_search.assert_called_once_with(
         'test',
         max_results=5,
         country_code='us',
         language_code='en',
-        timeout_secs=600,
+        timeout_secs=120,
     )
+
+
+def test_google_search_tool_clamps_timeout(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.google_search.return_value = []
+    tool = make_tool(ApifyGoogleSearchTool, mock_tools_client, max_timeout_secs=60)
+
+    tool._run(query='test', timeout_secs=9999)
+
+    assert mock_tools_client.google_search.call_args.kwargs['timeout_secs'] == 60
 
 
 def test_google_search_tool_clamps_max_results(mock_tools_client: MagicMock) -> None:

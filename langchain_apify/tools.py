@@ -270,6 +270,7 @@ class ApifyGoogleSearchInput(BaseModel):
     max_results: int = Field(default=10, description='Maximum number of search results to return.')
     country_code: str | None = Field(default=None, description='Two-letter country code for localised results.')
     language_code: str | None = Field(default=None, description='Two-letter language code.')
+    timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the search to finish.')
 
 
 class ApifyWebCrawlerInput(BaseModel):

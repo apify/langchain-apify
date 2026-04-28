@@ -60,7 +60,8 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         ' Each result has keys: title, url, description.'
         ' Required: query (str) — the search query.'
         ' Optional: max_results (int, default 10),'
-        ' country_code (str|null), language_code (str|null).'
+        ' country_code (str|null), language_code (str|null),'
+        ' timeout_secs (int, default 300).'
     )
     args_schema: type[BaseModel] = ApifyGoogleSearchInput
 
@@ -70,6 +71,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         max_results: int = 10,
         country_code: str | None = None,
         language_code: str | None = None,
+        timeout_secs: int = 300,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
@@ -78,7 +80,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
                 max_results=self._clamp_items(max_results),
                 country_code=country_code,
                 language_code=language_code,
-                timeout_secs=self.max_timeout_secs,
+                timeout_secs=self._clamp_timeout(timeout_secs),
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
