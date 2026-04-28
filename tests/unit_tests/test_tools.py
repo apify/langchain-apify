@@ -238,11 +238,11 @@ def test_get_dataset_items_tool_empty_returns_message(mock_tools_client: MagicMo
 
 def test_get_dataset_items_tool_network_error_raises_tool_exception(mock_tools_client: MagicMock) -> None:
     mock_tools_client.get_dataset_items.side_effect = RuntimeError(
-        'Network error fetching dataset ds-bad: connection reset'
+        'Apify dataset fetch failed for ds-bad: connection reset'
     )
     tool = make_tool(ApifyGetDatasetItemsTool, mock_tools_client)
 
-    with pytest.raises(ToolException, match='Network error fetching dataset'):
+    with pytest.raises(ToolException, match='Apify dataset fetch failed'):
         tool._run(dataset_id='ds-bad')
 
 
