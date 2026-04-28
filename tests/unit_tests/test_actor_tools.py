@@ -328,3 +328,35 @@ def test_tool_returns_valid_json_for_empty_items(mock_tools_client: MagicMock) -
 def test_social_tool_handle_tool_error_enabled(tool_cls: type, mock_tools_client: MagicMock) -> None:
     tool = make_tool(tool_cls, mock_tools_client)
     assert tool.handle_tool_error is True
+
+
+# ---------------------------------------------------------------------------
+# Per-tool RuntimeError -> ToolException coverage
+# ---------------------------------------------------------------------------
+
+# (tool_cls, client_method_name, _run kwargs)
+_TOOL_INVOCATIONS: list[tuple[type, str, dict]] = [
+    (ApifyInstagramScraperTool, 'instagram_scrape', {'search_type': 'user', 'search_query': 'apify'}),
+    (ApifyLinkedInProfilePostsTool, 'linkedin_profile_posts', {'profile_url': 'satyanadella'}),
+    (ApifyLinkedInProfileSearchTool, 'linkedin_profile_search', {'query': 'Founder'}),
+    (ApifyLinkedInProfileDetailTool, 'linkedin_profile_detail', {'profile_url': 'neal-mohan'}),
+    (ApifyTwitterScraperTool, 'twitter_scrape', {'search_query': 'apify'}),
+    (ApifyTikTokScraperTool, 'tiktok_scrape', {'search_query': 'cooking'}),
+    (ApifyFacebookPostsScraperTool, 'facebook_posts_scrape', {'page_url': 'https://www.facebook.com/x/'}),
+]
+
+
+@pytest.mark.parametrize(('tool_cls', 'method_name', 'run_kwargs'), _TOOL_INVOCATIONS)
+def test_social_tool_runtime_error_raises_tool_exception(
+    tool_cls: type,
+    method_name: str,
+    run_kwargs: dict,
+    mock_tools_client: MagicMock,
+) -> None:
+    getattr(mock_tools_client, method_name).side_effect = RuntimeError(
+        'Actor run run-XYZ ended with status FAILED.',
+    )
+    tool = make_tool(tool_cls, mock_tools_client)
+
+    with pytest.raises(ToolException, match='run-XYZ'):
+        tool._run(**run_kwargs)
