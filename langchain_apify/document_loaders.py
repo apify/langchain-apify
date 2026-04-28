@@ -186,7 +186,7 @@ class ApifyCrawlLoader(BaseLoader):
         self._client = ApifyToolsClient(apify_api_token=apify_api_token)
 
     def lazy_load(self) -> Iterator[Document]:
-        """Crawl the website and yield Documents lazily.
+        """Crawl the website and yield Documents.
 
         Yields:
             Document: One document per crawled page.
