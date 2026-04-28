@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 
+import httpx
 from apify_client import ApifyClient
+from apify_client.errors import ApifyClientError
 from pydantic import SecretStr
 
 from langchain_apify._error_messages import (
@@ -11,6 +13,9 @@ from langchain_apify._error_messages import (
     _ERROR_SCRAPE_EMPTY,
 )
 from langchain_apify._utils import _create_apify_client
+
+# Only catches ApifyClientError and httpx.HTTPError. Other errors propagate.
+_TRANSPORT_EXCEPTIONS = (ApifyClientError, httpx.HTTPError)
 
 _SCRAPE_ACTOR_ID = 'apify/website-content-crawler'
 _INSTAGRAM_ACTOR_ID = 'apify/instagram-scraper'
@@ -51,9 +56,8 @@ class ApifyToolsClient:
     """
 
     def __init__(self, apify_api_token: SecretStr | str | None = None) -> None:
-        _token: str | None = None
         if isinstance(apify_api_token, SecretStr):
-            _token = apify_api_token.get_secret_value()
+            _token: str | None = apify_api_token.get_secret_value()
         else:
             _token = apify_api_token or os.getenv('APIFY_API_TOKEN')
 
@@ -89,8 +93,8 @@ class ApifyToolsClient:
 
         try:
             run = self._client.actor(actor_id).call(**call_kwargs)
-        except Exception as exc:
-            msg = f'Network error calling Actor {actor_id}: {exc}'
+        except _TRANSPORT_EXCEPTIONS as exc:
+            msg = f'Apify Actor call failed for {actor_id}: {exc}'
             raise RuntimeError(msg) from exc
         if run is None:
             msg = f'Actor {actor_id} call returned no run details.'
@@ -113,8 +117,8 @@ class ApifyToolsClient:
         """
         try:
             return self._client.dataset(dataset_id).list_items(limit=limit, offset=offset, clean=True).items
-        except Exception as exc:
-            msg = f'Network error fetching dataset {dataset_id}: {exc}'
+        except _TRANSPORT_EXCEPTIONS as exc:
+            msg = f'Apify dataset fetch failed for {dataset_id}: {exc}'
             raise RuntimeError(msg) from exc
 
     def run_actor_and_get_items(
@@ -176,8 +180,8 @@ class ApifyToolsClient:
 
         try:
             run = self._client.task(task_id).call(**call_kwargs)
-        except Exception as exc:
-            msg = f'Network error calling task {task_id}: {exc}'
+        except _TRANSPORT_EXCEPTIONS as exc:
+            msg = f'Apify task call failed for {task_id}: {exc}'
             raise RuntimeError(msg) from exc
         if run is None:
             msg = f'Task {task_id} call returned no run details.'
@@ -535,8 +539,8 @@ class ApifyToolsClient:
         """Fetch dataset items, wrapping any network error in a RuntimeError."""
         try:
             return self._client.dataset(dataset_id).list_items(limit=limit, clean=True).items
-        except Exception as exc:
-            msg = f'Network error fetching dataset {dataset_id}: {exc}'
+        except _TRANSPORT_EXCEPTIONS as exc:
+            msg = f'Apify dataset fetch failed for {dataset_id}: {exc}'
             raise RuntimeError(msg) from exc
 
     @staticmethod

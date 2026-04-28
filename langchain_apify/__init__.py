@@ -16,9 +16,9 @@ from langchain_apify.document_loaders import ApifyDatasetLoader
 from langchain_apify.tools import (
     ApifyActorsTool,
     ApifyGetDatasetItemsTool,
-    ApifyRunActorAndGetItemsTool,
+    ApifyRunActorAndGetDatasetTool,
     ApifyRunActorTool,
-    ApifyRunTaskAndGetItemsTool,
+    ApifyRunTaskAndGetDatasetTool,
     ApifyRunTaskTool,
     ApifyScrapeUrlTool,
 )
@@ -40,10 +40,10 @@ del metadata  # optional, avoids polluting the results of dir(__package__)
 APIFY_CORE_TOOLS: list[type[BaseTool]] = [
     ApifyRunActorTool,
     ApifyGetDatasetItemsTool,
-    ApifyRunActorAndGetItemsTool,
+    ApifyRunActorAndGetDatasetTool,
     ApifyScrapeUrlTool,
     ApifyRunTaskTool,
-    ApifyRunTaskAndGetItemsTool,
+    ApifyRunTaskAndGetDatasetTool,
 ]
 
 APIFY_SOCIAL_TOOLS: list[type[BaseTool]] = [
@@ -63,9 +63,9 @@ __all__ = [
     'ApifyWrapper',
     # Core generic tools
     'ApifyGetDatasetItemsTool',
-    'ApifyRunActorAndGetItemsTool',
+    'ApifyRunActorAndGetDatasetTool',
     'ApifyRunActorTool',
-    'ApifyRunTaskAndGetItemsTool',
+    'ApifyRunTaskAndGetDatasetTool',
     'ApifyRunTaskTool',
     'ApifyScrapeUrlTool',
     # Social media Actor tools

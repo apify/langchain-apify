@@ -14,9 +14,9 @@ import pytest
 
 from langchain_apify import (
     ApifyGetDatasetItemsTool,
-    ApifyRunActorAndGetItemsTool,
+    ApifyRunActorAndGetDatasetTool,
     ApifyRunActorTool,
-    ApifyRunTaskAndGetItemsTool,
+    ApifyRunTaskAndGetDatasetTool,
     ApifyRunTaskTool,
     ApifyScrapeUrlTool,
 )
@@ -54,7 +54,7 @@ def test_get_dataset_items_tool_smoke() -> None:
 
 
 def test_run_actor_and_get_items_tool_smoke() -> None:
-    tool = ApifyRunActorAndGetItemsTool()
+    tool = ApifyRunActorAndGetDatasetTool()
     result = tool.invoke({'actor_id': _ACTOR_ID, 'run_input': _RUN_INPUT})
 
     parsed = json.loads(result)
@@ -86,7 +86,7 @@ def test_run_task_tool_smoke() -> None:
 
 @pytest.mark.skipif(not _TASK_ID, reason='APIFY_TASK_ID not set')
 def test_run_task_and_get_items_tool_smoke() -> None:
-    tool = ApifyRunTaskAndGetItemsTool()
+    tool = ApifyRunTaskAndGetDatasetTool()
     result = tool.invoke({'task_id': _TASK_ID})
 
     parsed = json.loads(result)
