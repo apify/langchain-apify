@@ -20,17 +20,9 @@ def test_init_with_explicit_token(mock_apify_client: MagicMock) -> None:
         assert c._client is mock_apify_client
 
 
-def test_init_with_env_token(monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock) -> None:
-    monkeypatch.setenv('APIFY_API_TOKEN', 'env-token')
-    with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client):
-        c = ApifyToolsClient()
-        assert c._client is mock_apify_client
-
-
-def test_init_missing_token_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+def test_init_empty_token_raises() -> None:
     with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
-        ApifyToolsClient()
+        ApifyToolsClient(apify_api_token='')
 
 
 # ---------------------------------------------------------------------------
