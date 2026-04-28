@@ -333,9 +333,12 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
         return max(1, min(value, self.max_timeout_secs))
 
     def _clamp_memory(self, value: int | None) -> int | None:
-        if value is None:
+        # Non-positive values fall through to the platform default. Positive
+        # values are floored at 128 MB (the Apify platform minimum) so the LLM
+        # cannot drive into an API rejection by requesting too little memory.
+        if value is None or value <= 0:
             return None
-        return max(1, min(value, self.max_memory_mbytes))
+        return max(128, min(value, self.max_memory_mbytes))
 
     def _clamp_items(self, value: int) -> int:
         return max(1, min(value, self.max_items))

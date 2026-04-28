@@ -484,16 +484,30 @@ def test_clamp_timeout_floor_is_one(mock_tools_client: MagicMock) -> None:
     mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 1, None)
 
 
-def test_clamp_memory_floor_is_one(mock_tools_client: MagicMock) -> None:
+def test_clamp_memory_non_positive_is_treated_as_none(mock_tools_client: MagicMock) -> None:
+    """memory_mbytes <= 0 maps to None so the Apify platform default is used."""
     mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
     tool = make_tool(ApifyRunActorTool, mock_tools_client, max_memory_mbytes=4096)
 
     tool._run(actor_id='apify/test', memory_mbytes=-1)
-    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, 1)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, None)
 
     mock_tools_client.run_actor.reset_mock()
     tool._run(actor_id='apify/test', memory_mbytes=0)
-    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, 1)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, None)
+
+
+def test_clamp_memory_floors_positive_below_platform_minimum(mock_tools_client: MagicMock) -> None:
+    """A positive memory_mbytes below the Apify platform minimum (128 MB) is floored to 128."""
+    mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
+    tool = make_tool(ApifyRunActorTool, mock_tools_client, max_memory_mbytes=4096)
+
+    tool._run(actor_id='apify/test', memory_mbytes=64)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, 128)
+
+    mock_tools_client.run_actor.reset_mock()
+    tool._run(actor_id='apify/test', memory_mbytes=1)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, 128)
 
 
 def test_clamp_items_floor_is_one(mock_tools_client: MagicMock) -> None:
