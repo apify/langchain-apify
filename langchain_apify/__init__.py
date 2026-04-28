@@ -39,7 +39,7 @@ APIFY_CORE_TOOLS: list[type[BaseTool]] = [
     ApifyRunTaskAndGetDatasetTool,
 ]
 
-APIFY_ACTOR_TOOLS: list[type] = [
+APIFY_ACTOR_TOOLS: list[type[BaseTool]] = [
     ApifyGoogleSearchTool,
     ApifyWebCrawlerTool,
 ]
