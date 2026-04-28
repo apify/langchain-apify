@@ -129,7 +129,7 @@ def test_crawl_loader_passes_params() -> None:
         mock_client,
         max_crawl_pages=5,
         max_crawl_depth=2,
-        crawler_type='playwright',
+        crawler_type='playwright:firefox',
         timeout_secs=120,
     )
 
@@ -139,7 +139,7 @@ def test_crawl_loader_passes_params() -> None:
         'https://example.com',
         max_crawl_pages=5,
         max_crawl_depth=2,
-        crawler_type='playwright',
+        crawler_type='playwright:firefox',
         timeout_secs=120,
     )
 

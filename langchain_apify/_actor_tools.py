@@ -16,6 +16,7 @@ from pydantic import BaseModel  # noqa: TCH002
 from langchain_apify.tools import (
     ApifyGoogleSearchInput,
     ApifyWebCrawlerInput,
+    CrawlerType,
     _ApifyGenericTool,
 )
 
@@ -130,7 +131,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
         url: str,
         max_crawl_pages: int = 10,
         max_crawl_depth: int = 1,
-        crawler_type: str = 'cheerio',
+        crawler_type: CrawlerType = 'cheerio',
         timeout_secs: int = 300,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:

@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool, ToolException
@@ -42,6 +42,9 @@ if TYPE_CHECKING:
     from langchain_core.callbacks import (
         CallbackManagerForToolRun,
     )
+    
+CrawlerType = Literal['cheerio', 'playwright:adaptive', 'playwright:firefox']
+
 
 
 class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
@@ -275,7 +278,10 @@ class ApifyWebCrawlerInput(BaseModel):
     url: str = Field(description='Seed URL to start crawling from.')
     max_crawl_pages: int = Field(default=10, description='Maximum number of pages to crawl.')
     max_crawl_depth: int = Field(default=1, description='Maximum link-follow depth from the seed URL.')
-    crawler_type: str = Field(default='cheerio', description='Crawler engine (e.g. "cheerio", "playwright").')
+    crawler_type: CrawlerType = Field(
+        default='cheerio',
+        description='Crawler engine: "cheerio" (fast, static HTML), "playwright:adaptive" or "playwright:firefox".',
+    )
     timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the crawl to finish.')
 
 

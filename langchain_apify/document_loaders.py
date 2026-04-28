@@ -17,6 +17,8 @@ from langchain_apify._utils import _create_apify_client
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from langchain_apify.tools import CrawlerType
+
 
 class ApifyDatasetLoader(BaseLoader, BaseModel):
     """Load datasets from Apify web scraping, crawling, and data extraction platform.
@@ -173,7 +175,7 @@ class ApifyCrawlLoader(BaseLoader):
         *,
         max_crawl_pages: int = 10,
         max_crawl_depth: int = 1,
-        crawler_type: str = 'cheerio',
+        crawler_type: CrawlerType = 'cheerio',
         timeout_secs: int = 300,
     ) -> None:
         self.url = url

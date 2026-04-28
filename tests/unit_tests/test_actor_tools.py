@@ -108,7 +108,7 @@ def test_web_crawler_tool_passes_params(mock_tools_client: MagicMock) -> None:
         url='https://example.com',
         max_crawl_pages=5,
         max_crawl_depth=2,
-        crawler_type='playwright',
+        crawler_type='playwright:firefox',
         timeout_secs=120,
     )
 
@@ -116,7 +116,7 @@ def test_web_crawler_tool_passes_params(mock_tools_client: MagicMock) -> None:
         'https://example.com',
         max_crawl_pages=5,
         max_crawl_depth=2,
-        crawler_type='playwright',
+        crawler_type='playwright:firefox',
         timeout_secs=120,
     )
 
