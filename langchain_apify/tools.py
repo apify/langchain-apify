@@ -225,8 +225,8 @@ class ApifyGetDatasetItemsInput(BaseModel):
     offset: int = Field(default=0, description='Number of items to skip from the start.')
 
 
-class ApifyRunActorAndGetItemsInput(BaseModel):
-    """Input schema for :class:`ApifyRunActorAndGetItemsTool`."""
+class ApifyRunActorAndGetDatasetInput(BaseModel):
+    """Input schema for :class:`ApifyRunActorAndGetDatasetTool`."""
 
     actor_id: str = Field(description='Actor ID or name (e.g. "apify/python-example").')
     run_input: dict | None = Field(default=None, description='JSON-serialisable input for the Actor.')
@@ -255,8 +255,8 @@ class ApifyRunTaskInput(BaseModel):
     )
 
 
-class ApifyRunTaskAndGetItemsInput(BaseModel):
-    """Input schema for :class:`ApifyRunTaskAndGetItemsTool`."""
+class ApifyRunTaskAndGetDatasetInput(BaseModel):
+    """Input schema for :class:`ApifyRunTaskAndGetDatasetTool`."""
 
     task_id: str = Field(description='Task ID or name (e.g. "user/my-task").')
     task_input: dict | None = Field(
@@ -454,7 +454,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
         return json.dumps({'items': items})
 
 
-class ApifyRunActorAndGetItemsTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override]
     """Run any Apify Actor and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunActorTool` and :class:`ApifyGetDatasetItemsTool`
@@ -476,16 +476,16 @@ class ApifyRunActorAndGetItemsTool(_ApifyGenericTool):  # type: ignore[override]
             import os
             os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
 
-            from langchain_apify import ApifyRunActorAndGetItemsTool
+            from langchain_apify import ApifyRunActorAndGetDatasetTool
 
-            tool = ApifyRunActorAndGetItemsTool()
+            tool = ApifyRunActorAndGetDatasetTool()
             result = tool.invoke({
                 "actor_id": "apify/python-example",
                 "run_input": {"first_number": 2, "second_number": 3},
             })
     """
 
-    name: str = 'apify_run_actor_and_get_items'
+    name: str = 'apify_run_actor_and_get_dataset'
     description: str = (
         'Run an Apify Actor synchronously and return both run metadata and dataset items.'
         ' Required: actor_id (str) — Actor ID or name (e.g. "apify/python-example").'
@@ -494,7 +494,7 @@ class ApifyRunActorAndGetItemsTool(_ApifyGenericTool):  # type: ignore[override]
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at)'
         ' and items (list of dataset item dicts).'
     )
-    args_schema: type[BaseModel] = ApifyRunActorAndGetItemsInput
+    args_schema: type[BaseModel] = ApifyRunActorAndGetDatasetInput
 
     def _run(
         self,
@@ -625,7 +625,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
         return json.dumps(_run_meta(run))
 
 
-class ApifyRunTaskAndGetItemsTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override]
     """Run a saved Apify Actor task and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunTaskTool` and :class:`ApifyGetDatasetItemsTool`
@@ -647,16 +647,16 @@ class ApifyRunTaskAndGetItemsTool(_ApifyGenericTool):  # type: ignore[override]
             import os
             os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
 
-            from langchain_apify import ApifyRunTaskAndGetItemsTool
+            from langchain_apify import ApifyRunTaskAndGetDatasetTool
 
-            tool = ApifyRunTaskAndGetItemsTool()
+            tool = ApifyRunTaskAndGetDatasetTool()
             result = tool.invoke({
                 "task_id": "user/my-task",
                 "task_input": {"key": "value"},
             })
     """
 
-    name: str = 'apify_run_task_and_get_items'
+    name: str = 'apify_run_task_and_get_dataset'
     description: str = (
         'Run a saved Apify Actor task synchronously and return both run metadata and dataset items.'
         ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
@@ -665,7 +665,7 @@ class ApifyRunTaskAndGetItemsTool(_ApifyGenericTool):  # type: ignore[override]
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at)'
         ' and items (list of dataset item dicts).'
     )
-    args_schema: type[BaseModel] = ApifyRunTaskAndGetItemsInput
+    args_schema: type[BaseModel] = ApifyRunTaskAndGetDatasetInput
 
     def _run(
         self,
