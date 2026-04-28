@@ -132,6 +132,18 @@ def test_web_crawler_tool_clamps_pages_and_timeout(mock_tools_client: MagicMock)
     assert call_kwargs.kwargs['timeout_secs'] == 60
 
 
+def test_web_crawler_tool_clamps_depth(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.crawl_website.return_value = []
+    tool = make_tool(ApifyWebCrawlerTool, mock_tools_client, max_crawl_depth=2)
+
+    tool._run(url='https://example.com', max_crawl_depth=999)
+    assert mock_tools_client.crawl_website.call_args.kwargs['max_crawl_depth'] == 2
+
+    mock_tools_client.crawl_website.reset_mock()
+    tool._run(url='https://example.com', max_crawl_depth=-1)
+    assert mock_tools_client.crawl_website.call_args.kwargs['max_crawl_depth'] == 0
+
+
 def test_web_crawler_tool_empty_results(mock_tools_client: MagicMock) -> None:
     mock_tools_client.crawl_website.return_value = []
     tool = make_tool(ApifyWebCrawlerTool, mock_tools_client)

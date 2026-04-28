@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from langchain_core.callbacks import (
         CallbackManagerForToolRun,
     )
-    
+
 CrawlerType = Literal['cheerio', 'playwright:adaptive', 'playwright:firefox']
 
 
@@ -362,6 +362,7 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     max_timeout_secs: int = Field(default=600, description='Upper bound for timeout_secs the LLM may request.')
     max_memory_mbytes: int = Field(default=32768, description='Upper bound for memory_mbytes the LLM may request.')
     max_items: int = Field(default=1000, description='Upper bound for limit / dataset_items_limit the LLM may request.')
+    max_crawl_depth: int = Field(default=5, description='Upper bound for max_crawl_depth the LLM may request.')
 
     _client: ApifyToolsClient = PrivateAttr()
 
@@ -385,6 +386,10 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
 
     def _clamp_items(self, value: int) -> int:
         return max(1, min(value, self.max_items))
+
+    def _clamp_depth(self, value: int) -> int:
+        # Floor at 0 (a depth of 0 means "only crawl the seed URL").
+        return max(0, min(value, self.max_crawl_depth))
 
 
 # ---------------------------------------------------------------------------

@@ -139,7 +139,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
             items = self._client.crawl_website(
                 url,
                 max_crawl_pages=self._clamp_items(max_crawl_pages),
-                max_crawl_depth=max_crawl_depth,
+                max_crawl_depth=self._clamp_depth(max_crawl_depth),
                 crawler_type=crawler_type,
                 timeout_secs=self._clamp_timeout(timeout_secs),
             )
