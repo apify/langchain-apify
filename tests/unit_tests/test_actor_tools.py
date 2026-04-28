@@ -89,6 +89,38 @@ def test_google_search_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> No
         ApifyGoogleSearchTool()
 
 
+@pytest.mark.parametrize('bad_code', ['USA', 'english', 'u', 'us1', ''])
+def test_google_search_tool_rejects_malformed_locale(mock_tools_client: MagicMock, bad_code: str) -> None:
+    """country_code and language_code must be exactly two letters."""
+    tool = make_tool(ApifyGoogleSearchTool, mock_tools_client)
+
+    with pytest.raises(ValueError, match='string_pattern_mismatch|String should match pattern'):
+        tool.invoke({'query': 'test', 'country_code': bad_code})
+
+    with pytest.raises(ValueError, match='string_pattern_mismatch|String should match pattern'):
+        tool.invoke({'query': 'test', 'language_code': bad_code})
+
+
+@pytest.mark.parametrize('raw_country', ['us', 'US', 'Us', 'uS'])
+def test_google_search_tool_normalises_country_code_to_lower(mock_tools_client: MagicMock, raw_country: str) -> None:
+    mock_tools_client.google_search.return_value = []
+    tool = make_tool(ApifyGoogleSearchTool, mock_tools_client)
+
+    tool.invoke({'query': 'test', 'country_code': raw_country})
+
+    assert mock_tools_client.google_search.call_args.kwargs['country_code'] == 'us'
+
+
+@pytest.mark.parametrize('raw_language', ['en', 'EN', 'En', 'eN'])
+def test_google_search_tool_normalises_language_code_to_lower(mock_tools_client: MagicMock, raw_language: str) -> None:
+    mock_tools_client.google_search.return_value = []
+    tool = make_tool(ApifyGoogleSearchTool, mock_tools_client)
+
+    tool.invoke({'query': 'test', 'language_code': raw_language})
+
+    assert mock_tools_client.google_search.call_args.kwargs['language_code'] == 'en'
+
+
 # ---------------------------------------------------------------------------
 # ApifyWebCrawlerTool
 # ---------------------------------------------------------------------------

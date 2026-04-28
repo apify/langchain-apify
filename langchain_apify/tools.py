@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool, ToolException
 from langchain_core.utils import secret_from_env
-from pydantic import BaseModel, Field, PrivateAttr, SecretStr, create_model
+from pydantic import BaseModel, Field, PrivateAttr, SecretStr, create_model, field_validator
 
 from langchain_apify._client import ApifyToolsClient
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
@@ -267,9 +267,22 @@ class ApifyGoogleSearchInput(BaseModel):
 
     query: str = Field(description='Search query string.')
     max_results: int = Field(default=10, description='Maximum number of search results to return.')
-    country_code: str | None = Field(default=None, description='Two-letter country code for localised results.')
-    language_code: str | None = Field(default=None, description='Two-letter language code.')
+    country_code: str | None = Field(
+        default=None,
+        description='Two-letter country code (case-insensitive; normalised to lowercase, e.g. "us", "gb").',
+        pattern=r'^[a-zA-Z]{2}$',
+    )
+    language_code: str | None = Field(
+        default=None,
+        description='Two-letter language code (case-insensitive; normalised to lowercase, e.g. "en", "fr").',
+        pattern=r'^[a-zA-Z]{2}$',
+    )
     timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the search to finish.')
+
+    @field_validator('country_code', 'language_code')
+    @classmethod
+    def _normalise_locale_code(cls, value: str | None) -> str | None:
+        return value.lower() if value else value
 
 
 class ApifyWebCrawlerInput(BaseModel):
