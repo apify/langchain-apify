@@ -341,13 +341,11 @@ _TOOL_INVOCATIONS: list[tuple[type[_ApifyGenericTool], str, dict]] = [
 @pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _TOOL_INVOCATIONS)
 def test_search_tool_runtime_error_raises_tool_exception(
     mock_tools_client: MagicMock,
-    tool_cls: type[_ApifyGenericTool],
+    tool_cls: type,
     helper_attr: str,
     run_kwargs: dict,
 ) -> None:
-    getattr(mock_tools_client, helper_attr).side_effect = RuntimeError(
-        'Actor run run-bad ended with status FAILED.'
-    )
+    getattr(mock_tools_client, helper_attr).side_effect = RuntimeError('Actor run run-bad ended with status FAILED.')
     tool = make_tool(tool_cls, mock_tools_client)
 
     with pytest.raises(ToolException, match='FAILED'):
@@ -357,7 +355,7 @@ def test_search_tool_runtime_error_raises_tool_exception(
 @pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _TOOL_INVOCATIONS)
 def test_search_tool_empty_dataset_returns_empty_items(
     mock_tools_client: MagicMock,
-    tool_cls: type[_ApifyGenericTool],
+    tool_cls: type,
     helper_attr: str,
     run_kwargs: dict,
 ) -> None:
@@ -372,7 +370,7 @@ def test_search_tool_empty_dataset_returns_empty_items(
 @pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _TOOL_INVOCATIONS)
 def test_search_tool_handle_tool_error_swallows(
     mock_tools_client: MagicMock,
-    tool_cls: type[_ApifyGenericTool],
+    tool_cls: type,
     helper_attr: str,
     run_kwargs: dict,
 ) -> None:
@@ -387,7 +385,7 @@ def test_search_tool_handle_tool_error_swallows(
 @pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _TOOL_INVOCATIONS)
 def test_search_tool_missing_token(
     monkeypatch: pytest.MonkeyPatch,
-    tool_cls: type[_ApifyGenericTool],
+    tool_cls: type,
     helper_attr: str,  # noqa: ARG001
     run_kwargs: dict,  # noqa: ARG001
 ) -> None:
@@ -402,14 +400,14 @@ def test_search_tools_inherit_from_generic_base() -> None:
 
 
 def test_search_tools_have_correct_metadata() -> None:
-    expected_names = {
-        ApifyRAGWebBrowserTool: 'apify_rag_web_browser',
-        ApifyGoogleMapsTool: 'apify_google_maps',
-        ApifyYouTubeScraperTool: 'apify_youtube_scraper',
-        ApifyEcommerceScraperTool: 'apify_ecommerce_scraper',
-    }
+    cases: list[tuple[type, str]] = [
+        (ApifyRAGWebBrowserTool, 'apify_rag_web_browser'),
+        (ApifyGoogleMapsTool, 'apify_google_maps'),
+        (ApifyYouTubeScraperTool, 'apify_youtube_scraper'),
+        (ApifyEcommerceScraperTool, 'apify_ecommerce_scraper'),
+    ]
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
-        for tool_cls, expected_name in expected_names.items():
+        for tool_cls, expected_name in cases:
             tool = tool_cls(apify_api_token=SecretStr('dummy'))
             assert tool.name == expected_name
             assert tool.description

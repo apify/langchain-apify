@@ -186,15 +186,12 @@ class ApifyYouTubeScraperInput(BaseModel):
     """Input schema for :class:`ApifyYouTubeScraperTool`."""
 
     search_query: str = Field(
-        description=(
-            'Keyword for "search" mode, or a video/channel URL for "video"/"channel" modes.'
-        ),
+        description=('Keyword for "search" mode, or a video/channel URL for "video"/"channel" modes.'),
     )
     search_type: Literal['search', 'video', 'channel'] = Field(
         default='search',
         description=(
-            'Type of scrape: "search" for a keyword search, "video" for a video URL, '
-            '"channel" for a channel URL.'
+            'Type of scrape: "search" for a keyword search, "video" for a video URL, ' '"channel" for a channel URL.'
         ),
     )
     max_results: int = Field(default=10, description='Maximum number of items to return.')
