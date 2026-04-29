@@ -443,3 +443,132 @@ def test_crawl_website_failed_run_raises(client: ApifyToolsClient, mock_apify_cl
 
     with pytest.raises(RuntimeError, match='run-fail'):
         client.crawl_website('https://example.com')
+
+
+# ---------------------------------------------------------------------------
+# google_maps_search
+# ---------------------------------------------------------------------------
+
+
+def test_google_maps_search_input_mapping(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = SAMPLE_ITEMS
+
+    run, items = client.google_maps_search('coffee in Berlin', max_results=5, language='en')
+
+    mock_apify_client.actor.assert_called_once_with('compass/crawler-google-places')
+    run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
+    assert run_input == {
+        'searchStringsArray': ['coffee in Berlin'],
+        'maxCrawledPlacesPerSearch': 5,
+        'language': 'en',
+    }
+    assert run == SUCCEEDED_RUN
+    assert items == SAMPLE_ITEMS
+
+
+def test_google_maps_search_omits_language_when_none(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = []
+
+    client.google_maps_search('parks')
+
+    run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
+    assert 'language' not in run_input
+
+
+def test_google_maps_search_failed_run_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = FAILED_RUN
+
+    with pytest.raises(RuntimeError, match='run-fail'):
+        client.google_maps_search('parks')
+
+
+# ---------------------------------------------------------------------------
+# youtube_scrape
+# ---------------------------------------------------------------------------
+
+
+def test_youtube_scrape_search_mode_input_mapping(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = SAMPLE_ITEMS
+
+    run, items = client.youtube_scrape('langchain', search_type='search', max_results=7)
+
+    mock_apify_client.actor.assert_called_once_with('streamers/youtube-scraper')
+    run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
+    assert run_input == {'maxResults': 7, 'searchKeywords': 'langchain'}
+    assert run == SUCCEEDED_RUN
+    assert items == SAMPLE_ITEMS
+
+
+@pytest.mark.parametrize('search_type', ['video', 'channel'])
+def test_youtube_scrape_url_modes_use_start_urls(
+    client: ApifyToolsClient, mock_apify_client: MagicMock, search_type: str
+) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = []
+
+    client.youtube_scrape('https://www.youtube.com/@apify', search_type=search_type, max_results=4)
+
+    run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
+    assert run_input == {
+        'maxResults': 4,
+        'startUrls': [{'url': 'https://www.youtube.com/@apify'}],
+    }
+
+
+def test_youtube_scrape_invalid_search_type_raises(client: ApifyToolsClient) -> None:
+    with pytest.raises(ValueError, match='Invalid search_type'):
+        client.youtube_scrape('langchain', search_type='playlist')
+
+
+def test_youtube_scrape_failed_run_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = FAILED_RUN
+
+    with pytest.raises(RuntimeError, match='run-fail'):
+        client.youtube_scrape('langchain')
+
+
+# ---------------------------------------------------------------------------
+# ecommerce_scrape
+# ---------------------------------------------------------------------------
+
+
+def test_ecommerce_scrape_input_mapping(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = SAMPLE_ITEMS
+
+    run, items = client.ecommerce_scrape('https://shop.example.com/cat/123', max_results=15)
+
+    mock_apify_client.actor.assert_called_once_with('apify/e-commerce-scraping-tool')
+    run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
+    assert run_input == {
+        'startUrls': [{'url': 'https://shop.example.com/cat/123'}],
+        'maxItems': 15,
+    }
+    assert run == SUCCEEDED_RUN
+    assert items == SAMPLE_ITEMS
+
+
+def test_ecommerce_scrape_failed_run_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = FAILED_RUN
+
+    with pytest.raises(RuntimeError, match='run-fail'):
+        client.ecommerce_scrape('https://shop.example.com')
+
+
+# ---------------------------------------------------------------------------
+# rag_web_browser_search input mapping
+# ---------------------------------------------------------------------------
+
+
+def test_rag_web_browser_search_input_mapping(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = []
+
+    client.rag_web_browser_search('what is langchain', max_results=4)
+
+    mock_apify_client.actor.assert_called_once_with('apify/rag-web-browser')
+    run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
+    assert run_input == {'query': 'what is langchain', 'maxResults': 4}
