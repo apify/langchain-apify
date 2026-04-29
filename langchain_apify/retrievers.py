@@ -76,7 +76,7 @@ class ApifySearchRetriever(BaseRetriever):
         *,
         run_manager: CallbackManagerForRetrieverRun | None = None,  # noqa: ARG002
     ) -> list[Document]:
-        items = self._client.rag_web_search(
+        _, items = self._client.rag_web_browser_search(
             query,
             max_results=self.max_results,
             timeout_secs=self.timeout_secs,
@@ -90,8 +90,8 @@ class ApifySearchRetriever(BaseRetriever):
         run_manager: AsyncCallbackManagerForRetrieverRun | None = None,  # noqa: ARG002
     ) -> list[Document]:
         # ApifyToolsClient is sync-only.
-        items = await asyncio.to_thread(
-            self._client.rag_web_search,
+        _, items = await asyncio.to_thread(
+            self._client.rag_web_browser_search,
             query,
             max_results=self.max_results,
             timeout_secs=self.timeout_secs,

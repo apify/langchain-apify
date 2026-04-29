@@ -356,7 +356,7 @@ def test_google_search_failed_run_raises(client: ApifyToolsClient, mock_apify_cl
 
 
 # ---------------------------------------------------------------------------
-# rag_web_search
+# rag_web_browser_search
 # ---------------------------------------------------------------------------
 
 RAG_SEARCH_ITEMS: list[dict] = [
@@ -365,31 +365,33 @@ RAG_SEARCH_ITEMS: list[dict] = [
 ]
 
 
-def test_rag_web_search_success(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+def test_rag_web_browser_search_success(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = RAG_SEARCH_ITEMS
 
-    items = client.rag_web_search('test query', max_results=5)
+    run, items = client.rag_web_browser_search('test query', max_results=5)
 
+    assert run == SUCCEEDED_RUN
     assert len(items) == 2
     assert items[0]['crawledUrl'] == 'https://example.com/1'
     assert items[1]['text'] == 'Page 2 content'
 
 
-def test_rag_web_search_empty(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+def test_rag_web_browser_search_empty(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = []
 
-    items = client.rag_web_search('test')
+    run, items = client.rag_web_browser_search('test')
 
+    assert run == SUCCEEDED_RUN
     assert items == []
 
 
-def test_rag_web_search_failed_run_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+def test_rag_web_browser_search_failed_run_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     mock_apify_client.actor.return_value.call.return_value = FAILED_RUN
 
     with pytest.raises(RuntimeError, match='run-fail'):
-        client.rag_web_search('test')
+        client.rag_web_browser_search('test')
 
 
 # ---------------------------------------------------------------------------
