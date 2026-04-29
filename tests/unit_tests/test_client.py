@@ -544,8 +544,8 @@ def test_ecommerce_scrape_input_mapping(client: ApifyToolsClient, mock_apify_cli
     mock_apify_client.actor.assert_called_once_with('apify/e-commerce-scraping-tool')
     run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
     assert run_input == {
-        'startUrls': [{'url': 'https://shop.example.com/cat/123'}],
-        'maxItems': 15,
+        'detailsUrls': [{'url': 'https://shop.example.com/cat/123'}],
+        'maxProductResults': 15,
     }
     assert run == SUCCEEDED_RUN
     assert items == SAMPLE_ITEMS

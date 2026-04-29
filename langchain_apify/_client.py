@@ -420,13 +420,15 @@ class ApifyToolsClient:
         max_results: int = 20,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
     ) -> tuple[dict, list[dict]]:
-        """Extract product or listing data from an e-commerce URL.
+        """Extract product data from an e-commerce product-detail URL.
 
-        Uses ``apify/e-commerce-scraping-tool``.
+        Uses ``apify/e-commerce-scraping-tool``. The input URL is sent as a
+        product-detail page via the Actor's ``detailsUrls`` field; category /
+        listing pages are not supported through this helper.
 
         Args:
-            url: Product, category, or listing URL to scrape.
-            max_results: Maximum number of items to return.
+            url: Product-detail URL to scrape.
+            max_results: Maximum number of products to return.
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
@@ -436,8 +438,8 @@ class ApifyToolsClient:
             RuntimeError: If the Actor run fails.
         """
         run_input: dict = {
-            'startUrls': [{'url': url}],
-            'maxItems': max_results,
+            'detailsUrls': [{'url': url}],
+            'maxProductResults': max_results,
         }
         return self.run_actor_and_get_items(
             _ECOMMERCE_SCRAPER_ACTOR_ID,

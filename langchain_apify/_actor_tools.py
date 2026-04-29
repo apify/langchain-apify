@@ -200,8 +200,8 @@ class ApifyYouTubeScraperInput(BaseModel):
 class ApifyEcommerceScraperInput(BaseModel):
     """Input schema for :class:`ApifyEcommerceScraperTool`."""
 
-    url: str = Field(description='Product, category, or listing URL to scrape.')
-    max_results: int = Field(default=20, description='Maximum number of items to return.')
+    url: str = Field(description='Product-detail URL to scrape (not a category / listing page).')
+    max_results: int = Field(default=20, description='Maximum number of products to return.')
 
 
 # ---------------------------------------------------------------------------
@@ -411,8 +411,8 @@ class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_ecommerce_scraper'
     description: str = (
-        'Extract product or listing data from an e-commerce URL and return it as JSON.'
-        ' Required: url (str) - the product, category, or listing URL.'
+        'Extract product data from an e-commerce product-detail URL and return it as JSON.'
+        ' Required: url (str) - the product-detail URL (not a category / listing page).'
         ' Optional: max_results (int, default 20).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
         ' Use only the data returned; do not hallucinate missing fields.'
