@@ -130,6 +130,13 @@ class ApifyFacebookPostsScraperInput(BaseModel):
             'values like "1 day", "2 months", "3 years".'
         ),
     )
+    only_posts_older_than: str | None = Field(
+        default=None,
+        description=(
+            'Optional date filter. Accepts YYYY-MM-DD, ISO-8601, or relative '
+            'values like "1 day", "2 months", "3 years".'
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -533,7 +540,8 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override
         'Scrape posts from a public Facebook page and return them as JSON.'
         ' Required: page_url (str - Facebook page URL; personal profiles are not supported).'
         ' Optional: max_results (int, default 20),'
-        ' only_posts_newer_than (str - date filter, e.g. "2025-01-01" or "1 week").'
+        ' only_posts_newer_than (str - date filter, e.g. "2025-01-01" or "1 week"),'
+        ' only_posts_older_than (str - date filter, e.g. "2025-01-01" or "1 week").'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
         ' Use only the data returned; do not hallucinate missing fields.'
     )
@@ -544,6 +552,7 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override
         page_url: str,
         max_results: int = 20,
         only_posts_newer_than: str | None = None,
+        only_posts_older_than: str | None = None,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
@@ -551,6 +560,7 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override
                 page_url=page_url,
                 max_results=self._clamp_items(max_results),
                 only_posts_newer_than=only_posts_newer_than,
+                only_posts_older_than=only_posts_older_than,
                 timeout_secs=self.max_timeout_secs,
             )
         except RuntimeError as exc:

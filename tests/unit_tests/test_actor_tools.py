@@ -282,6 +282,7 @@ def test_facebook_tool_happy_path(mock_tools_client: MagicMock) -> None:
         page_url='https://www.facebook.com/humansofnewyork/',
         max_results=15,
         only_posts_newer_than=None,
+        only_posts_older_than=None,
         timeout_secs=600,
     )
 
@@ -293,6 +294,15 @@ def test_facebook_tool_passes_only_posts_newer_than(mock_tools_client: MagicMock
     tool._run(page_url='https://www.facebook.com/humansofnewyork/', only_posts_newer_than='2025-01-01')
 
     assert mock_tools_client.facebook_posts_scrape.call_args.kwargs['only_posts_newer_than'] == '2025-01-01'
+
+
+def test_facebook_tool_passes_only_posts_older_than(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.facebook_posts_scrape.return_value = (SUCCEEDED_RUN, [])
+    tool = make_tool(ApifyFacebookPostsScraperTool, mock_tools_client)
+
+    tool._run(page_url='https://www.facebook.com/humansofnewyork/', only_posts_older_than='2025-12-31')
+
+    assert mock_tools_client.facebook_posts_scrape.call_args.kwargs['only_posts_older_than'] == '2025-12-31'
 
 
 def test_facebook_tool_runtime_error_raises_tool_exception(mock_tools_client: MagicMock) -> None:

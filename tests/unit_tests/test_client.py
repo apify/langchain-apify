@@ -559,6 +559,17 @@ def test_facebook_posts_scrape_passes_only_posts_newer_than(
     assert call_kwargs['run_input']['onlyPostsNewerThan'] == '2025-01-01'
 
 
+def test_facebook_posts_scrape_passes_only_posts_older_than(
+    client: ApifyToolsClient, mock_apify_client: MagicMock
+) -> None:
+    _setup_run_and_items(mock_apify_client)
+
+    client.facebook_posts_scrape('https://www.facebook.com/humansofnewyork/', only_posts_older_than='2025-12-31')
+
+    call_kwargs = mock_apify_client.actor.return_value.call.call_args.kwargs
+    assert call_kwargs['run_input']['onlyPostsOlderThan'] == '2025-12-31'
+
+
 # ---------------------------------------------------------------------------
 # Failed run propagates from social helpers
 # ---------------------------------------------------------------------------

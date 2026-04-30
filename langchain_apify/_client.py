@@ -495,6 +495,7 @@ class ApifyToolsClient:
         page_url: str,
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         only_posts_newer_than: str | None = None,
+        only_posts_older_than: str | None = None,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
     ) -> tuple[dict, list[dict]]:
         """Scrape Facebook page posts via ``apify/facebook-posts-scraper``.
@@ -503,6 +504,8 @@ class ApifyToolsClient:
             page_url: Facebook page URL.
             max_results: Maximum number of posts to return.
             only_posts_newer_than: Optional date filter. Accepts ``YYYY-MM-DD``,
+                ISO-8601, or relative (e.g. ``"1 day"``, ``"2 months"``).
+            only_posts_older_than: Optional date filter. Accepts ``YYYY-MM-DD``,
                 ISO-8601, or relative (e.g. ``"1 day"``, ``"2 months"``).
             timeout_secs: Maximum time to wait for the run to finish.
 
@@ -518,6 +521,8 @@ class ApifyToolsClient:
         }
         if only_posts_newer_than is not None:
             run_input['onlyPostsNewerThan'] = only_posts_newer_than
+        if only_posts_older_than is not None:
+            run_input['onlyPostsOlderThan'] = only_posts_older_than
         return self.run_actor_and_get_items(
             _FACEBOOK_ACTOR_ID,
             run_input=run_input,
