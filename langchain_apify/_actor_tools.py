@@ -222,9 +222,7 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
-        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (list
-        of crawled-page dicts).
+        JSON string — an array of ``{"url", "title", "content"}`` objects.
 
     Example:
         .. code-block:: python
@@ -240,10 +238,10 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_rag_web_browser'
     description: str = (
-        'Search the web and return content from the top results as JSON.'
+        'Search the web and return content from the top results as a JSON array.'
+        ' Each result has keys: url, title, content.'
         ' Required: query (str) - the search query.'
         ' Optional: max_results (int, default 5).'
-        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
         ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: type[BaseModel] = ApifyRAGWebBrowserInput
@@ -255,14 +253,22 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            run, items = self._client.rag_web_browser_search(
+            _, items = self._client.rag_web_browser_search(
                 query,
                 max_results=self._clamp_items(max_results),
                 timeout_secs=self.max_timeout_secs,
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items})
+        results = [
+            {
+                'url': item.get('metadata', {}).get('url') or item.get('crawledUrl', ''),
+                'title': item.get('metadata', {}).get('title', ''),
+                'content': item.get('markdown') or item.get('text', ''),
+            }
+            for item in items
+        ]
+        return json.dumps(results)
 
 
 class ApifyGoogleMapsTool(_ApifyGenericTool):  # type: ignore[override]

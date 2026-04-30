@@ -253,15 +253,28 @@ def test_apify_actor_tools_list() -> None:
 
 
 def test_rag_web_browser_tool_returns_json(mock_tools_client: MagicMock) -> None:
-    items = [{'crawledUrl': 'https://example.com/1', 'text': 'hi'}]
+    items = [
+        {
+            'crawledUrl': 'https://example.com/1',
+            'metadata': {'url': 'https://example.com/1', 'title': 'Page 1'},
+            'markdown': '# Page 1',
+            'text': 'Page 1 plain',
+        },
+        {
+            'crawledUrl': 'https://example.com/2',
+            'metadata': {'title': 'Page 2'},
+            'text': 'Page 2 plain',
+        },
+    ]
     mock_tools_client.rag_web_browser_search.return_value = (SUCCEEDED_RUN, items)
     tool = make_tool(ApifyRAGWebBrowserTool, mock_tools_client)
 
     parsed = json.loads(tool._run(query='what is langchain', max_results=3))
 
-    assert parsed['run']['run_id'] == SUCCEEDED_RUN['id']
-    assert parsed['run']['status'] == 'SUCCEEDED'
-    assert parsed['items'] == items
+    assert parsed == [
+        {'url': 'https://example.com/1', 'title': 'Page 1', 'content': '# Page 1'},
+        {'url': 'https://example.com/2', 'title': 'Page 2', 'content': 'Page 2 plain'},
+    ]
     mock_tools_client.rag_web_browser_search.assert_called_once_with(
         'what is langchain',
         max_results=3,
@@ -337,6 +350,13 @@ _TOOL_INVOCATIONS: list[tuple[type[_ApifyGenericTool], str, dict]] = [
     (ApifyEcommerceScraperTool, 'ecommerce_scrape', {'url': 'https://example.com'}),
 ]
 
+# Tools that return the {run, items} envelope on success.
+_ENVELOPE_TOOL_INVOCATIONS: list[tuple[type[_ApifyGenericTool], str, dict]] = [
+    (ApifyGoogleMapsTool, 'google_maps_search', {'query': 'q'}),
+    (ApifyYouTubeScraperTool, 'youtube_scrape', {'search_query': 'q'}),
+    (ApifyEcommerceScraperTool, 'ecommerce_scrape', {'url': 'https://example.com'}),
+]
+
 
 @pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _TOOL_INVOCATIONS)
 def test_search_tool_runtime_error_raises_tool_exception(
@@ -352,7 +372,7 @@ def test_search_tool_runtime_error_raises_tool_exception(
         tool._run(**run_kwargs)
 
 
-@pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _TOOL_INVOCATIONS)
+@pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _ENVELOPE_TOOL_INVOCATIONS)
 def test_search_tool_empty_dataset_returns_empty_items(
     mock_tools_client: MagicMock,
     tool_cls: type,
@@ -365,6 +385,13 @@ def test_search_tool_empty_dataset_returns_empty_items(
     parsed = json.loads(tool._run(**run_kwargs))
     assert parsed['items'] == []
     assert parsed['run']['status'] == 'SUCCEEDED'
+
+
+def test_rag_web_browser_tool_empty_dataset_returns_empty_array(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.rag_web_browser_search.return_value = (SUCCEEDED_RUN, [])
+    tool = make_tool(ApifyRAGWebBrowserTool, mock_tools_client)
+
+    assert json.loads(tool._run(query='q')) == []
 
 
 @pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _TOOL_INVOCATIONS)
