@@ -1,24 +1,25 @@
 from __future__ import annotations
 
 import string
+from datetime import datetime
 from typing import TypeVar
 
 import requests
 from apify_client import ApifyClientAsync
 from apify_client.client import ApifyClient
 
-from langchain_apify.const import MAX_DESCRIPTION_LEN, REQUESTS_TIMEOUT_SECS
+_MAX_DESCRIPTION_LEN: int = 350
+_REQUESTS_TIMEOUT_SECS: float = 10.0
+_APIFY_API_ENDPOINT_GET_DEFAULT_BUILD: str = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
 
-APIFY_API_ENDPOINT_GET_DEFAULT_BUILD = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
 
-
-def prune_actor_input_schema(
+def _prune_actor_input_schema(
     input_schema: dict,
-    max_description_len: int = MAX_DESCRIPTION_LEN,
+    max_description_len: int = _MAX_DESCRIPTION_LEN,
 ) -> tuple[dict, list[str]]:
     """Get the input schema from the Actor build.
 
-    Trim the description to 250 characters.
+    Trim descriptions to ``_MAX_DESCRIPTION_LEN`` characters.
 
     Args:
         input_schema (dict): The input schema from the Actor build.
@@ -48,7 +49,7 @@ def prune_actor_input_schema(
 T = TypeVar('T', ApifyClient, ApifyClientAsync)
 
 
-def create_apify_client(client_cls: type[T], token: str) -> T:
+def _create_apify_client(client_cls: type[T], token: str) -> T:
     """Create an Apify client instance with a custom user-agent.
 
     Args:
@@ -79,7 +80,7 @@ def create_apify_client(client_cls: type[T], token: str) -> T:
     return client
 
 
-def actor_id_to_tool_name(actor_id: str) -> str:
+def _actor_id_to_tool_name(actor_id: str) -> str:
     """Turn actor_id into a valid tool name.
 
     Tool name must only contain letters, numbers, underscores, dashes,
@@ -95,7 +96,7 @@ def actor_id_to_tool_name(actor_id: str) -> str:
     return 'apify_actor_' + ''.join(char if char in valid_chars else '_' for char in actor_id)
 
 
-def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
+def _get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
     """Get the latest build of an Actor from the default build tag.
 
     Args:
@@ -117,8 +118,8 @@ def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
         msg = f'Failed to get the Actor object ID for {actor_id}.'
         raise ValueError(msg)
 
-    url = APIFY_API_ENDPOINT_GET_DEFAULT_BUILD.format(actor_id=actor_obj_id)
-    response = requests.request('GET', url, timeout=REQUESTS_TIMEOUT_SECS)
+    url = _APIFY_API_ENDPOINT_GET_DEFAULT_BUILD.format(actor_id=actor_obj_id)
+    response = requests.request('GET', url, timeout=_REQUESTS_TIMEOUT_SECS)
 
     build = response.json()
     if not isinstance(build, dict):
@@ -130,3 +131,21 @@ def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
         raise ValueError(msg)
 
     return data
+
+
+def _iso(value: str | datetime | None) -> str | None:
+    """Coerce a possible ``datetime`` to an ISO-8601 string."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value
+
+
+def _run_meta(run: dict) -> dict:
+    """Extract a compact metadata dict from an Apify run-details dict."""
+    return {
+        'run_id': run.get('id'),
+        'status': run.get('status'),
+        'dataset_id': run.get('defaultDatasetId'),
+        'started_at': _iso(run.get('startedAt')),
+        'finished_at': _iso(run.get('finishedAt')),
+    }
