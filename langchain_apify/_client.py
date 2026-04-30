@@ -426,12 +426,12 @@ class ApifyToolsClient:
 
         Uses ``apify/e-commerce-scraping-tool``. ``url_type`` selects which
         Actor input field the URL is sent as: ``"product"`` → ``detailsUrls``
-        (a single product-detail page), ``"category"`` → ``categoryUrls``
-        (a listing / category page that the Actor will expand into product
+        (a single product-detail page), ``"category"`` → ``listingUrls``
+        (a category / listing page that the Actor will expand into product
         results).
 
         Args:
-            url: Product-detail or category URL to scrape.
+            url: Product-detail or category / listing URL to scrape.
             url_type: One of ``"product"`` or ``"category"``.
             max_results: Maximum number of products to return.
             timeout_secs: Maximum time to wait for the run to finish.
@@ -447,7 +447,7 @@ class ApifyToolsClient:
             msg = f'Invalid url_type {url_type!r}; expected one of {_ECOMMERCE_URL_TYPES}.'
             raise ValueError(msg)
 
-        input_key = 'detailsUrls' if url_type == 'product' else 'categoryUrls'
+        input_key = 'detailsUrls' if url_type == 'product' else 'listingUrls'
         run_input: dict = {
             input_key: [{'url': url}],
             'maxProductResults': max_results,

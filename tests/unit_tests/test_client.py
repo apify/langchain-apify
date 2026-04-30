@@ -551,7 +551,7 @@ def test_ecommerce_scrape_input_mapping(client: ApifyToolsClient, mock_apify_cli
     assert items == SAMPLE_ITEMS
 
 
-def test_ecommerce_scrape_category_mode_uses_category_urls(
+def test_ecommerce_scrape_category_mode_uses_listing_urls(
     client: ApifyToolsClient, mock_apify_client: MagicMock
 ) -> None:
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
@@ -561,7 +561,7 @@ def test_ecommerce_scrape_category_mode_uses_category_urls(
 
     run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
     assert run_input == {
-        'categoryUrls': [{'url': 'https://shop.example.com/category/123'}],
+        'listingUrls': [{'url': 'https://shop.example.com/category/123'}],
         'maxProductResults': 5,
     }
 
