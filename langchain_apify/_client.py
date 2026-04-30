@@ -461,8 +461,8 @@ class ApifyToolsClient:
         """Scrape TikTok via ``clockworks/tiktok-scraper``.
 
         Args:
-            search_query: Username, hashtag, or search keyword.
-            search_type: One of ``"search"``, ``"user"``, ``"hashtag"``.
+            search_query: Username, hashtag, search keyword, or TikTok post URL.
+            search_type: One of ``"search"``, ``"user"``, ``"hashtag"``, ``"post"``.
             max_results: Maximum number of items to return.
             timeout_secs: Maximum time to wait for the run to finish.
 
@@ -480,8 +480,13 @@ class ApifyToolsClient:
             run_input['profiles'] = [search_query.lstrip('@')]
         elif search_type == 'hashtag':
             run_input['hashtags'] = [search_query.lstrip('#')]
+        elif search_type == 'post':
+            run_input['postURLs'] = [search_query]
         else:
-            msg = f"Unsupported TikTok search_type {search_type!r}. Expected one of: ['search', 'user', 'hashtag']."
+            msg = (
+                f'Unsupported TikTok search_type {search_type!r}. '
+                "Expected one of: ['search', 'user', 'hashtag', 'post']."
+            )
             raise ValueError(msg)
         return self.run_actor_and_get_items(
             _TIKTOK_ACTOR_ID,

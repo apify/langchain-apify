@@ -107,12 +107,13 @@ class ApifyTwitterScraperInput(BaseModel):
 class ApifyTikTokScraperInput(BaseModel):
     """Input schema for :class:`ApifyTikTokScraperTool`."""
 
-    search_query: str = Field(description='Username, hashtag, or search keyword.')
-    search_type: Literal['search', 'user', 'hashtag'] = Field(
+    search_query: str = Field(description='Username, hashtag, search keyword, or TikTok post URL.')
+    search_type: Literal['search', 'user', 'hashtag', 'post'] = Field(
         default='search',
         description=(
             'Type of content to scrape: "search" for keyword search, "user" for '
-            'a profile\'s videos, "hashtag" for videos under a tag.'
+            'a profile\'s videos, "hashtag" for videos under a tag, "post" for a '
+            'specific TikTok post URL.'
         ),
     )
     max_results: int = Field(default=20, description='Maximum number of items to return.')
@@ -476,9 +477,9 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_tiktok_scraper'
     description: str = (
-        'Scrape TikTok by search keyword, profile, or hashtag and return the results as JSON.'
-        ' Required: search_query (str - keyword, username, or hashtag).'
-        ' Optional: search_type (one of "search", "user", "hashtag"; default "search"),'
+        'Scrape TikTok by search keyword, profile, hashtag, or post URL and return the results as JSON.'
+        ' Required: search_query (str - keyword, username, hashtag, or TikTok post URL).'
+        ' Optional: search_type (one of "search", "user", "hashtag", "post"; default "search"),'
         ' max_results (int, default 20).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
         ' Use only the data returned; do not hallucinate missing fields.'
@@ -488,7 +489,7 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
     def _run(
         self,
         search_query: str,
-        search_type: Literal['search', 'user', 'hashtag'] = 'search',
+        search_type: Literal['search', 'user', 'hashtag', 'post'] = 'search',
         max_results: int = 20,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:

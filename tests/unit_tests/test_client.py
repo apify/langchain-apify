@@ -523,6 +523,15 @@ def test_tiktok_scrape_hashtag_mode_strips_hash(client: ApifyToolsClient, mock_a
     assert call_kwargs['run_input']['hashtags'] == ['fyp']
 
 
+def test_tiktok_scrape_post_mode_uses_post_urls(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    _setup_run_and_items(mock_apify_client)
+
+    client.tiktok_scrape('https://www.tiktok.com/@charlidamelio/video/123', search_type='post')
+
+    call_kwargs = mock_apify_client.actor.return_value.call.call_args.kwargs
+    assert call_kwargs['run_input']['postURLs'] == ['https://www.tiktok.com/@charlidamelio/video/123']
+
+
 def test_tiktok_scrape_invalid_type_raises(client: ApifyToolsClient) -> None:
     with pytest.raises(ValueError, match='Unsupported TikTok search_type'):
         client.tiktok_scrape('cooking', search_type='trending')

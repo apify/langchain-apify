@@ -264,6 +264,15 @@ def test_tiktok_tool_clamps_max_results(mock_tools_client: MagicMock) -> None:
     assert mock_tools_client.tiktok_scrape.call_args.kwargs['max_results'] == 4
 
 
+def test_tiktok_tool_passes_post_search_type(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.tiktok_scrape.return_value = (SUCCEEDED_RUN, [])
+    tool = make_tool(ApifyTikTokScraperTool, mock_tools_client)
+
+    tool._run(search_query='https://www.tiktok.com/@charlidamelio/video/123', search_type='post')
+
+    assert mock_tools_client.tiktok_scrape.call_args.kwargs['search_type'] == 'post'
+
+
 # ---------------------------------------------------------------------------
 # ApifyFacebookPostsScraperTool
 # ---------------------------------------------------------------------------
