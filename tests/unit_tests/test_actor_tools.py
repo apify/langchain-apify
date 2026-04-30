@@ -199,8 +199,19 @@ def test_twitter_tool_happy_path(mock_tools_client: MagicMock) -> None:
         max_results=20,
         start=None,
         end=None,
+        sort=None,
         timeout_secs=600,
     )
+
+
+def test_twitter_tool_passes_sort(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.twitter_scrape.return_value = (SUCCEEDED_RUN, [])
+    tool = make_tool(ApifyTwitterScraperTool, mock_tools_client)
+
+    tool._run(search_query='apify', sort='Top')
+
+    kwargs = mock_tools_client.twitter_scrape.call_args.kwargs
+    assert kwargs['sort'] == 'Top'
 
 
 def test_twitter_tool_passes_date_range(mock_tools_client: MagicMock) -> None:

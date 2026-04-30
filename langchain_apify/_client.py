@@ -405,6 +405,7 @@ class ApifyToolsClient:
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         start: str | None = None,
         end: str | None = None,
+        sort: str | None = None,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
     ) -> tuple[dict, list[dict]]:
         """Scrape Twitter/X via ``apidojo/twitter-scraper-lite``.
@@ -417,6 +418,7 @@ class ApifyToolsClient:
                 than this date.
             end: Optional ISO-8601 end date — only return tweets older than
                 this date.
+            sort: Optional sort order. One of ``"Latest"`` or ``"Top"``.
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
@@ -440,6 +442,8 @@ class ApifyToolsClient:
             run_input['start'] = start
         if end is not None:
             run_input['end'] = end
+        if sort is not None:
+            run_input['sort'] = sort
         return self.run_actor_and_get_items(
             _TWITTER_ACTOR_ID,
             run_input=run_input,

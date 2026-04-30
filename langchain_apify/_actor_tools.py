@@ -98,6 +98,10 @@ class ApifyTwitterScraperInput(BaseModel):
         default=None,
         description='Optional end date - only return tweets older than this date.',
     )
+    sort: Literal['Latest', 'Top'] | None = Field(
+        default=None,
+        description='Optional sort order: "Latest" for most recent first, "Top" for most popular.',
+    )
 
 
 class ApifyTikTokScraperInput(BaseModel):
@@ -401,19 +405,21 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
         ' Optional: search_mode (one of "search", "user", "replies"; default "search"),'
         ' max_results (int, default 20),'
         ' start (str - ISO date, only return tweets newer than this date),'
-        ' end (str - ISO date, only return tweets older than this date).'
+        ' end (str - ISO date, only return tweets older than this date),'
+        ' sort (one of "Latest", "Top" - sort order for results).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
         ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: type[BaseModel] = ApifyTwitterScraperInput
 
-    def _run(
+    def _run(  # noqa: PLR0913
         self,
         search_query: str,
         search_mode: Literal['search', 'user', 'replies'] = 'search',
         max_results: int = 20,
         start: str | None = None,
         end: str | None = None,
+        sort: Literal['Latest', 'Top'] | None = None,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
@@ -423,6 +429,7 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
                 max_results=self._clamp_items(max_results),
                 start=start,
                 end=end,
+                sort=sort,
                 timeout_secs=self.max_timeout_secs,
             )
         except (RuntimeError, ValueError) as exc:

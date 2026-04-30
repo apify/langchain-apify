@@ -476,6 +476,15 @@ def test_twitter_scrape_passes_date_range(client: ApifyToolsClient, mock_apify_c
     assert call_kwargs['run_input']['end'] == '2025-02-01'
 
 
+def test_twitter_scrape_passes_sort(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    _setup_run_and_items(mock_apify_client)
+
+    client.twitter_scrape('apify', sort='Top')
+
+    call_kwargs = mock_apify_client.actor.return_value.call.call_args.kwargs
+    assert call_kwargs['run_input']['sort'] == 'Top'
+
+
 def test_twitter_scrape_invalid_mode_raises(client: ApifyToolsClient) -> None:
     with pytest.raises(ValueError, match='Unsupported Twitter search_mode'):
         client.twitter_scrape('apify', search_mode='followers')
