@@ -551,6 +551,26 @@ def test_ecommerce_scrape_input_mapping(client: ApifyToolsClient, mock_apify_cli
     assert items == SAMPLE_ITEMS
 
 
+def test_ecommerce_scrape_category_mode_uses_category_urls(
+    client: ApifyToolsClient, mock_apify_client: MagicMock
+) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = SAMPLE_ITEMS
+
+    client.ecommerce_scrape('https://shop.example.com/category/123', url_type='category', max_results=5)
+
+    run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
+    assert run_input == {
+        'categoryUrls': [{'url': 'https://shop.example.com/category/123'}],
+        'maxProductResults': 5,
+    }
+
+
+def test_ecommerce_scrape_invalid_url_type_raises(client: ApifyToolsClient) -> None:
+    with pytest.raises(ValueError, match='Invalid url_type'):
+        client.ecommerce_scrape('https://shop.example.com', url_type='listing')
+
+
 def test_ecommerce_scrape_failed_run_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     mock_apify_client.actor.return_value.call.return_value = FAILED_RUN
 

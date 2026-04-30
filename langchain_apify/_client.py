@@ -26,6 +26,7 @@ _YOUTUBE_SCRAPER_ACTOR_ID = 'streamers/youtube-scraper'
 _ECOMMERCE_SCRAPER_ACTOR_ID = 'apify/e-commerce-scraping-tool'
 
 _YOUTUBE_SEARCH_TYPES = ('search', 'video', 'channel')
+_ECOMMERCE_URL_TYPES = ('product', 'category')
 _DEFAULT_RUN_TIMEOUT_SECS = 300
 _DEFAULT_SCRAPE_TIMEOUT_SECS = 120
 _DEFAULT_CRAWL_TIMEOUT_SECS = 300
@@ -417,17 +418,21 @@ class ApifyToolsClient:
     def ecommerce_scrape(
         self,
         url: str,
+        url_type: str = 'product',
         max_results: int = 20,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
     ) -> tuple[dict, list[dict]]:
-        """Extract product data from an e-commerce product-detail URL.
+        """Extract product data from an e-commerce URL.
 
-        Uses ``apify/e-commerce-scraping-tool``. The input URL is sent as a
-        product-detail page via the Actor's ``detailsUrls`` field; category /
-        listing pages are not supported through this helper.
+        Uses ``apify/e-commerce-scraping-tool``. ``url_type`` selects which
+        Actor input field the URL is sent as: ``"product"`` → ``detailsUrls``
+        (a single product-detail page), ``"category"`` → ``categoryUrls``
+        (a listing / category page that the Actor will expand into product
+        results).
 
         Args:
-            url: Product-detail URL to scrape.
+            url: Product-detail or category URL to scrape.
+            url_type: One of ``"product"`` or ``"category"``.
             max_results: Maximum number of products to return.
             timeout_secs: Maximum time to wait for the run to finish.
 
@@ -435,10 +440,16 @@ class ApifyToolsClient:
             A ``(run_details, items)`` tuple.
 
         Raises:
+            ValueError: If ``url_type`` is not a supported value.
             RuntimeError: If the Actor run fails.
         """
+        if url_type not in _ECOMMERCE_URL_TYPES:
+            msg = f'Invalid url_type {url_type!r}; expected one of {_ECOMMERCE_URL_TYPES}.'
+            raise ValueError(msg)
+
+        input_key = 'detailsUrls' if url_type == 'product' else 'categoryUrls'
         run_input: dict = {
-            'detailsUrls': [{'url': url}],
+            input_key: [{'url': url}],
             'maxProductResults': max_results,
         }
         return self.run_actor_and_get_items(

@@ -200,7 +200,14 @@ class ApifyYouTubeScraperInput(BaseModel):
 class ApifyEcommerceScraperInput(BaseModel):
     """Input schema for :class:`ApifyEcommerceScraperTool`."""
 
-    url: str = Field(description='Product-detail URL to scrape (not a category / listing page).')
+    url: str = Field(description='Product-detail URL or category / listing page URL to scrape.')
+    url_type: Literal['product', 'category'] = Field(
+        default='product',
+        description=(
+            'Type of page the URL points to: "product" for a product-detail page, '
+            '"category" for a category / listing page.'
+        ),
+    )
     max_results: int = Field(default=20, description='Maximum number of products to return.')
 
 
@@ -411,15 +418,17 @@ class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
             tool = ApifyEcommerceScraperTool()
             result = tool.invoke({
                 "url": "https://shop.example.com/category/123",
+                "url_type": "category",
                 "max_results": 20,
             })
     """
 
     name: str = 'apify_ecommerce_scraper'
     description: str = (
-        'Extract product data from an e-commerce product-detail URL and return it as JSON.'
-        ' Required: url (str) - the product-detail URL (not a category / listing page).'
-        ' Optional: max_results (int, default 20).'
+        'Extract product data from an e-commerce URL and return it as JSON.'
+        ' Required: url (str) - product-detail or category / listing URL.'
+        ' Optional: url_type (one of "product", "category"; default "product"),'
+        ' max_results (int, default 20).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
         ' Use only the data returned; do not hallucinate missing fields.'
     )
@@ -428,15 +437,17 @@ class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
     def _run(
         self,
         url: str,
+        url_type: Literal['product', 'category'] = 'product',
         max_results: int = 20,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
             run, items = self._client.ecommerce_scrape(
                 url,
+                url_type=url_type,
                 max_results=self._clamp_items(max_results),
                 timeout_secs=self.max_timeout_secs,
             )
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps({'run': _run_meta(run), 'items': items})

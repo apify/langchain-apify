@@ -328,14 +328,39 @@ def test_ecommerce_tool_returns_json(mock_tools_client: MagicMock) -> None:
     mock_tools_client.ecommerce_scrape.return_value = (SUCCEEDED_RUN, items)
     tool = make_tool(ApifyEcommerceScraperTool, mock_tools_client)
 
-    parsed = json.loads(tool._run(url='https://shop.example.com/cat', max_results=5))
+    parsed = json.loads(tool._run(url='https://shop.example.com/p/123', max_results=5))
 
     assert parsed['items'] == items
     mock_tools_client.ecommerce_scrape.assert_called_once_with(
-        'https://shop.example.com/cat',
+        'https://shop.example.com/p/123',
+        url_type='product',
         max_results=5,
         timeout_secs=tool.max_timeout_secs,
     )
+
+
+def test_ecommerce_tool_category_mode_passes_url_type(mock_tools_client: MagicMock) -> None:
+    items = [{'sku': 'B2', 'price': 19.99}]
+    mock_tools_client.ecommerce_scrape.return_value = (SUCCEEDED_RUN, items)
+    tool = make_tool(ApifyEcommerceScraperTool, mock_tools_client)
+
+    parsed = json.loads(tool._run(url='https://shop.example.com/cat/42', url_type='category', max_results=8))
+
+    assert parsed['items'] == items
+    mock_tools_client.ecommerce_scrape.assert_called_once_with(
+        'https://shop.example.com/cat/42',
+        url_type='category',
+        max_results=8,
+        timeout_secs=tool.max_timeout_secs,
+    )
+
+
+def test_ecommerce_tool_invalid_url_type_raises_tool_exception(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.ecommerce_scrape.side_effect = ValueError('Invalid url_type listing')
+    tool = make_tool(ApifyEcommerceScraperTool, mock_tools_client)
+
+    with pytest.raises(ToolException, match='Invalid url_type'):
+        tool._run(url='https://shop.example.com', url_type='product')
 
 
 # ---------------------------------------------------------------------------
