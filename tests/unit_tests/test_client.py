@@ -497,7 +497,7 @@ def test_youtube_scrape_search_mode_input_mapping(client: ApifyToolsClient, mock
 
     mock_apify_client.actor.assert_called_once_with('streamers/youtube-scraper')
     run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
-    assert run_input == {'maxResults': 7, 'searchKeywords': 'langchain'}
+    assert run_input == {'maxResults': 7, 'searchQueries': ['langchain']}
     assert run == SUCCEEDED_RUN
     assert items == SAMPLE_ITEMS
 

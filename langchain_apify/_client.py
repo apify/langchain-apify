@@ -404,7 +404,7 @@ class ApifyToolsClient:
 
         run_input: dict = {'maxResults': max_results}
         if search_type == 'search':
-            run_input['searchKeywords'] = search_query
+            run_input['searchQueries'] = [search_query]
         else:
             run_input['startUrls'] = [{'url': search_query}]
 
