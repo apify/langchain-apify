@@ -4,15 +4,19 @@ from importlib import metadata
 from typing import TYPE_CHECKING
 
 from langchain_apify._actor_tools import (
+    ApifyEcommerceScraperTool,
     ApifyFacebookPostsScraperTool,
+    ApifyGoogleMapsTool,
     ApifyGoogleSearchTool,
     ApifyInstagramScraperTool,
     ApifyLinkedInProfileDetailTool,
     ApifyLinkedInProfilePostsTool,
     ApifyLinkedInProfileSearchTool,
+    ApifyRAGWebBrowserTool,
     ApifyTikTokScraperTool,
     ApifyTwitterScraperTool,
     ApifyWebCrawlerTool,
+    ApifyYouTubeScraperTool,
 )
 from langchain_apify.document_loaders import ApifyCrawlLoader, ApifyDatasetLoader
 from langchain_apify.retrievers import ApifySearchRetriever
@@ -64,6 +68,13 @@ APIFY_ACTOR_TOOLS: list[type[BaseTool]] = [
     ApifyWebCrawlerTool,
 ]
 
+APIFY_SEARCH_TOOLS: list[type[BaseTool]] = [
+    ApifyRAGWebBrowserTool,
+    ApifyGoogleMapsTool,
+    ApifyYouTubeScraperTool,
+    ApifyEcommerceScraperTool,
+]
+
 __all__ = [
     # Existing components (backward-compatible)
     'ApifyActorsTool',
@@ -79,6 +90,11 @@ __all__ = [
     # Actor-specific tools
     'ApifyGoogleSearchTool',
     'ApifyWebCrawlerTool',
+    # Search & Crawling Actor tools
+    'ApifyEcommerceScraperTool',
+    'ApifyGoogleMapsTool',
+    'ApifyRAGWebBrowserTool',
+    'ApifyYouTubeScraperTool',
     # Retriever
     'ApifySearchRetriever',
     # Loaders
@@ -94,6 +110,7 @@ __all__ = [
     # Tool group lists
     'APIFY_ACTOR_TOOLS',
     'APIFY_CORE_TOOLS',
+    'APIFY_SEARCH_TOOLS',
     'APIFY_SOCIAL_TOOLS',
     # Meta
     '__version__',
