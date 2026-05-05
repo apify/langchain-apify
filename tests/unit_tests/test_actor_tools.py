@@ -8,7 +8,6 @@ from langchain_core.tools import ToolException
 from pydantic import SecretStr
 
 from langchain_apify import (
-    APIFY_ACTOR_TOOLS,
     APIFY_SEARCH_TOOLS,
     ApifyEcommerceScraperTool,
     ApifyGoogleMapsTool,
@@ -218,37 +217,7 @@ def test_web_crawler_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 # ---------------------------------------------------------------------------
-# Metadata & inheritance
-# ---------------------------------------------------------------------------
-
-
-def test_actor_tools_inherit_from_generic_base() -> None:
-    for tool_cls in (ApifyGoogleSearchTool, ApifyWebCrawlerTool):
-        assert issubclass(tool_cls, _ApifyGenericTool), f'{tool_cls.__name__} must extend _ApifyGenericTool'
-
-
-def test_actor_tools_have_correct_metadata() -> None:
-    with patch.object(ApifyToolsClient, '__init__', return_value=None):
-        tools = [
-            ApifyGoogleSearchTool(apify_api_token=SecretStr('dummy')),
-            ApifyWebCrawlerTool(apify_api_token=SecretStr('dummy')),
-        ]
-
-    expected_names = ['apify_google_search', 'apify_web_crawler']
-    for tool, expected_name in zip(tools, expected_names):
-        assert tool.name == expected_name
-        assert tool.description
-        assert tool.args_schema is not None
-        assert tool.handle_tool_error is True
-
-
-def test_apify_actor_tools_list() -> None:
-    assert set(APIFY_ACTOR_TOOLS) == {ApifyGoogleSearchTool, ApifyWebCrawlerTool}
-    assert len(APIFY_ACTOR_TOOLS) == 2
-
-
-# ---------------------------------------------------------------------------
-# US-4 Search & Crawling tools — happy paths
+# Search & Crawling tools — happy paths
 # ---------------------------------------------------------------------------
 
 
@@ -369,6 +338,8 @@ def test_ecommerce_tool_invalid_url_type_raises_tool_exception(mock_tools_client
 
 # Each entry: (tool_class, helper_attribute_name, kwargs_for_run)
 _TOOL_INVOCATIONS: list[tuple[type[_ApifyGenericTool], str, dict]] = [
+    (ApifyGoogleSearchTool, 'google_search', {'query': 'q'}),
+    (ApifyWebCrawlerTool, 'crawl_website', {'url': 'https://example.com'}),
     (ApifyRAGWebBrowserTool, 'rag_web_browser_search', {'query': 'q'}),
     (ApifyGoogleMapsTool, 'google_maps_search', {'query': 'q'}),
     (ApifyYouTubeScraperTool, 'youtube_scrape', {'search_query': 'q'}),
@@ -453,6 +424,8 @@ def test_search_tools_inherit_from_generic_base() -> None:
 
 def test_search_tools_have_correct_metadata() -> None:
     cases: list[tuple[type, str]] = [
+        (ApifyGoogleSearchTool, 'apify_google_search'),
+        (ApifyWebCrawlerTool, 'apify_web_crawler'),
         (ApifyRAGWebBrowserTool, 'apify_rag_web_browser'),
         (ApifyGoogleMapsTool, 'apify_google_maps'),
         (ApifyYouTubeScraperTool, 'apify_youtube_scraper'),
@@ -469,9 +442,11 @@ def test_search_tools_have_correct_metadata() -> None:
 
 def test_apify_search_tools_list() -> None:
     assert set(APIFY_SEARCH_TOOLS) == {
+        ApifyGoogleSearchTool,
+        ApifyWebCrawlerTool,
         ApifyRAGWebBrowserTool,
         ApifyGoogleMapsTool,
         ApifyYouTubeScraperTool,
         ApifyEcommerceScraperTool,
     }
-    assert len(APIFY_SEARCH_TOOLS) == 4
+    assert len(APIFY_SEARCH_TOOLS) == 6
