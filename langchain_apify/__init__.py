@@ -63,12 +63,9 @@ APIFY_SOCIAL_TOOLS: list[type[BaseTool]] = [
     ApifyFacebookPostsScraperTool,
 ]
 
-APIFY_ACTOR_TOOLS: list[type[BaseTool]] = [
+APIFY_SEARCH_TOOLS: list[type[BaseTool]] = [
     ApifyGoogleSearchTool,
     ApifyWebCrawlerTool,
-]
-
-APIFY_SEARCH_TOOLS: list[type[BaseTool]] = [
     ApifyRAGWebBrowserTool,
     ApifyGoogleMapsTool,
     ApifyYouTubeScraperTool,
@@ -87,10 +84,9 @@ __all__ = [
     'ApifyRunTaskAndGetDatasetTool',
     'ApifyRunTaskTool',
     'ApifyScrapeUrlTool',
-    # Actor-specific tools
+    # Search & Crawling Actor tools
     'ApifyGoogleSearchTool',
     'ApifyWebCrawlerTool',
-    # Search & Crawling Actor tools
     'ApifyEcommerceScraperTool',
     'ApifyGoogleMapsTool',
     'ApifyRAGWebBrowserTool',
@@ -108,7 +104,6 @@ __all__ = [
     'ApifyTikTokScraperTool',
     'ApifyTwitterScraperTool',
     # Tool group lists
-    'APIFY_ACTOR_TOOLS',
     'APIFY_CORE_TOOLS',
     'APIFY_SEARCH_TOOLS',
     'APIFY_SOCIAL_TOOLS',
