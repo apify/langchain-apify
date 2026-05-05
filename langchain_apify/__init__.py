@@ -39,7 +39,7 @@ APIFY_CORE_TOOLS: list[type[BaseTool]] = [
     ApifyRunTaskAndGetDatasetTool,
 ]
 
-APIFY_ACTOR_TOOLS: list[type[BaseTool]] = [
+APIFY_SEARCH_TOOLS: list[type[BaseTool]] = [
     ApifyGoogleSearchTool,
     ApifyWebCrawlerTool,
 ]
@@ -64,7 +64,7 @@ __all__ = [
     # Loaders
     'ApifyCrawlLoader',
     # Tool group lists
-    'APIFY_ACTOR_TOOLS',
+    'APIFY_SEARCH_TOOLS',
     'APIFY_CORE_TOOLS',
     # Meta
     '__version__',
