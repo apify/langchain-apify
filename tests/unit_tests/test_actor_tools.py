@@ -7,7 +7,7 @@ import pytest
 from langchain_core.tools import ToolException
 from pydantic import SecretStr
 
-from langchain_apify import APIFY_ACTOR_TOOLS, ApifyGoogleSearchTool, ApifyWebCrawlerTool
+from langchain_apify import APIFY_SEARCH_TOOLS, ApifyGoogleSearchTool, ApifyWebCrawlerTool
 from langchain_apify._client import ApifyToolsClient
 from langchain_apify.tools import _ApifyGenericTool
 from tests.unit_tests.conftest import make_tool
@@ -233,6 +233,6 @@ def test_actor_tools_have_correct_metadata() -> None:
         assert tool.handle_tool_error is True
 
 
-def test_apify_actor_tools_list() -> None:
-    assert set(APIFY_ACTOR_TOOLS) == {ApifyGoogleSearchTool, ApifyWebCrawlerTool}
-    assert len(APIFY_ACTOR_TOOLS) == 2
+def test_apify_search_tools_list() -> None:
+    assert set(APIFY_SEARCH_TOOLS) == {ApifyGoogleSearchTool, ApifyWebCrawlerTool}
+    assert len(APIFY_SEARCH_TOOLS) == 2
