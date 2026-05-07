@@ -4,11 +4,10 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient, ApifyClientAsync
-from langchain_core.utils import secret_from_env
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
-from langchain_apify._utils import _create_apify_client
+from langchain_apify._utils import _apify_token_secret_factory, _create_apify_client
 from langchain_apify.document_loaders import ApifyDatasetLoader
 
 if TYPE_CHECKING:
@@ -20,7 +19,7 @@ if TYPE_CHECKING:
 class ApifyWrapper(BaseModel):
     """Wrapper around Apify client for LangChain.
 
-    To use, you should have the environment variable `APIFY_API_TOKEN` set
+    To use, you should have the environment variable `APIFY_TOKEN` set
     with your API key, or pass `apify_api_token`
     as a named parameter to the constructor.
 
@@ -55,8 +54,8 @@ class ApifyWrapper(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
 
     apify_api_token: SecretStr | None = Field(
-        default_factory=secret_from_env('APIFY_API_TOKEN', default=None),
-        description='Apify API token. Falls back to the APIFY_API_TOKEN environment variable when None.',
+        default_factory=_apify_token_secret_factory,
+        description='Apify API token. Falls back to the APIFY_TOKEN environment variable when None.',
         exclude=True,
         repr=False,
     )
@@ -73,7 +72,7 @@ class ApifyWrapper(BaseModel):
 
         Args:
             apify_api_token (Optional[str | SecretStr]): Apify API token. Falls
-                back to the ``APIFY_API_TOKEN`` environment variable when *None*.
+                back to the ``APIFY_TOKEN`` environment variable when *None*.
             *args: Any: Additional positional arguments forwarded to Pydantic.
             **kwargs: Any: Additional keyword arguments forwarded to Pydantic.
         """
@@ -91,7 +90,7 @@ class ApifyWrapper(BaseModel):
             ApifyWrapper: The validated wrapper instance.
 
         Raises:
-            ValueError: If no token is provided and APIFY_API_TOKEN is not set.
+            ValueError: If no token is provided and APIFY_TOKEN is not set.
         """
         if self.apify_api_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET

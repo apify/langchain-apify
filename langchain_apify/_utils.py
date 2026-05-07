@@ -1,15 +1,33 @@
 from __future__ import annotations
 
+import os
 import string
 from typing import TypeVar
 
 import requests
 from apify_client import ApifyClientAsync
 from apify_client.client import ApifyClient
+from pydantic import SecretStr
 
 _MAX_DESCRIPTION_LEN: int = 350
 _REQUESTS_TIMEOUT_SECS: float = 10.0
 _APIFY_API_ENDPOINT_GET_DEFAULT_BUILD: str = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
+
+
+def _resolve_apify_token() -> str | None:
+    """Resolve the Apify API token from environment variables.
+
+    ``APIFY_TOKEN`` (SDK-standard) takes precedence; ``APIFY_API_TOKEN`` is
+    kept as a fallback for backwards compatibility with this package's
+    historical naming.
+    """
+    return os.getenv('APIFY_TOKEN') or os.getenv('APIFY_API_TOKEN')
+
+
+def _apify_token_secret_factory() -> SecretStr | None:
+    """Pydantic ``default_factory`` returning the resolved token as ``SecretStr``."""
+    token = _resolve_apify_token()
+    return SecretStr(token) if token else None
 
 
 def _prune_actor_input_schema(

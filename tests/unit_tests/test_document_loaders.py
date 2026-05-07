@@ -75,7 +75,7 @@ def test_apify_dataset_loader_apify_token_fallback(monkeypatch: pytest.MonkeyPat
 def test_apify_dataset_loader_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
     monkeypatch.delenv('APIFY_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyDatasetLoader(
             dataset_id='d',
             dataset_mapping_function=lambda _item: Document(page_content='x'),

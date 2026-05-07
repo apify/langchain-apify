@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+from apify_client import ApifyClient
 
 from langchain_apify._client import ApifyToolsClient
 from tests.unit_tests.conftest import FAILED_RUN, SAMPLE_ITEMS, SUCCEEDED_RUN
@@ -20,16 +21,41 @@ def test_init_with_explicit_token(mock_apify_client: MagicMock) -> None:
         assert c._client is mock_apify_client
 
 
-def test_init_with_env_token(monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock) -> None:
-    monkeypatch.setenv('APIFY_API_TOKEN', 'env-token')
+def test_init_with_apify_token_env(monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock) -> None:
+    """``APIFY_TOKEN`` (SDK-standard) should be picked up when set."""
+    monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+    monkeypatch.setenv('APIFY_TOKEN', 'sdk-token')
     with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client):
         c = ApifyToolsClient()
         assert c._client is mock_apify_client
 
 
+def test_init_with_legacy_apify_api_token_env(
+    monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock
+) -> None:
+    """``APIFY_API_TOKEN`` is still honoured for backwards compatibility."""
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    monkeypatch.setenv('APIFY_API_TOKEN', 'legacy-token')
+    with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client):
+        c = ApifyToolsClient()
+        assert c._client is mock_apify_client
+
+
+def test_init_apify_token_takes_precedence(
+    monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock
+) -> None:
+    """When both env vars are set, ``APIFY_TOKEN`` wins over ``APIFY_API_TOKEN``."""
+    monkeypatch.setenv('APIFY_API_TOKEN', 'legacy-token')
+    monkeypatch.setenv('APIFY_TOKEN', 'sdk-token')
+    with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client) as mock_create:
+        ApifyToolsClient()
+        mock_create.assert_called_once_with(ApifyClient, 'sdk-token')
+
+
 def test_init_missing_token_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyToolsClient()
 
 

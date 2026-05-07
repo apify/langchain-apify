@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 import httpx
 from apify_client import ApifyClient
 from apify_client.errors import ApifyClientError
@@ -12,7 +10,7 @@ from langchain_apify._error_messages import (
     _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET,
     _ERROR_SCRAPE_EMPTY,
 )
-from langchain_apify._utils import _create_apify_client
+from langchain_apify._utils import _create_apify_client, _resolve_apify_token
 
 # Only catches ApifyClientError and httpx.HTTPError. Other errors propagate.
 _TRANSPORT_EXCEPTIONS = (ApifyClientError, httpx.HTTPError)
@@ -31,8 +29,9 @@ class ApifyToolsClient:
     block until the Actor run finishes.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
-            environment variable when *None*.
+        apify_api_token: Apify API token. Falls back to the ``APIFY_TOKEN``
+            environment variable (or ``APIFY_API_TOKEN`` for backwards
+            compatibility) when *None*.
 
     Raises:
         ValueError: If no token is provided and the env var is not set.
@@ -42,7 +41,7 @@ class ApifyToolsClient:
         if isinstance(apify_api_token, SecretStr):
             _token: str | None = apify_api_token.get_secret_value()
         else:
-            _token = apify_api_token or os.getenv('APIFY_API_TOKEN')
+            _token = apify_api_token or _resolve_apify_token()
 
         if not _token:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET

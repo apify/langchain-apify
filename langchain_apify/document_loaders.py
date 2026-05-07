@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document  # noqa: TCH002
-from langchain_core.utils import secret_from_env
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
-from langchain_apify._utils import _create_apify_client
+from langchain_apify._utils import _apify_token_secret_factory, _create_apify_client
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -20,7 +18,7 @@ if TYPE_CHECKING:
 class ApifyDatasetLoader(BaseLoader, BaseModel):
     """Load datasets from Apify web scraping, crawling, and data extraction platform.
 
-    To use, you should have the environment variable `APIFY_API_TOKEN` set
+    To use, you should have the environment variable `APIFY_TOKEN` set
     with your API key, or pass `apify_api_token`
     as a named parameter to the constructor.
 
@@ -44,8 +42,8 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
 
     apify_api_token: SecretStr | None = Field(
-        default_factory=secret_from_env('APIFY_API_TOKEN', default=None),
-        description='Apify API token. Falls back to APIFY_API_TOKEN / APIFY_TOKEN environment variables.',
+        default_factory=_apify_token_secret_factory,
+        description='Apify API token. Falls back to the APIFY_TOKEN environment variable when None.',
         exclude=True,
         repr=False,
     )
@@ -70,7 +68,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
                 dictionary (an Apify dataset item) and converts it to an instance
                 of the Document class.
             apify_api_token (str | SecretStr): Apify API token. Falls back to the
-                ``APIFY_API_TOKEN`` / ``APIFY_TOKEN`` environment variables.
+                ``APIFY_TOKEN`` environment variable when *None*.
         """
         init_kwargs: dict[str, Any] = {
             'dataset_id': dataset_id,
@@ -84,10 +82,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
 
     @model_validator(mode='after')
     def _init_client(self) -> ApifyDatasetLoader:
-        """Resolve the Apify API token and initialise the client.
-
-        Checks ``APIFY_TOKEN`` as a secondary fallback for code running on the
-        Apify platform where only that variable is set.
+        """Validate the resolved Apify token and initialise the client.
 
         Returns:
             ApifyDatasetLoader: The validated loader instance.
@@ -95,16 +90,10 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         Raises:
             ValueError: If no token is available from any source.
         """
-        token = self.apify_api_token
-        if token is None:
-            # Secondary fallback for code running on the Apify platform.
-            raw = os.getenv('APIFY_TOKEN')
-            if raw:
-                token = SecretStr(raw)
-        if token is None:
+        if self.apify_api_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self.apify_client = _create_apify_client(ApifyClient, token.get_secret_value())
+        self.apify_client = _create_apify_client(ApifyClient, self.apify_api_token.get_secret_value())
         return self
 
     def load(self) -> list[Document]:

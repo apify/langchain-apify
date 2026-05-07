@@ -1,12 +1,12 @@
 """LangChain tools for the Apify platform.
 
-All tools require an Apify API token. Set it via the ``APIFY_API_TOKEN``
+All tools require an Apify API token. Set it via the ``APIFY_TOKEN``
 environment variable, or pass ``apify_api_token`` to the tool constructor:
 
 .. code-block:: python
 
     import os
-    os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+    os.environ["APIFY_TOKEN"] = "your-apify-token"
 
     from langchain_apify import ApifyRunActorTool
 
@@ -19,13 +19,11 @@ For details, see https://docs.apify.com/platform/integrations/langchain
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool, ToolException
-from langchain_core.utils import secret_from_env
 from pydantic import BaseModel, Field, PrivateAttr, SecretStr, create_model
 
 from langchain_apify._client import ApifyToolsClient
@@ -33,9 +31,11 @@ from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import (
     _MAX_DESCRIPTION_LEN,
     _actor_id_to_tool_name,
+    _apify_token_secret_factory,
     _create_apify_client,
     _get_actor_latest_build,
     _prune_actor_input_schema,
+    _resolve_apify_token,
 )
 
 if TYPE_CHECKING:
@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
     """Tool that runs Apify Actors.
 
-    To use, you should have the environment variable `APIFY_API_TOKEN` set
+    To use, you should have the environment variable `APIFY_TOKEN` set
     with your API key, or pass `apify_api_token`
     as a named parameter to the constructor.
 
@@ -95,12 +95,12 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
             **kwargs: Additional keyword arguments.
 
         Raises:
-            ValueError: If the `APIFY_API_TOKEN` environment variable is not set
+            ValueError: If the `APIFY_TOKEN` environment variable is not set
         """
         _raw_token: str | None = (
             apify_api_token.get_secret_value()
             if isinstance(apify_api_token, SecretStr)
-            else apify_api_token or os.getenv('APIFY_API_TOKEN')
+            else apify_api_token or _resolve_apify_token()
         )
         if not _raw_token:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
@@ -329,8 +329,8 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     handle_tool_error: bool = True
 
     apify_api_token: SecretStr | None = Field(
-        default_factory=secret_from_env('APIFY_API_TOKEN', default=None),
-        description='Apify API token. Falls back to the APIFY_API_TOKEN environment variable when None.',
+        default_factory=_apify_token_secret_factory,
+        description='Apify API token. Falls back to the APIFY_TOKEN environment variable when None.',
         exclude=True,
         repr=False,
     )
@@ -375,7 +375,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
     results from the dataset.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_api_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -386,7 +386,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyRunActorTool
 
@@ -433,7 +433,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
     included.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_api_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -443,7 +443,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyGetDatasetItemsTool
 
@@ -483,7 +483,7 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
     ``items`` (list of dicts) keys.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_api_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -495,7 +495,7 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyRunActorAndGetDatasetTool
 
@@ -547,7 +547,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
     (not JSON).
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_api_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -558,7 +558,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyScrapeUrlTool
 
@@ -596,7 +596,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
     Use :class:`ApifyGetDatasetItemsTool` afterwards to retrieve results.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_api_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -607,7 +607,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyRunTaskTool
 
@@ -654,7 +654,7 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
     ``items`` (list of dicts) keys.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_api_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -666,7 +666,7 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyRunTaskAndGetDatasetTool
 

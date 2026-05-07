@@ -69,8 +69,8 @@ def test_run_actor_method(apify_actors_tool_fixture: ApifyActorsTool) -> None:
     with patch.object(ApifyActorsTool, '_run_actor') as mock_run_actor:
         mock_run_actor.return_value = [{'text': 'Apify is great!'}]
 
-        result = apify_actors_tool_fixture.invoke(
-            input={'run_input': {'query': 'what is Apify?', 'maxResults': 3}},
+        result = apify_actors_tool_fixture._run(
+            run_input={'query': 'what is Apify?', 'maxResults': 3},
         )
         mock_run_actor.assert_called_once()
         assert result[0]['text'] == 'Apify is great!'
@@ -204,7 +204,8 @@ def test_run_actor_tool_failure_raises_tool_exception(mock_tools_client: MagicMo
 
 def test_run_actor_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyRunActorTool()
 
 
@@ -248,7 +249,8 @@ def test_get_dataset_items_tool_network_error_raises_tool_exception(mock_tools_c
 
 def test_get_dataset_items_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyGetDatasetItemsTool()
 
 
@@ -282,7 +284,8 @@ def test_run_actor_and_get_items_tool_failure_raises_tool_exception(mock_tools_c
 
 def test_run_actor_and_get_items_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyRunActorAndGetDatasetTool()
 
 
@@ -311,7 +314,8 @@ def test_scrape_url_tool_empty_raises_tool_exception(mock_tools_client: MagicMoc
 
 def test_scrape_url_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyScrapeUrlTool()
 
 
@@ -345,7 +349,8 @@ def test_run_task_tool_failure_raises_tool_exception(mock_tools_client: MagicMoc
 
 def test_run_task_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyRunTaskTool()
 
 
@@ -379,7 +384,8 @@ def test_run_task_and_get_items_tool_failure_raises_tool_exception(mock_tools_cl
 
 def test_run_task_and_get_items_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyRunTaskAndGetDatasetTool()
 
 

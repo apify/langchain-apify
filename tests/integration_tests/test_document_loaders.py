@@ -1,10 +1,10 @@
-import os
 from collections.abc import Iterator
 
 from apify_client import ApifyClient
 from langchain_core.documents import Document
 
 from langchain_apify import ApifyDatasetLoader
+from langchain_apify._utils import _resolve_apify_token
 
 
 def test_apify_dataset_loader_load() -> None:
@@ -13,7 +13,7 @@ def test_apify_dataset_loader_load() -> None:
     Creates a new dataset, pushes items to it,
         and then loads the items using the loader.
     """
-    token = os.getenv('APIFY_API_TOKEN')
+    token = _resolve_apify_token()
     client = ApifyClient(token=token)
 
     dataset_name = 'langchain-test-apify-dataset-loader-load'
@@ -53,7 +53,7 @@ def test_apify_dataset_loader_lazy_load() -> None:
     Creates a new dataset, pushes items to it,
         and then loads the items using the loader.
     """
-    token = os.getenv('APIFY_API_TOKEN')
+    token = _resolve_apify_token()
     client = ApifyClient(token=token)
 
     dataset_name = 'langchain-test-apify-dataset-loader-lazy-load'
