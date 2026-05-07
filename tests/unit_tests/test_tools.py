@@ -516,6 +516,50 @@ def test_clamp_memory_floors_positive_below_platform_minimum(mock_tools_client: 
     mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, 128)
 
 
+@pytest.mark.parametrize(
+    ('input_mb', 'expected_mb'),
+    [
+        (128, 128),  # already valid
+        (200, 256),  # snap up
+        (500, 512),  # snap up
+        (1024, 1024),  # already valid
+        (1500, 2048),  # snap up
+        (2048, 2048),  # already valid
+        (3000, 4096),  # snap up
+        (16384, 16384),  # already valid
+        (32768, 32768),  # already valid (top of range)
+    ],
+)
+def test_clamp_memory_snaps_up_to_power_of_two(
+    mock_tools_client: MagicMock, input_mb: int, expected_mb: int
+) -> None:
+    """``memory_mbytes`` is snapped UP to the next valid Apify power-of-2 value."""
+    mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
+    tool = make_tool(ApifyRunActorTool, mock_tools_client, max_memory_mbytes=32768)
+
+    tool._run(actor_id='apify/test', memory_mbytes=input_mb)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, expected_mb)
+
+
+def test_clamp_memory_snap_up_capped_to_max(mock_tools_client: MagicMock) -> None:
+    """When snap-up would exceed ``max_memory_mbytes``, the largest valid value at-or-below the cap is used."""
+    mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
+    # cap is not itself a power of 2; clamped value (500) snaps up to 512 which exceeds cap → fall back to 256.
+    tool = make_tool(ApifyRunActorTool, mock_tools_client, max_memory_mbytes=500)
+
+    tool._run(actor_id='apify/test', memory_mbytes=500)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, 256)
+
+
+def test_clamp_memory_misconfigured_cap_below_platform_minimum(mock_tools_client: MagicMock) -> None:
+    """If the developer-set cap is below 128 (the Apify minimum), fall back to 128 rather than overshooting."""
+    mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
+    tool = make_tool(ApifyRunActorTool, mock_tools_client, max_memory_mbytes=100)
+
+    tool._run(actor_id='apify/test', memory_mbytes=100)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, 128)
+
+
 def test_clamp_items_floor_is_one(mock_tools_client: MagicMock) -> None:
     mock_tools_client.get_dataset_items.return_value = SAMPLE_ITEMS
     tool = make_tool(ApifyGetDatasetItemsTool, mock_tools_client, max_items=100)

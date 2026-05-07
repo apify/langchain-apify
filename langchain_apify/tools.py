@@ -18,6 +18,7 @@ For details, see https://docs.apify.com/platform/integrations/langchain
 
 from __future__ import annotations
 
+import bisect
 import json
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
@@ -310,6 +311,11 @@ def _run_meta(run: dict) -> dict:
     }
 
 
+# Apify accepts memory_mbytes only as one of these power-of-2 values.
+# https://docs.apify.com/api/v2/act-runs-post
+_VALID_MEMORY_MBYTES: tuple[int, ...] = (128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768)
+
+
 # ---------------------------------------------------------------------------
 # Shared base for generic tools
 # ---------------------------------------------------------------------------
@@ -351,12 +357,17 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
         return max(1, min(value, self.max_timeout_secs))
 
     def _clamp_memory(self, value: int | None) -> int | None:
-        # Non-positive values fall through to the platform default. Positive
-        # values are floored at 128 MB (the Apify platform minimum) so the LLM
-        # cannot drive into an API rejection by requesting too little memory.
+        # Clamp positive values to [128, max_memory_mbytes] and snap up to next valid Apify power-of-2. Non-positive uses default.
+ 
         if value is None or value <= 0:
             return None
-        return max(128, min(value, self.max_memory_mbytes))
+        clamped = max(128, min(value, self.max_memory_mbytes))
+        idx = bisect.bisect_left(_VALID_MEMORY_MBYTES, clamped)
+        # If snap-up exceeds cap, use largest valid at-or-below cap
+        if idx >= len(_VALID_MEMORY_MBYTES) or _VALID_MEMORY_MBYTES[idx] > self.max_memory_mbytes:
+            idx = bisect.bisect_right(_VALID_MEMORY_MBYTES, self.max_memory_mbytes) - 1
+        # Misconfigured cap below the platform minimum, return the minimum.
+        return _VALID_MEMORY_MBYTES[max(idx, 0)]
 
     def _clamp_items(self, value: int) -> int:
         return max(1, min(value, self.max_items))
