@@ -4,11 +4,11 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient, ApifyClientAsync
-from langchain_core.utils import get_from_dict_or_env
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
+from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+from langchain_apify._utils import _apify_token_secret_factory, _create_apify_client
 from langchain_apify.document_loaders import ApifyDatasetLoader
-from langchain_apify.utils import create_apify_client
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class ApifyWrapper(BaseModel):
     """Wrapper around Apify client for LangChain.
 
-    To use, you should have the environment variable `APIFY_API_TOKEN` set
+    To use, you should have the environment variable `APIFY_TOKEN` set
     with your API key, or pass `apify_api_token`
     as a named parameter to the constructor.
 
@@ -51,49 +51,54 @@ class ApifyWrapper(BaseModel):
     """
 
     # allow arbitrary types in the model config for the apify client fields
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
 
-    apify_client: ApifyClient
-    apify_client_async: ApifyClientAsync
-    apify_api_token: str | None = None
+    apify_api_token: SecretStr | None = Field(
+        default_factory=_apify_token_secret_factory,
+        description='Apify API token. Falls back to the APIFY_TOKEN environment variable when None.',
+        exclude=True,
+        repr=False,
+    )
+    apify_client: ApifyClient = Field(default=None, exclude=True)  # type: ignore[assignment]
+    apify_client_async: ApifyClientAsync = Field(default=None, exclude=True)  # type: ignore[assignment]
 
     def __init__(
         self,
-        apify_api_token: str | None = None,
+        apify_api_token: str | SecretStr | None = None,
         *args: Any,  # noqa: ANN401
         **kwargs: Any,  # noqa: ANN401
     ) -> None:
-        """Initialize the loader with an Apify dataset ID and a mapping function.
+        """Initialise the wrapper.
 
         Args:
-            dataset_id (str): The ID of the dataset on the Apify platform.
-            dataset_mapping_function (Callable): A function that takes a single
-                dictionary (an Apify dataset item) and converts it to an instance
-                of the Document class.
-            apify_api_token (Optional[str]): Apify API token.
-            *args: Any: Additional positional arguments.
-            **kwargs: Any: Additional keyword arguments.
+            apify_api_token (Optional[str | SecretStr]): Apify API token. Falls
+                back to the ``APIFY_TOKEN`` environment variable when *None*.
+            *args: Any: Additional positional arguments forwarded to Pydantic.
+            **kwargs: Any: Additional keyword arguments forwarded to Pydantic.
         """
-        kwargs.update({'apify_api_token': apify_api_token})
+        # Only forward the token when explicitly provided; otherwise let the
+        # Pydantic ``default_factory`` read it from the environment.
+        if apify_api_token is not None:
+            kwargs['apify_api_token'] = apify_api_token
         super().__init__(*args, **kwargs)
 
-    @model_validator(mode='before')
-    @classmethod
-    def validate_environment(cls, values: dict) -> Any:  # noqa: ANN401
-        """Validate environment.
-
-        Validate that an Apify API token is set and the apify-client
-        Python package exists in the current environment.
+    @model_validator(mode='after')
+    def _init_clients(self) -> ApifyWrapper:
+        """Validate the token and initialise both sync and async Apify clients.
 
         Returns:
-            Any: The validated values.
+            ApifyWrapper: The validated wrapper instance.
+
+        Raises:
+            ValueError: If no token is provided and APIFY_TOKEN is not set.
         """
-        apify_api_token = get_from_dict_or_env(values, 'apify_api_token', 'APIFY_API_TOKEN')
-
-        values['apify_client'] = create_apify_client(ApifyClient, apify_api_token)
-        values['apify_client_async'] = create_apify_client(ApifyClientAsync, apify_api_token)
-
-        return values
+        if self.apify_api_token is None:
+            msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+            raise ValueError(msg)
+        token = self.apify_api_token.get_secret_value()
+        self.apify_client = _create_apify_client(ApifyClient, token)
+        self.apify_client_async = _create_apify_client(ApifyClientAsync, token)
+        return self
 
     def call_actor(  # noqa: PLR0913
         self,

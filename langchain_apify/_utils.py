@@ -1,24 +1,42 @@
 from __future__ import annotations
 
+import os
 import string
 from typing import TypeVar
 
 import requests
 from apify_client import ApifyClientAsync
 from apify_client.client import ApifyClient
+from pydantic import SecretStr
 
-from langchain_apify.const import MAX_DESCRIPTION_LEN, REQUESTS_TIMEOUT_SECS
+_MAX_DESCRIPTION_LEN: int = 350
+_REQUESTS_TIMEOUT_SECS: float = 10.0
+_APIFY_API_ENDPOINT_GET_DEFAULT_BUILD: str = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
 
-APIFY_API_ENDPOINT_GET_DEFAULT_BUILD = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
+
+def _resolve_apify_token() -> str | None:
+    """Resolve the Apify API token from environment variables.
+
+    ``APIFY_TOKEN`` (SDK-standard) takes precedence; ``APIFY_API_TOKEN`` is
+    kept as a fallback for backwards compatibility with this package's
+    historical naming.
+    """
+    return os.getenv('APIFY_TOKEN') or os.getenv('APIFY_API_TOKEN')
 
 
-def prune_actor_input_schema(
+def _apify_token_secret_factory() -> SecretStr | None:
+    """Pydantic ``default_factory`` returning the resolved token as ``SecretStr``."""
+    token = _resolve_apify_token()
+    return SecretStr(token) if token else None
+
+
+def _prune_actor_input_schema(
     input_schema: dict,
-    max_description_len: int = MAX_DESCRIPTION_LEN,
+    max_description_len: int = _MAX_DESCRIPTION_LEN,
 ) -> tuple[dict, list[str]]:
     """Get the input schema from the Actor build.
 
-    Trim the description to 250 characters.
+    Trim descriptions to ``_MAX_DESCRIPTION_LEN`` characters.
 
     Args:
         input_schema (dict): The input schema from the Actor build.
@@ -48,7 +66,7 @@ def prune_actor_input_schema(
 T = TypeVar('T', ApifyClient, ApifyClientAsync)
 
 
-def create_apify_client(client_cls: type[T], token: str) -> T:
+def _create_apify_client(client_cls: type[T], token: str) -> T:
     """Create an Apify client instance with a custom user-agent.
 
     Args:
@@ -79,7 +97,7 @@ def create_apify_client(client_cls: type[T], token: str) -> T:
     return client
 
 
-def actor_id_to_tool_name(actor_id: str) -> str:
+def _actor_id_to_tool_name(actor_id: str) -> str:
     """Turn actor_id into a valid tool name.
 
     Tool name must only contain letters, numbers, underscores, dashes,
@@ -95,7 +113,7 @@ def actor_id_to_tool_name(actor_id: str) -> str:
     return 'apify_actor_' + ''.join(char if char in valid_chars else '_' for char in actor_id)
 
 
-def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
+def _get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
     """Get the latest build of an Actor from the default build tag.
 
     Args:
@@ -117,8 +135,8 @@ def get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
         msg = f'Failed to get the Actor object ID for {actor_id}.'
         raise ValueError(msg)
 
-    url = APIFY_API_ENDPOINT_GET_DEFAULT_BUILD.format(actor_id=actor_obj_id)
-    response = requests.request('GET', url, timeout=REQUESTS_TIMEOUT_SECS)
+    url = _APIFY_API_ENDPOINT_GET_DEFAULT_BUILD.format(actor_id=actor_obj_id)
+    response = requests.request('GET', url, timeout=_REQUESTS_TIMEOUT_SECS)
 
     build = response.json()
     if not isinstance(build, dict):

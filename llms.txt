@@ -10,11 +10,11 @@ To install the package, use pip:
 pip install langchain-apify
 ```
 
-Ensure you have set the `APIFY_API_TOKEN` environment variable with your Apify API token.
+Ensure you have set the `APIFY_TOKEN` environment variable with your Apify API token.
 
 ```python
 import os
-os.environ["APIFY_API_TOKEN"] = "YOUR_APIFY_API_TOKEN"
+os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
 ```
 
 ## Key Imports
@@ -110,5 +110,5 @@ documents = loader.load()
 
 **Note:**
 - This document assumes you're familiar with Python and LangChain basics.
-- Adjust the `YOUR_APIFY_API_TOKEN` placeholder with your actual token or follow the instructions for setting environment variables.
+- Adjust the `YOUR_APIFY_TOKEN` placeholder with your actual token or follow the instructions for setting environment variables.
 - The `dataset_mapping_function` is crucial for shaping the data into `Document` objects that LangChain can understand. Adjust based on the structure of your data.
