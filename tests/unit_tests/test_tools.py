@@ -572,6 +572,22 @@ def test_clamp_items_floor_is_one(mock_tools_client: MagicMock) -> None:
     mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 1, 0)
 
 
+def test_clamp_offset_floor_is_zero(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.get_dataset_items.return_value = SAMPLE_ITEMS
+    tool = make_tool(ApifyGetDatasetItemsTool, mock_tools_client, max_items=100)
+
+    tool._run(dataset_id='ds-1', offset=-5)
+    mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 100, 0)
+
+    mock_tools_client.get_dataset_items.reset_mock()
+    tool._run(dataset_id='ds-1', offset=0)
+    mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 100, 0)
+
+    mock_tools_client.get_dataset_items.reset_mock()
+    tool._run(dataset_id='ds-1', offset=10)
+    mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 100, 10)
+
+
 def test_values_below_max_pass_through(mock_tools_client: MagicMock) -> None:
     """When LLM values are within limits they should pass through unchanged."""
     mock_tools_client.run_actor.return_value = SUCCEEDED_RUN

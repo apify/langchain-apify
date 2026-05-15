@@ -372,6 +372,9 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     def _clamp_items(self, value: int) -> int:
         return max(1, min(value, self.max_items))
 
+    def _clamp_offset(value: int) -> int:
+        return max(0, value)
+
 
 # ---------------------------------------------------------------------------
 # Generic tools
@@ -478,7 +481,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            items = self._client.get_dataset_items(dataset_id, self._clamp_items(limit), offset)
+            items = self._client.get_dataset_items(dataset_id, self._clamp_items(limit), self._clamp_offset(offset))
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
         if not items:
