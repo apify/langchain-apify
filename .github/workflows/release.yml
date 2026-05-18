@@ -35,7 +35,7 @@ jobs:
       changelog: ${{ steps.release_metadata.outputs.changelog }}
       release_notes: ${{ steps.release_metadata.outputs.release_notes }}
     steps:
-      - uses: apify/workflows/git-cliff-release@6cbb5232cc59d59047f1e8268da10747e729989e
+      - uses: apify/actions/git-cliff-release@v1.0.0
         name: Prepare release metadata
         id: release_metadata
         with:
@@ -77,7 +77,7 @@ jobs:
       url: https://pypi.org/project/langchain-apify
     steps:
       - name: Prepare distribution
-        uses: apify/workflows/prepare-pypi-distribution@6cbb5232cc59d59047f1e8268da10747e729989e
+        uses: apify/actions/prepare-pypi-distribution@v1.0.0
         with:
           ref: ${{ github.ref }}
           package_name: langchain-apify
