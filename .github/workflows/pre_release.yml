@@ -22,7 +22,7 @@ jobs:
       tag_name: ${{ steps.release_metadata.outputs.tag_name }}
       changelog: ${{ steps.release_metadata.outputs.changelog }}
     steps:
-      - uses: apify/actions/git-cliff-release@v1.0.0
+      - uses: apify/actions/git-cliff-release@v1.1.0
         id: release_metadata
         name: Prepare release metadata
         with:
@@ -65,7 +65,7 @@ jobs:
       url: https://pypi.org/project/langchain-apify
     steps:
       - name: Prepare distribution
-        uses: apify/actions/prepare-pypi-distribution@v1.0.0
+        uses: apify/actions/prepare-pypi-distribution@v1.1.0
         with:
           package_name: langchain-apify
           is_prerelease: "yes"
