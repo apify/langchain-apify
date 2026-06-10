@@ -54,7 +54,7 @@ def test_apify_actors_tool_instance() -> None:
         mock_build_tool_args_schema_model.return_value = DummyModel
 
         actor_id = 'apify/python-example'
-        tool = ApifyActorsTool(actor_id=actor_id, apify_api_token='dummy-token')
+        tool = ApifyActorsTool(actor_id=actor_id, apify_token='dummy-token')
         assert isinstance(tool, ApifyActorsTool)
         assert tool.description == 'Mocked description'
         assert tool.name == _actor_id_to_tool_name(actor_id)
@@ -100,7 +100,7 @@ def apify_actors_tool_fixture() -> Generator[ApifyActorsTool, None, None]:
 
         mock_build_tool_args_schema_model.return_value = DummyModel
 
-        tool = ApifyActorsTool(actor_id='apify/python-example', apify_api_token='dummy-token')
+        tool = ApifyActorsTool(actor_id='apify/python-example', apify_token='dummy-token')
         yield tool
 
 
@@ -572,6 +572,19 @@ def test_clamp_items_floor_is_one(mock_tools_client: MagicMock) -> None:
     mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 1, 0)
 
 
+def test_negative_offset_clamped_to_zero(mock_tools_client: MagicMock) -> None:
+    """Negative offset values should be clamped to 0."""
+    mock_tools_client.get_dataset_items.return_value = SAMPLE_ITEMS
+    tool = make_tool(ApifyGetDatasetItemsTool, mock_tools_client)
+
+    tool._run(dataset_id='ds-1', offset=-5)
+    mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 100, 0)
+
+    mock_tools_client.get_dataset_items.reset_mock()
+    tool._run(dataset_id='ds-1', offset=-1)
+    mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 100, 0)
+
+
 def test_values_below_max_pass_through(mock_tools_client: MagicMock) -> None:
     """When LLM values are within limits they should pass through unchanged."""
     mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
@@ -591,12 +604,12 @@ def test_generic_tools_have_correct_metadata() -> None:
     """Verify name, description, and args_schema are set on all generic tools."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         tools = [
-            ApifyRunActorTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyGetDatasetItemsTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyRunActorAndGetDatasetTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyScrapeUrlTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyRunTaskTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyRunTaskAndGetDatasetTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyRunActorTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyGetDatasetItemsTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyRunActorAndGetDatasetTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyScrapeUrlTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyRunTaskTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyRunTaskAndGetDatasetTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
         ]
 
     expected_names = [
@@ -615,11 +628,12 @@ def test_generic_tools_have_correct_metadata() -> None:
         assert tool.handle_tool_error is True
 
 
-def test_apify_api_token_excluded_from_model_dump() -> None:
-    """The apify_api_token field must not appear in model_dump() output."""
+def test_apify_token_excluded_from_model_dump() -> None:
+    """The apify_token field must not appear in model_dump() output."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
-        tool = ApifyRunActorTool(apify_api_token='x')  # type: ignore[call-arg,arg-type]
+        tool = ApifyRunActorTool(apify_token='x')  # type: ignore[call-arg,arg-type]
     dumped = tool.model_dump()
+    assert 'apify_token' not in dumped
     assert 'apify_api_token' not in dumped
 
 

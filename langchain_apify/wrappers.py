@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
@@ -7,7 +8,12 @@ from apify_client import ApifyClient, ApifyClientAsync
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
-from langchain_apify._utils import _apify_token_secret_factory, _create_apify_client
+from langchain_apify._utils import (
+    _BOTH_TOKENS_MSG,
+    _DEPRECATED_APIFY_API_TOKEN_MSG,
+    _apify_token_secret_factory,
+    _create_apify_client,
+)
 from langchain_apify.document_loaders import ApifyDatasetLoader
 
 if TYPE_CHECKING:
@@ -19,9 +25,9 @@ if TYPE_CHECKING:
 class ApifyWrapper(BaseModel):
     """Wrapper around Apify client for LangChain.
 
-    To use, you should have the environment variable `APIFY_TOKEN` set
-    with your API key, or pass `apify_api_token`
-    as a named parameter to the constructor.
+    To use, you should have the environment variable ``APIFY_TOKEN`` set
+    with your API key, or pass ``apify_token`` as a named parameter to the
+    constructor.
 
     For details, see https://docs.apify.com/platform/integrations/langchain
 
@@ -53,7 +59,7 @@ class ApifyWrapper(BaseModel):
     # allow arbitrary types in the model config for the apify client fields
     model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
 
-    apify_api_token: SecretStr | None = Field(
+    apify_token: SecretStr | None = Field(
         default_factory=_apify_token_secret_factory,
         description='Apify API token. Falls back to the APIFY_TOKEN environment variable when None.',
         exclude=True,
@@ -64,22 +70,29 @@ class ApifyWrapper(BaseModel):
 
     def __init__(
         self,
-        apify_api_token: str | SecretStr | None = None,
+        apify_token: str | SecretStr | None = None,
         *args: Any,  # noqa: ANN401
         **kwargs: Any,  # noqa: ANN401
     ) -> None:
         """Initialise the wrapper.
 
         Args:
-            apify_api_token (Optional[str | SecretStr]): Apify API token. Falls
+            apify_token (Optional[str | SecretStr]): Apify API token. Falls
                 back to the ``APIFY_TOKEN`` environment variable when *None*.
+            apify_api_token: Deprecated alias for ``apify_token``.
             *args: Any: Additional positional arguments forwarded to Pydantic.
             **kwargs: Any: Additional keyword arguments forwarded to Pydantic.
         """
-        # Only forward the token when explicitly provided; otherwise let the
-        # Pydantic ``default_factory`` read it from the environment.
-        if apify_api_token is not None:
-            kwargs['apify_api_token'] = apify_api_token
+        if 'apify_api_token' in kwargs:
+            legacy = kwargs.pop('apify_api_token')
+            if apify_token is not None:
+                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
+            else:
+                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
+                apify_token = legacy
+
+        if apify_token is not None:
+            kwargs['apify_token'] = apify_token
         super().__init__(*args, **kwargs)
 
     @model_validator(mode='after')
@@ -92,10 +105,10 @@ class ApifyWrapper(BaseModel):
         Raises:
             ValueError: If no token is provided and APIFY_TOKEN is not set.
         """
-        if self.apify_api_token is None:
+        if self.apify_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        token = self.apify_api_token.get_secret_value()
+        token = self.apify_token.get_secret_value()
         self.apify_client = _create_apify_client(ApifyClient, token)
         self.apify_client_async = _create_apify_client(ApifyClientAsync, token)
         return self

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import httpx
 from apify_client import ApifyClient
 from apify_client.errors import ApifyClientError
@@ -10,7 +12,12 @@ from langchain_apify._error_messages import (
     _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET,
     _ERROR_SCRAPE_EMPTY,
 )
-from langchain_apify._utils import _create_apify_client, _resolve_apify_token
+from langchain_apify._utils import (
+    _BOTH_TOKENS_MSG,
+    _DEPRECATED_APIFY_API_TOKEN_MSG,
+    _create_apify_client,
+    _resolve_apify_token,
+)
 
 # Only catches ApifyClientError and httpx.HTTPError. Other errors propagate.
 _TRANSPORT_EXCEPTIONS = (ApifyClientError, httpx.HTTPError)
@@ -29,7 +36,7 @@ class ApifyToolsClient:
     block until the Actor run finishes.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable (or ``APIFY_API_TOKEN`` for backwards
             compatibility) when *None*.
 
@@ -37,11 +44,23 @@ class ApifyToolsClient:
         ValueError: If no token is provided and the env var is not set.
     """
 
-    def __init__(self, apify_api_token: SecretStr | str | None = None) -> None:
-        if isinstance(apify_api_token, SecretStr):
-            _token: str | None = apify_api_token.get_secret_value()
+    def __init__(
+        self,
+        apify_token: SecretStr | str | None = None,
+        *,
+        apify_api_token: SecretStr | str | None = None,
+    ) -> None:
+        if apify_api_token is not None:
+            if apify_token is not None:
+                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
+            else:
+                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
+                apify_token = apify_api_token
+
+        if isinstance(apify_token, SecretStr):
+            _token: str | None = apify_token.get_secret_value()
         else:
-            _token = apify_api_token or _resolve_apify_token()
+            _token = apify_token or _resolve_apify_token()
 
         if not _token:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET

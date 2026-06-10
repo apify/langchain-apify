@@ -10,6 +10,14 @@ from apify_client.client import ApifyClient
 from pydantic import SecretStr
 
 _MAX_DESCRIPTION_LEN: int = 350
+
+_DEPRECATED_APIFY_API_TOKEN_MSG = (
+    "The 'apify_api_token' parameter is deprecated, use 'apify_token' instead."
+)
+_BOTH_TOKENS_MSG = (
+    "Both 'apify_token' and 'apify_api_token' were specified; using 'apify_token' "
+    "and ignoring the deprecated 'apify_api_token'."
+)
 _REQUESTS_TIMEOUT_SECS: float = 10.0
 _APIFY_API_ENDPOINT_GET_DEFAULT_BUILD: str = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
 

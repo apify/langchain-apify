@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
@@ -9,7 +10,12 @@ from langchain_core.documents import Document  # noqa: TCH002
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
-from langchain_apify._utils import _apify_token_secret_factory, _create_apify_client
+from langchain_apify._utils import (
+    _BOTH_TOKENS_MSG,
+    _DEPRECATED_APIFY_API_TOKEN_MSG,
+    _apify_token_secret_factory,
+    _create_apify_client,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -18,9 +24,9 @@ if TYPE_CHECKING:
 class ApifyDatasetLoader(BaseLoader, BaseModel):
     """Load datasets from Apify web scraping, crawling, and data extraction platform.
 
-    To use, you should have the environment variable `APIFY_TOKEN` set
-    with your API key, or pass `apify_api_token`
-    as a named parameter to the constructor.
+    To use, you should have the environment variable ``APIFY_TOKEN`` set
+    with your API key, or pass ``apify_token`` as a named parameter to the
+    constructor.
 
     For details, see https://docs.apify.com/platform/integrations/langchain
 
@@ -41,7 +47,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
 
-    apify_api_token: SecretStr | None = Field(
+    apify_token: SecretStr | None = Field(
         default_factory=_apify_token_secret_factory,
         description='Apify API token. Falls back to the APIFY_TOKEN environment variable when None.',
         exclude=True,
@@ -58,6 +64,8 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         self,
         dataset_id: str,
         dataset_mapping_function: Callable[[dict], Document],
+        apify_token: str | SecretStr | None = None,
+        *,
         apify_api_token: str | SecretStr | None = None,
     ) -> None:
         """Initialize the loader with an Apify dataset ID and a mapping function.
@@ -67,17 +75,23 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
             dataset_mapping_function (Callable): A function that takes a single
                 dictionary (an Apify dataset item) and converts it to an instance
                 of the Document class.
-            apify_api_token (str | SecretStr): Apify API token. Falls back to the
+            apify_token (str | SecretStr): Apify API token. Falls back to the
                 ``APIFY_TOKEN`` environment variable when *None*.
+            apify_api_token: Deprecated alias for ``apify_token``.
         """
+        if apify_api_token is not None:
+            if apify_token is not None:
+                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
+            else:
+                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
+                apify_token = apify_api_token
+
         init_kwargs: dict[str, Any] = {
             'dataset_id': dataset_id,
             'dataset_mapping_function': dataset_mapping_function,
         }
-        # Only forward the token when explicitly provided; otherwise let the
-        # Pydantic ``default_factory`` read it from the environment.
-        if apify_api_token is not None:
-            init_kwargs['apify_api_token'] = apify_api_token
+        if apify_token is not None:
+            init_kwargs['apify_token'] = apify_token
         super().__init__(**init_kwargs)
 
     @model_validator(mode='after')
@@ -90,10 +104,10 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         Raises:
             ValueError: If no token is available from any source.
         """
-        if self.apify_api_token is None:
+        if self.apify_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self.apify_client = _create_apify_client(ApifyClient, self.apify_api_token.get_secret_value())
+        self.apify_client = _create_apify_client(ApifyClient, self.apify_token.get_secret_value())
         return self
 
     def load(self) -> list[Document]:

@@ -19,7 +19,7 @@ def test_apify_dataset_loader_load() -> None:
         )
 
         loader = ApifyDatasetLoader(
-            apify_api_token='dummy-token',
+            apify_token='dummy-token',
             dataset_id='dummy-dataset-id',
             dataset_mapping_function=lambda item: Document(
                 page_content=item['text'],
@@ -44,7 +44,7 @@ def test_apify_dataset_loader_lazy_load() -> None:
         )
 
         loader = ApifyDatasetLoader(
-            apify_api_token='dummy-token',
+            apify_token='dummy-token',
             dataset_id='dummy-dataset-id',
             dataset_mapping_function=lambda item: Document(
                 page_content=item['text'],
