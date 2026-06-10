@@ -35,9 +35,10 @@ def test_google_search_tool_returns_json(mock_tools_client: MagicMock) -> None:
     result = tool._run(query='test query')
 
     parsed = json.loads(result)
-    assert len(parsed) == 2
-    assert parsed[0]['title'] == 'Result 1'
-    assert parsed[1]['url'] == 'https://example.com/2'
+    assert len(parsed['items']) == 2
+    assert parsed['items'][0]['title'] == 'Result 1'
+    assert parsed['items'][1]['url'] == 'https://example.com/2'
+    assert parsed['run'] is None
 
 
 def test_google_search_tool_passes_params(mock_tools_client: MagicMock) -> None:
@@ -80,7 +81,9 @@ def test_google_search_tool_empty_results(mock_tools_client: MagicMock) -> None:
 
     result = tool._run(query='nothing')
 
-    assert json.loads(result) == []
+    parsed = json.loads(result)
+    assert parsed['items'] == []
+    assert parsed['meta']['is_empty'] is True
 
 
 def test_google_search_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
@@ -93,7 +96,8 @@ def test_google_search_tool_failure_raises_tool_exception(mock_tools_client: Mag
 
 def test_google_search_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyGoogleSearchTool()
 
 
@@ -144,9 +148,9 @@ def test_web_crawler_tool_returns_json(mock_tools_client: MagicMock) -> None:
     result = tool._run(url='https://example.com')
 
     parsed = json.loads(result)
-    assert len(parsed) == 2
-    assert parsed[0] == {'url': 'https://example.com/', 'title': 'Home', 'content': '# Home'}
-    assert parsed[1] == {'url': 'https://example.com/about', 'title': 'About', 'content': 'About us'}
+    assert len(parsed['items']) == 2
+    assert parsed['items'][0] == {'url': 'https://example.com/', 'title': 'Home', 'content': '# Home'}
+    assert parsed['items'][1] == {'url': 'https://example.com/about', 'title': 'About', 'content': 'About us'}
 
 
 def test_web_crawler_tool_passes_params(mock_tools_client: MagicMock) -> None:
@@ -199,7 +203,9 @@ def test_web_crawler_tool_empty_results(mock_tools_client: MagicMock) -> None:
 
     result = tool._run(url='https://example.com')
 
-    assert json.loads(result) == []
+    parsed = json.loads(result)
+    assert parsed['items'] == []
+    assert parsed['meta']['is_empty'] is True
 
 
 def test_web_crawler_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
@@ -212,7 +218,8 @@ def test_web_crawler_tool_failure_raises_tool_exception(mock_tools_client: Magic
 
 def test_web_crawler_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyWebCrawlerTool()
 
 
@@ -240,10 +247,11 @@ def test_rag_web_browser_tool_returns_json(mock_tools_client: MagicMock) -> None
 
     parsed = json.loads(tool._run(query='what is langchain', max_results=3))
 
-    assert parsed == [
+    assert parsed['items'] == [
         {'url': 'https://example.com/1', 'title': 'Page 1', 'content': '# Page 1'},
         {'url': 'https://example.com/2', 'title': 'Page 2', 'content': 'Page 2 plain'},
     ]
+    assert parsed['run']['status'] == 'SUCCEEDED'
     mock_tools_client.rag_web_browser_search.assert_called_once_with(
         'what is langchain',
         max_results=3,
@@ -387,7 +395,9 @@ def test_rag_web_browser_tool_empty_dataset_returns_empty_array(mock_tools_clien
     mock_tools_client.rag_web_browser_search.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyRAGWebBrowserTool, mock_tools_client)
 
-    assert json.loads(tool._run(query='q')) == []
+    parsed = json.loads(tool._run(query='q'))
+    assert parsed['items'] == []
+    assert parsed['meta']['is_empty'] is True
 
 
 @pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _TOOL_INVOCATIONS)
@@ -413,7 +423,8 @@ def test_search_tool_missing_token(
     run_kwargs: dict,  # noqa: ARG001
 ) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         tool_cls()
 
 

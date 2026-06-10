@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+import warnings
 
 import httpx
 from apify_client import ApifyClient
@@ -12,7 +12,12 @@ from langchain_apify._error_messages import (
     _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET,
     _ERROR_SCRAPE_EMPTY,
 )
-from langchain_apify._utils import _create_apify_client
+from langchain_apify._utils import (
+    _BOTH_TOKENS_MSG,
+    _DEPRECATED_APIFY_API_TOKEN_MSG,
+    _create_apify_client,
+    _resolve_apify_token,
+)
 
 # Only catches ApifyClientError and httpx.HTTPError. Other errors propagate.
 _TRANSPORT_EXCEPTIONS = (ApifyClientError, httpx.HTTPError)
@@ -41,18 +46,31 @@ class ApifyToolsClient:
     block until the Actor run finishes.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
-            environment variable when *None*.
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
+            environment variable (or ``APIFY_API_TOKEN`` for backwards
+            compatibility) when *None*.
 
     Raises:
         ValueError: If no token is provided and the env var is not set.
     """
 
-    def __init__(self, apify_api_token: SecretStr | str | None = None) -> None:
-        if isinstance(apify_api_token, SecretStr):
-            _token: str | None = apify_api_token.get_secret_value()
+    def __init__(
+        self,
+        apify_token: SecretStr | str | None = None,
+        *,
+        apify_api_token: SecretStr | str | None = None,
+    ) -> None:
+        if apify_api_token is not None:
+            if apify_token is not None:
+                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
+            else:
+                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
+                apify_token = apify_api_token
+
+        if isinstance(apify_token, SecretStr):
+            _token: str | None = apify_token.get_secret_value()
         else:
-            _token = apify_api_token or os.getenv('APIFY_API_TOKEN')
+            _token = apify_token or _resolve_apify_token()
 
         if not _token:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
@@ -214,8 +232,10 @@ class ApifyToolsClient:
         items = self._list_items_or_raise(dataset_id, dataset_items_limit)
         return run, items
 
-    def scrape_url(self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS) -> str:
-        """Scrape a single URL and return its content as markdown.
+    def scrape_url_with_meta(
+        self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS
+    ) -> tuple[dict, list[dict], str, str]:
+        """Scrape a single URL and return run/items/content metadata.
 
         Uses ``apify/website-content-crawler`` with ``maxCrawlPages=1``.
 
@@ -224,7 +244,8 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the crawl to finish.
 
         Returns:
-            Markdown (or plain-text fallback) content of the page.
+            Tuple: ``(run, items, content, content_source)`` where
+            ``content_source`` is ``"markdown"`` or ``"text"``.
 
         Raises:
             RuntimeError: If the Actor run fails or no content is extracted.
@@ -233,7 +254,7 @@ class ApifyToolsClient:
             'startUrls': [{'url': url}],
             'maxCrawlPages': 1,
         }
-        _, items = self.run_actor_and_get_items(
+        run, items = self.run_actor_and_get_items(
             _SCRAPE_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
@@ -243,10 +264,17 @@ class ApifyToolsClient:
             msg = _ERROR_SCRAPE_EMPTY.format(url=url)
             raise RuntimeError(msg)
 
-        content = items[0].get('markdown') or items[0].get('text') or ''
+        markdown = items[0].get('markdown') or ''
+        text = items[0].get('text') or ''
+        content = markdown or text
         if not content:
             msg = _ERROR_SCRAPE_EMPTY.format(url=url)
             raise RuntimeError(msg)
+        return run, items, content, 'markdown' if markdown else 'text'
+
+    def scrape_url(self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS) -> str:
+        """Backward-compatible scrape helper returning only page content."""
+        _, _, content, _ = self.scrape_url_with_meta(url=url, timeout_secs=timeout_secs)
         return content
 
     def google_search(
@@ -425,8 +453,8 @@ class ApifyToolsClient:
         """Extract product data from an e-commerce URL.
 
         Uses ``apify/e-commerce-scraping-tool``. ``url_type`` selects which
-        Actor input field the URL is sent as: ``"product"`` → ``detailsUrls``
-        (a single product-detail page), ``"category"`` → ``listingUrls``
+        Actor input field the URL is sent as: ``"product"`` -> ``detailsUrls``
+        (a single product-detail page), ``"category"`` -> ``listingUrls``
         (a category / listing page that the Actor will expand into product
         results).
 

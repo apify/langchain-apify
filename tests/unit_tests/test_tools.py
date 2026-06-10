@@ -54,7 +54,7 @@ def test_apify_actors_tool_instance() -> None:
         mock_build_tool_args_schema_model.return_value = DummyModel
 
         actor_id = 'apify/python-example'
-        tool = ApifyActorsTool(actor_id=actor_id, apify_api_token='dummy-token')
+        tool = ApifyActorsTool(actor_id=actor_id, apify_token='dummy-token')
         assert isinstance(tool, ApifyActorsTool)
         assert tool.description == 'Mocked description'
         assert tool.name == _actor_id_to_tool_name(actor_id)
@@ -69,8 +69,8 @@ def test_run_actor_method(apify_actors_tool_fixture: ApifyActorsTool) -> None:
     with patch.object(ApifyActorsTool, '_run_actor') as mock_run_actor:
         mock_run_actor.return_value = [{'text': 'Apify is great!'}]
 
-        result = apify_actors_tool_fixture.invoke(
-            input={'run_input': {'query': 'what is Apify?', 'maxResults': 3}},
+        result = apify_actors_tool_fixture._run(
+            run_input={'query': 'what is Apify?', 'maxResults': 3},
         )
         mock_run_actor.assert_called_once()
         assert result[0]['text'] == 'Apify is great!'
@@ -100,7 +100,7 @@ def apify_actors_tool_fixture() -> Generator[ApifyActorsTool, None, None]:
 
         mock_build_tool_args_schema_model.return_value = DummyModel
 
-        tool = ApifyActorsTool(actor_id='apify/python-example', apify_api_token='dummy-token')
+        tool = ApifyActorsTool(actor_id='apify/python-example', apify_token='dummy-token')
         yield tool
 
 
@@ -204,7 +204,8 @@ def test_run_actor_tool_failure_raises_tool_exception(mock_tools_client: MagicMo
 
 def test_run_actor_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyRunActorTool()
 
 
@@ -248,7 +249,8 @@ def test_get_dataset_items_tool_network_error_raises_tool_exception(mock_tools_c
 
 def test_get_dataset_items_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyGetDatasetItemsTool()
 
 
@@ -282,7 +284,8 @@ def test_run_actor_and_get_items_tool_failure_raises_tool_exception(mock_tools_c
 
 def test_run_actor_and_get_items_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyRunActorAndGetDatasetTool()
 
 
@@ -292,17 +295,25 @@ def test_run_actor_and_get_items_tool_missing_token(monkeypatch: pytest.MonkeyPa
 
 
 def test_scrape_url_tool_returns_markdown(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.scrape_url.return_value = '# Hello World'
+    mock_tools_client.scrape_url_with_meta.return_value = (
+        SUCCEEDED_RUN,
+        [{'url': 'https://example.com', 'markdown': '# Hello World'}],
+        '# Hello World',
+        'markdown',
+    )
     tool = make_tool(ApifyScrapeUrlTool, mock_tools_client)
 
     result = tool._run(url='https://example.com')
 
-    assert result == '# Hello World'
-    mock_tools_client.scrape_url.assert_called_once_with('https://example.com', 120)
+    parsed = json.loads(result)
+    assert parsed['content'] == '# Hello World'
+    assert parsed['legacy_content'] == '# Hello World'
+    assert parsed['meta']['content_source'] == 'markdown'
+    mock_tools_client.scrape_url_with_meta.assert_called_once_with('https://example.com', 120)
 
 
 def test_scrape_url_tool_empty_raises_tool_exception(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.scrape_url.side_effect = RuntimeError('No content extracted from https://example.com.')
+    mock_tools_client.scrape_url_with_meta.side_effect = RuntimeError('No content extracted from https://example.com.')
     tool = make_tool(ApifyScrapeUrlTool, mock_tools_client)
 
     with pytest.raises(ToolException, match='No content extracted'):
@@ -311,7 +322,8 @@ def test_scrape_url_tool_empty_raises_tool_exception(mock_tools_client: MagicMoc
 
 def test_scrape_url_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyScrapeUrlTool()
 
 
@@ -345,7 +357,8 @@ def test_run_task_tool_failure_raises_tool_exception(mock_tools_client: MagicMoc
 
 def test_run_task_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyRunTaskTool()
 
 
@@ -379,7 +392,8 @@ def test_run_task_and_get_items_tool_failure_raises_tool_exception(mock_tools_cl
 
 def test_run_task_and_get_items_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyRunTaskAndGetDatasetTool()
 
 
@@ -440,12 +454,17 @@ def test_run_actor_and_get_items_tool_clamps_all(mock_tools_client: MagicMock) -
 
 
 def test_scrape_url_tool_clamps_timeout(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.scrape_url.return_value = '# content'
+    mock_tools_client.scrape_url_with_meta.return_value = (
+        SUCCEEDED_RUN,
+        [{'url': 'https://example.com', 'text': '# content'}],
+        '# content',
+        'text',
+    )
     tool = make_tool(ApifyScrapeUrlTool, mock_tools_client, max_timeout_secs=30)
 
     tool._run(url='https://example.com', timeout_secs=9999)
 
-    mock_tools_client.scrape_url.assert_called_once_with('https://example.com', 30)
+    mock_tools_client.scrape_url_with_meta.assert_called_once_with('https://example.com', 30)
 
 
 def test_run_task_tool_clamps_timeout_and_memory(mock_tools_client: MagicMock) -> None:
@@ -510,6 +529,48 @@ def test_clamp_memory_floors_positive_below_platform_minimum(mock_tools_client: 
     mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, 128)
 
 
+@pytest.mark.parametrize(
+    ('input_mb', 'expected_mb'),
+    [
+        (128, 128),  # already valid
+        (200, 256),  # snap up
+        (500, 512),  # snap up
+        (1024, 1024),  # already valid
+        (1500, 2048),  # snap up
+        (2048, 2048),  # already valid
+        (3000, 4096),  # snap up
+        (16384, 16384),  # already valid
+        (32768, 32768),  # already valid (top of range)
+    ],
+)
+def test_clamp_memory_snaps_up_to_power_of_two(mock_tools_client: MagicMock, input_mb: int, expected_mb: int) -> None:
+    """``memory_mbytes`` is snapped UP to the next valid Apify power-of-2 value."""
+    mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
+    tool = make_tool(ApifyRunActorTool, mock_tools_client, max_memory_mbytes=32768)
+
+    tool._run(actor_id='apify/test', memory_mbytes=input_mb)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, expected_mb)
+
+
+def test_clamp_memory_snap_up_capped_to_max(mock_tools_client: MagicMock) -> None:
+    """When snap-up would exceed ``max_memory_mbytes``, the largest valid value at-or-below the cap is used."""
+    mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
+    # cap is not itself a power of 2; clamped value (500) snaps up to 512 which exceeds cap → fall back to 256.
+    tool = make_tool(ApifyRunActorTool, mock_tools_client, max_memory_mbytes=500)
+
+    tool._run(actor_id='apify/test', memory_mbytes=500)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, 256)
+
+
+def test_clamp_memory_misconfigured_cap_below_platform_minimum(mock_tools_client: MagicMock) -> None:
+    """If the developer-set cap is below 128 (the Apify minimum), fall back to 128 rather than overshooting."""
+    mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
+    tool = make_tool(ApifyRunActorTool, mock_tools_client, max_memory_mbytes=100)
+
+    tool._run(actor_id='apify/test', memory_mbytes=100)
+    mock_tools_client.run_actor.assert_called_once_with('apify/test', None, 300, 128)
+
+
 def test_clamp_items_floor_is_one(mock_tools_client: MagicMock) -> None:
     mock_tools_client.get_dataset_items.return_value = SAMPLE_ITEMS
     tool = make_tool(ApifyGetDatasetItemsTool, mock_tools_client, max_items=100)
@@ -520,6 +581,19 @@ def test_clamp_items_floor_is_one(mock_tools_client: MagicMock) -> None:
     mock_tools_client.get_dataset_items.reset_mock()
     tool._run(dataset_id='ds-1', limit=0)
     mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 1, 0)
+
+
+def test_negative_offset_clamped_to_zero(mock_tools_client: MagicMock) -> None:
+    """Negative offset values should be clamped to 0."""
+    mock_tools_client.get_dataset_items.return_value = SAMPLE_ITEMS
+    tool = make_tool(ApifyGetDatasetItemsTool, mock_tools_client)
+
+    tool._run(dataset_id='ds-1', offset=-5)
+    mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 100, 0)
+
+    mock_tools_client.get_dataset_items.reset_mock()
+    tool._run(dataset_id='ds-1', offset=-1)
+    mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 100, 0)
 
 
 def test_values_below_max_pass_through(mock_tools_client: MagicMock) -> None:
@@ -541,12 +615,12 @@ def test_generic_tools_have_correct_metadata() -> None:
     """Verify name, description, and args_schema are set on all generic tools."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         tools = [
-            ApifyRunActorTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyGetDatasetItemsTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyRunActorAndGetDatasetTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyScrapeUrlTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyRunTaskTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyRunTaskAndGetDatasetTool(apify_api_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyRunActorTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyGetDatasetItemsTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyRunActorAndGetDatasetTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyScrapeUrlTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyRunTaskTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyRunTaskAndGetDatasetTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
         ]
 
     expected_names = [
@@ -565,11 +639,12 @@ def test_generic_tools_have_correct_metadata() -> None:
         assert tool.handle_tool_error is True
 
 
-def test_apify_api_token_excluded_from_model_dump() -> None:
-    """The apify_api_token field must not appear in model_dump() output."""
+def test_apify_token_excluded_from_model_dump() -> None:
+    """The apify_token field must not appear in model_dump() output."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
-        tool = ApifyRunActorTool(apify_api_token='x')  # type: ignore[call-arg,arg-type]
+        tool = ApifyRunActorTool(apify_token='x')  # type: ignore[call-arg,arg-type]
     dumped = tool.model_dump()
+    assert 'apify_token' not in dumped
     assert 'apify_api_token' not in dumped
 
 

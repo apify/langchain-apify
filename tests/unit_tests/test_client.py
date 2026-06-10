@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+from apify_client import ApifyClient
 
 from langchain_apify._client import ApifyToolsClient
 from tests.unit_tests.conftest import FAILED_RUN, SAMPLE_ITEMS, SUCCEEDED_RUN
@@ -15,21 +16,42 @@ from tests.unit_tests.conftest import FAILED_RUN, SAMPLE_ITEMS, SUCCEEDED_RUN
 
 def test_init_with_explicit_token(mock_apify_client: MagicMock) -> None:
     with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client) as mock_create:
-        c = ApifyToolsClient(apify_api_token='my-token')
+        c = ApifyToolsClient(apify_token='my-token')
         mock_create.assert_called_once()
         assert c._client is mock_apify_client
 
 
-def test_init_with_env_token(monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock) -> None:
-    monkeypatch.setenv('APIFY_API_TOKEN', 'env-token')
+def test_init_with_apify_token_env(monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock) -> None:
+    """``APIFY_TOKEN`` (SDK-standard) should be picked up when set."""
+    monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+    monkeypatch.setenv('APIFY_TOKEN', 'sdk-token')
     with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client):
         c = ApifyToolsClient()
         assert c._client is mock_apify_client
 
 
+def test_init_with_legacy_apify_api_token_env(monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock) -> None:
+    """``APIFY_API_TOKEN`` is still honoured for backwards compatibility."""
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    monkeypatch.setenv('APIFY_API_TOKEN', 'legacy-token')
+    with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client):
+        c = ApifyToolsClient()
+        assert c._client is mock_apify_client
+
+
+def test_init_apify_token_takes_precedence(monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock) -> None:
+    """When both env vars are set, ``APIFY_TOKEN`` wins over ``APIFY_API_TOKEN``."""
+    monkeypatch.setenv('APIFY_API_TOKEN', 'legacy-token')
+    monkeypatch.setenv('APIFY_TOKEN', 'sdk-token')
+    with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client) as mock_create:
+        ApifyToolsClient()
+        mock_create.assert_called_once_with(ApifyClient, 'sdk-token')
+
+
 def test_init_missing_token_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyToolsClient()
 
 
@@ -293,76 +315,87 @@ def test_run_actor_programming_error_propagates(client: ApifyToolsClient, mock_a
 
 
 # ---------------------------------------------------------------------------
+# scrape_url_with_meta
+# ---------------------------------------------------------------------------
+
+
+def test_scrape_url_with_meta_returns_markdown_and_metadata(
+    client: ApifyToolsClient, mock_apify_client: MagicMock
+) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = [
+        {'markdown': '# Hello', 'text': 'Hello', 'url': 'https://example.com'},
+    ]
+
+    run, items, content, source = client.scrape_url_with_meta('https://example.com')
+    assert run == SUCCEEDED_RUN
+    assert items
+    assert content == '# Hello'
+    assert source == 'markdown'
+
+
+def test_scrape_url_with_meta_falls_back_to_text(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = [
+        {'text': 'Plain text content', 'url': 'https://example.com'},
+    ]
+
+    _, _, content, source = client.scrape_url_with_meta('https://example.com')
+    assert content == 'Plain text content'
+    assert source == 'text'
+
+
+# ---------------------------------------------------------------------------
 # google_search
 # ---------------------------------------------------------------------------
 
-GOOGLE_SEARCH_ITEMS: list[dict] = [
-    {
-        'organicResults': [
-            {'title': 'Result 1', 'url': 'https://example.com/1', 'description': 'Desc 1'},
-            {'title': 'Result 2', 'url': 'https://example.com/2', 'description': 'Desc 2'},
-        ],
-    },
-]
 
-
-def test_google_search_success(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+def test_google_search_input_mapping(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
-    mock_apify_client.dataset.return_value.list_items.return_value.items = GOOGLE_SEARCH_ITEMS
+    mock_apify_client.dataset.return_value.list_items.return_value.items = [
+        {
+            'organicResults': [
+                {'title': 'A', 'url': 'https://a.com', 'description': 'da'},
+                {'title': 'B', 'url': 'https://b.com', 'description': 'db'},
+            ]
+        }
+    ]
 
-    results = client.google_search('test query', max_results=5)
+    results = client.google_search('langchain', max_results=5, country_code='us', language_code='en')
 
+    mock_apify_client.actor.assert_called_once_with('apify/google-search-scraper')
+    run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
+    assert run_input == {
+        'queries': 'langchain',
+        'maxPagesPerQuery': 1,
+        'resultsPerPage': 5,
+        'countryCode': 'us',
+        'languageCode': 'en',
+    }
     assert len(results) == 2
-    assert results[0] == {'title': 'Result 1', 'url': 'https://example.com/1', 'description': 'Desc 1'}
-    assert results[1] == {'title': 'Result 2', 'url': 'https://example.com/2', 'description': 'Desc 2'}
+    assert results[0]['title'] == 'A'
 
 
-def test_google_search_with_locale(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+def test_google_search_omits_optional_locale_params(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
-    mock_apify_client.dataset.return_value.list_items.return_value.items = GOOGLE_SEARCH_ITEMS
+    mock_apify_client.dataset.return_value.list_items.return_value.items = []
 
-    client.google_search('test', country_code='us', language_code='en')
+    client.google_search('langchain')
 
-    call_args = mock_apify_client.actor.return_value.call.call_args
-    run_input = call_args.kwargs['run_input']
-    assert run_input['countryCode'] == 'us'
-    assert run_input['languageCode'] == 'en'
+    run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
+    assert 'countryCode' not in run_input
+    assert 'languageCode' not in run_input
 
-
-def test_google_search_caps_results(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    many_results = [{'title': f'R{i}', 'url': f'https://example.com/{i}', 'description': f'D{i}'} for i in range(20)]
-    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
-    mock_apify_client.dataset.return_value.list_items.return_value.items = [{'organicResults': many_results}]
-
-    results = client.google_search('test', max_results=3)
-
-    assert len(results) == 3
-
-
-def test_google_search_empty_results(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
-    mock_apify_client.dataset.return_value.list_items.return_value.items = [{'organicResults': []}]
-
-    results = client.google_search('test')
-
-    assert results == []
-
-
-def test_google_search_failed_run_raises(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.actor.return_value.call.return_value = FAILED_RUN
-
-    with pytest.raises(RuntimeError, match='run-fail'):
-        client.google_search('test')
-
-
-# ---------------------------------------------------------------------------
-# rag_web_browser_search
-# ---------------------------------------------------------------------------
 
 RAG_SEARCH_ITEMS: list[dict] = [
     {'crawledUrl': 'https://example.com/1', 'text': 'Page 1 content', 'metadata': {'title': 'Page 1'}},
     {'crawledUrl': 'https://example.com/2', 'text': 'Page 2 content', 'metadata': {'title': 'Page 2'}},
 ]
+
+
+# ---------------------------------------------------------------------------
+# rag_web_browser_search
+# ---------------------------------------------------------------------------
 
 
 def test_rag_web_browser_search_success(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:

@@ -58,7 +58,9 @@ APIFY_SEARCH_TOOLS: list[type[BaseTool]] = [
 __all__ = [
     # Existing components (backward-compatible)
     'ApifyActorsTool',
+    'ApifyCrawlLoader',
     'ApifyDatasetLoader',
+    'ApifySearchRetriever',
     'ApifyWrapper',
     # Core generic tools
     'ApifyGetDatasetItemsTool',
@@ -67,20 +69,14 @@ __all__ = [
     'ApifyRunTaskAndGetDatasetTool',
     'ApifyRunTaskTool',
     'ApifyScrapeUrlTool',
-    # Actor-specific tools
+    # Search & crawling tools
     'ApifyGoogleSearchTool',
     'ApifyWebCrawlerTool',
-    # Search & Crawling Actor tools
-    'ApifyEcommerceScraperTool',
-    'ApifyGoogleMapsTool',
     'ApifyRAGWebBrowserTool',
+    'ApifyGoogleMapsTool',
     'ApifyYouTubeScraperTool',
-    # Retriever
-    'ApifySearchRetriever',
-    # Loaders
-    'ApifyCrawlLoader',
+    'ApifyEcommerceScraperTool',
     # Tool group lists
-    'APIFY_SEARCH_TOOLS',
     'APIFY_CORE_TOOLS',
     'APIFY_SEARCH_TOOLS',
     # Meta

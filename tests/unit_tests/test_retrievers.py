@@ -39,7 +39,8 @@ def _make_retriever(mock_client: MagicMock, **kwargs: Any) -> ApifySearchRetriev
 
 def test_missing_token_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifySearchRetriever()
 
 

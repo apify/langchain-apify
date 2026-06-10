@@ -3,12 +3,19 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+import pytest
 from langchain_tests.integration_tests import ToolsIntegrationTests
 
+from langchain_apify._utils import _resolve_apify_token
 from langchain_apify.tools import ApifyActorsTool
 
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
+
+pytestmark = pytest.mark.skipif(
+    not _resolve_apify_token(),
+    reason='APIFY_TOKEN not set',
+)
 
 
 class TestApifyActorsToolIntegration(ToolsIntegrationTests):

@@ -40,12 +40,12 @@ def mock_apify_client() -> MagicMock:
 @pytest.fixture
 def client(mock_apify_client: MagicMock) -> ApifyToolsClient:
     with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client):
-        return ApifyToolsClient(apify_api_token='dummy-token')
+        return ApifyToolsClient(apify_token='dummy-token')
 
 
 def make_tool(tool_cls: type, mock_client: MagicMock, **kwargs: Any) -> Any:  # noqa: ANN401
     """Instantiate a generic tool with a mocked ApifyToolsClient."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
-        tool = tool_cls(apify_api_token='dummy-token', **kwargs)
+        tool = tool_cls(apify_token='dummy-token', **kwargs)
     tool._client = mock_client
     return tool
