@@ -243,18 +243,18 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
 # Input schemas for the generic tools
 # ---------------------------------------------------------------------------
 
+_DESC_RUN_TIMEOUT_SECS = 'Maximum time in seconds to wait for the run to finish.'
+_DESC_MEMORY_MBYTES = 'Memory per run in MB. Power of 2 from 128 to 32768, or null for default.'
+_DESC_DATASET_ITEMS_LIMIT = 'Maximum number of dataset items to return.'
+
 
 class ApifyRunActorInput(BaseModel):
     """Input schema for :class:`ApifyRunActorTool`."""
 
     actor_id: str = Field(description='Actor ID or name (e.g. "apify/python-example").')
     run_input: dict | None = Field(default=None, description='JSON-serialisable input for the Actor.')
-    timeout_secs: int = Field(
-        default=_DEFAULT_RUN_TIMEOUT_SECS, description='Maximum time in seconds to wait for the run to finish.'
-    )
-    memory_mbytes: int | None = Field(
-        default=None, description='Memory per run in MB. Power of 2 from 128 to 32768, or null for default.'
-    )
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
+    memory_mbytes: int | None = Field(default=None, description=_DESC_MEMORY_MBYTES)
 
 
 class ApifyGetDatasetItemsInput(BaseModel):
@@ -270,15 +270,9 @@ class ApifyRunActorAndGetDatasetInput(BaseModel):
 
     actor_id: str = Field(description='Actor ID or name (e.g. "apify/python-example").')
     run_input: dict | None = Field(default=None, description='JSON-serialisable input for the Actor.')
-    timeout_secs: int = Field(
-        default=_DEFAULT_RUN_TIMEOUT_SECS, description='Maximum time in seconds to wait for the run to finish.'
-    )
-    memory_mbytes: int | None = Field(
-        default=None, description='Memory per run in MB. Power of 2 from 128 to 32768, or null for default.'
-    )
-    dataset_items_limit: int = Field(
-        default=_DEFAULT_DATASET_ITEMS_LIMIT, description='Maximum number of dataset items to return.'
-    )
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
+    memory_mbytes: int | None = Field(default=None, description=_DESC_MEMORY_MBYTES)
+    dataset_items_limit: int = Field(default=_DEFAULT_DATASET_ITEMS_LIMIT, description=_DESC_DATASET_ITEMS_LIMIT)
 
 
 class ApifyScrapeUrlInput(BaseModel):
@@ -297,12 +291,8 @@ class ApifyRunTaskInput(BaseModel):
     task_input: dict | None = Field(
         default=None, description="JSON-serialisable input that overrides the task's pre-saved input."
     )
-    timeout_secs: int = Field(
-        default=_DEFAULT_RUN_TIMEOUT_SECS, description='Maximum time in seconds to wait for the run to finish.'
-    )
-    memory_mbytes: int | None = Field(
-        default=None, description='Memory per run in MB. Power of 2 from 128 to 32768, or null for task default.'
-    )
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
+    memory_mbytes: int | None = Field(default=None, description=_DESC_MEMORY_MBYTES)
 
 
 class ApifyRunTaskAndGetDatasetInput(BaseModel):
@@ -312,15 +302,9 @@ class ApifyRunTaskAndGetDatasetInput(BaseModel):
     task_input: dict | None = Field(
         default=None, description="JSON-serialisable input that overrides the task's pre-saved input."
     )
-    timeout_secs: int = Field(
-        default=_DEFAULT_RUN_TIMEOUT_SECS, description='Maximum time in seconds to wait for the run to finish.'
-    )
-    memory_mbytes: int | None = Field(
-        default=None, description='Memory per run in MB. Power of 2 from 128 to 32768, or null for task default.'
-    )
-    dataset_items_limit: int = Field(
-        default=_DEFAULT_DATASET_ITEMS_LIMIT, description='Maximum number of dataset items to return.'
-    )
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
+    memory_mbytes: int | None = Field(default=None, description=_DESC_MEMORY_MBYTES)
+    dataset_items_limit: int = Field(default=_DEFAULT_DATASET_ITEMS_LIMIT, description=_DESC_DATASET_ITEMS_LIMIT)
 
 
 # ---------------------------------------------------------------------------
