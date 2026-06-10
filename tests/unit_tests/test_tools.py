@@ -530,9 +530,7 @@ def test_clamp_memory_floors_positive_below_platform_minimum(mock_tools_client: 
         (32768, 32768),  # already valid (top of range)
     ],
 )
-def test_clamp_memory_snaps_up_to_power_of_two(
-    mock_tools_client: MagicMock, input_mb: int, expected_mb: int
-) -> None:
+def test_clamp_memory_snaps_up_to_power_of_two(mock_tools_client: MagicMock, input_mb: int, expected_mb: int) -> None:
     """``memory_mbytes`` is snapped UP to the next valid Apify power-of-2 value."""
     mock_tools_client.run_actor.return_value = SUCCEEDED_RUN
     tool = make_tool(ApifyRunActorTool, mock_tools_client, max_memory_mbytes=32768)

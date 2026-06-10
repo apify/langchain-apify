@@ -68,9 +68,7 @@ class TestApifyToolsClientTokenAlias:
 
     def test_both_specified_uses_apify_token(self, mock_apify_client: MagicMock) -> None:
         """When both are given, ``apify_token`` wins and the user is warned."""
-        with patch(
-            'langchain_apify._client._create_apify_client', return_value=mock_apify_client
-        ) as mock_create:
+        with patch('langchain_apify._client._create_apify_client', return_value=mock_apify_client) as mock_create:
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter('always')
                 ApifyToolsClient(apify_token='primary', apify_api_token='ignored')
@@ -129,6 +127,7 @@ class TestApifyDatasetLoaderTokenAlias:
             assert len(w) == 1
             assert issubclass(w[0].category, DeprecationWarning)
             assert 'ignoring' in str(w[0].message)
+            assert loader.apify_token is not None
             assert loader.apify_token.get_secret_value() == 'primary'
 
 
@@ -164,6 +163,7 @@ class TestApifyWrapperTokenAlias:
         assert len(w) == 1
         assert issubclass(w[0].category, DeprecationWarning)
         assert 'ignoring' in str(w[0].message)
+        assert wrapper.apify_token is not None
         assert wrapper.apify_token.get_secret_value() == 'primary'
 
 
@@ -260,4 +260,5 @@ class TestGenericToolTokenAlias:
             assert len(w) == 1
             assert issubclass(w[0].category, DeprecationWarning)
             assert 'ignoring' in str(w[0].message)
+            assert tool.apify_token is not None
             assert tool.apify_token.get_secret_value() == 'primary'

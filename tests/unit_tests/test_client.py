@@ -30,9 +30,7 @@ def test_init_with_apify_token_env(monkeypatch: pytest.MonkeyPatch, mock_apify_c
         assert c._client is mock_apify_client
 
 
-def test_init_with_legacy_apify_api_token_env(
-    monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock
-) -> None:
+def test_init_with_legacy_apify_api_token_env(monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock) -> None:
     """``APIFY_API_TOKEN`` is still honoured for backwards compatibility."""
     monkeypatch.delenv('APIFY_TOKEN', raising=False)
     monkeypatch.setenv('APIFY_API_TOKEN', 'legacy-token')
@@ -41,9 +39,7 @@ def test_init_with_legacy_apify_api_token_env(
         assert c._client is mock_apify_client
 
 
-def test_init_apify_token_takes_precedence(
-    monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock
-) -> None:
+def test_init_apify_token_takes_precedence(monkeypatch: pytest.MonkeyPatch, mock_apify_client: MagicMock) -> None:
     """When both env vars are set, ``APIFY_TOKEN`` wins over ``APIFY_API_TOKEN``."""
     monkeypatch.setenv('APIFY_API_TOKEN', 'legacy-token')
     monkeypatch.setenv('APIFY_TOKEN', 'sdk-token')
