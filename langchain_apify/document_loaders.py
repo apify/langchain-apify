@@ -210,6 +210,10 @@ class ApifyCrawlLoader(BaseLoader):
             timeout_secs=self.timeout_secs,
         )
         for item in items:
+            # Some Actor responses surface list-typed entries (e.g. nested
+            # arrays for sitemap-style outputs). Skip anything non-dict.
+            if not isinstance(item, dict):
+                continue
             page_content = item.get('markdown') or item.get('text') or ''
             metadata: dict[str, Any] = {
                 'source': item.get('url', ''),

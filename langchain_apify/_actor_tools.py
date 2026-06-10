@@ -85,7 +85,10 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps(results)
+        # default=str coerces any non-JSON-native types (e.g. datetime from
+        # the Apify client's clean=True deserialiser) to their string repr
+        # so the LLM never sees a serialisation failure.
+        return json.dumps(results, default=str)
 
 
 class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
@@ -148,12 +151,16 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
+        # Defensive filter: some Actor responses occasionally surface list-typed
+        # entries (e.g. nested arrays for sitemap-style outputs). Skip anything
+        # that isn't a dict so .get() never blows up.
         pages = [
             {
                 'url': item.get('url', ''),
-                'title': item.get('metadata', {}).get('title', ''),
+                'title': item.get('metadata', {}).get('title', '') if isinstance(item.get('metadata'), dict) else '',
                 'content': item.get('markdown') or item.get('text', ''),
             }
             for item in items
+            if isinstance(item, dict)
         ]
-        return json.dumps(pages)
+        return json.dumps(pages, default=str)
