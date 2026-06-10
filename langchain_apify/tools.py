@@ -1,12 +1,12 @@
 """LangChain tools for the Apify platform.
 
-All tools require an Apify API token. Set it via the ``APIFY_API_TOKEN``
-environment variable, or pass ``apify_api_token`` to the tool constructor:
+All tools require an Apify API token. Set it via the ``APIFY_TOKEN``
+environment variable, or pass ``apify_token`` to the tool constructor:
 
 .. code-block:: python
 
     import os
-    os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+    os.environ["APIFY_TOKEN"] = "your-apify-token"
 
     from langchain_apify import ApifyRunActorTool
 
@@ -18,24 +18,33 @@ For details, see https://docs.apify.com/platform/integrations/langchain
 
 from __future__ import annotations
 
+import bisect
 import json
-import os
+import warnings
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool, ToolException
-from langchain_core.utils import secret_from_env
-from pydantic import BaseModel, Field, PrivateAttr, SecretStr, create_model, field_validator
+from pydantic import BaseModel, Field, PrivateAttr, SecretStr, create_model, field_validator, model_validator
 
-from langchain_apify._client import ApifyToolsClient
+from langchain_apify._client import (
+    _DEFAULT_DATASET_ITEMS_LIMIT,
+    _DEFAULT_RUN_TIMEOUT_SECS,
+    _DEFAULT_SCRAPE_TIMEOUT_SECS,
+    ApifyToolsClient,
+)
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import (
+    _BOTH_TOKENS_MSG,
+    _DEPRECATED_APIFY_API_TOKEN_MSG,
     _MAX_DESCRIPTION_LEN,
     _actor_id_to_tool_name,
+    _apify_token_secret_factory,
     _create_apify_client,
     _get_actor_latest_build,
     _prune_actor_input_schema,
+    _resolve_apify_token,
 )
 
 if TYPE_CHECKING:
@@ -49,9 +58,9 @@ CrawlerType = Literal['cheerio', 'playwright:adaptive', 'playwright:firefox']
 class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
     """Tool that runs Apify Actors.
 
-    To use, you should have the environment variable `APIFY_API_TOKEN` set
-    with your API key, or pass `apify_api_token`
-    as a named parameter to the constructor.
+    To use, you should have the environment variable ``APIFY_TOKEN`` set
+    with your API key, or pass ``apify_token`` as a named parameter to the
+    constructor.
 
     For details, see https://docs.apify.com/platform/integrations/langchain
 
@@ -84,7 +93,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
     def __init__(
         self,
         actor_id: str,
-        apify_api_token: str | SecretStr | None = None,
+        apify_token: str | SecretStr | None = None,
         *args: Any,  # noqa: ANN401
         **kwargs: Any,  # noqa: ANN401
     ) -> None:
@@ -92,17 +101,26 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
 
         Args:
             actor_id (str): Actor name from Apify store to run.
-            apify_api_token (Optional[str]): Apify API token.
+            apify_token (Optional[str]): Apify API token.
+            apify_api_token: Deprecated alias for ``apify_token``.
             *args: Additional arguments.
             **kwargs: Additional keyword arguments.
 
         Raises:
-            ValueError: If the `APIFY_API_TOKEN` environment variable is not set
+            ValueError: If the ``APIFY_TOKEN`` environment variable is not set
         """
+        if 'apify_api_token' in kwargs:
+            legacy = kwargs.pop('apify_api_token')
+            if apify_token is not None:
+                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
+            else:
+                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
+                apify_token = legacy
+
         _raw_token: str | None = (
-            apify_api_token.get_secret_value()
-            if isinstance(apify_api_token, SecretStr)
-            else apify_api_token or os.getenv('APIFY_API_TOKEN')
+            apify_token.get_secret_value()
+            if isinstance(apify_token, SecretStr)
+            else apify_token or _resolve_apify_token()
         )
         if not _raw_token:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
@@ -227,21 +245,25 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
 # Input schemas for the generic tools
 # ---------------------------------------------------------------------------
 
+_DESC_RUN_TIMEOUT_SECS = 'Maximum time in seconds to wait for the run to finish.'
+_DESC_MEMORY_MBYTES = 'Memory per run in MB. Power of 2 from 128 to 32768, or null for default.'
+_DESC_DATASET_ITEMS_LIMIT = 'Maximum number of dataset items to return.'
+
 
 class ApifyRunActorInput(BaseModel):
     """Input schema for :class:`ApifyRunActorTool`."""
 
     actor_id: str = Field(description='Actor ID or name (e.g. "apify/python-example").')
     run_input: dict | None = Field(default=None, description='JSON-serialisable input for the Actor.')
-    timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the run to finish.')
-    memory_mbytes: int | None = Field(default=None, description='Memory limit in MB for the run, or null for default.')
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
+    memory_mbytes: int | None = Field(default=None, description=_DESC_MEMORY_MBYTES)
 
 
 class ApifyGetDatasetItemsInput(BaseModel):
     """Input schema for :class:`ApifyGetDatasetItemsTool`."""
 
     dataset_id: str = Field(description='Apify dataset ID.')
-    limit: int = Field(default=100, description='Maximum number of items to return.')
+    limit: int = Field(default=_DEFAULT_DATASET_ITEMS_LIMIT, description='Maximum number of items to return.')
     offset: int = Field(default=0, description='Number of items to skip from the start.')
 
 
@@ -250,16 +272,18 @@ class ApifyRunActorAndGetDatasetInput(BaseModel):
 
     actor_id: str = Field(description='Actor ID or name (e.g. "apify/python-example").')
     run_input: dict | None = Field(default=None, description='JSON-serialisable input for the Actor.')
-    timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the run to finish.')
-    memory_mbytes: int | None = Field(default=None, description='Memory limit in MB for the run, or null for default.')
-    dataset_items_limit: int = Field(default=100, description='Maximum number of dataset items to return.')
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
+    memory_mbytes: int | None = Field(default=None, description=_DESC_MEMORY_MBYTES)
+    dataset_items_limit: int = Field(default=_DEFAULT_DATASET_ITEMS_LIMIT, description=_DESC_DATASET_ITEMS_LIMIT)
 
 
 class ApifyScrapeUrlInput(BaseModel):
     """Input schema for :class:`ApifyScrapeUrlTool`."""
 
     url: str = Field(description='The URL to scrape.')
-    timeout_secs: int = Field(default=120, description='Maximum time in seconds to wait for the crawl to finish.')
+    timeout_secs: int = Field(
+        default=_DEFAULT_SCRAPE_TIMEOUT_SECS, description='Maximum time in seconds to wait for the crawl to finish.'
+    )
 
 
 class ApifyGoogleSearchInput(BaseModel):
@@ -277,7 +301,7 @@ class ApifyGoogleSearchInput(BaseModel):
         description='Two-letter language code (case-insensitive; normalised to lowercase, e.g. "en", "fr").',
         pattern=r'^[a-zA-Z]{2}$',
     )
-    timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the search to finish.')
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
 
     @field_validator('country_code', 'language_code')
     @classmethod
@@ -295,7 +319,7 @@ class ApifyWebCrawlerInput(BaseModel):
         default='cheerio',
         description='Crawler engine: "cheerio" (fast, static HTML), "playwright:adaptive" or "playwright:firefox".',
     )
-    timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the crawl to finish.')
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
 
 
 class ApifyRunTaskInput(BaseModel):
@@ -305,10 +329,8 @@ class ApifyRunTaskInput(BaseModel):
     task_input: dict | None = Field(
         default=None, description="JSON-serialisable input that overrides the task's pre-saved input."
     )
-    timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the run to finish.')
-    memory_mbytes: int | None = Field(
-        default=None, description='Memory limit in MB for the run, or null for task default.'
-    )
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
+    memory_mbytes: int | None = Field(default=None, description=_DESC_MEMORY_MBYTES)
 
 
 class ApifyRunTaskAndGetDatasetInput(BaseModel):
@@ -318,11 +340,9 @@ class ApifyRunTaskAndGetDatasetInput(BaseModel):
     task_input: dict | None = Field(
         default=None, description="JSON-serialisable input that overrides the task's pre-saved input."
     )
-    timeout_secs: int = Field(default=300, description='Maximum time in seconds to wait for the run to finish.')
-    memory_mbytes: int | None = Field(
-        default=None, description='Memory limit in MB for the run, or null for task default.'
-    )
-    dataset_items_limit: int = Field(default=100, description='Maximum number of dataset items to return.')
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
+    memory_mbytes: int | None = Field(default=None, description=_DESC_MEMORY_MBYTES)
+    dataset_items_limit: int = Field(default=_DEFAULT_DATASET_ITEMS_LIMIT, description=_DESC_DATASET_ITEMS_LIMIT)
 
 
 # ---------------------------------------------------------------------------
@@ -348,6 +368,11 @@ def _run_meta(run: dict) -> dict:
     }
 
 
+# Apify accepts memory_mbytes only as one of these power-of-2 values.
+# https://docs.apify.com/api/v2/act-runs-post
+_VALID_MEMORY_MBYTES: tuple[int, ...] = (128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768)
+
+
 # ---------------------------------------------------------------------------
 # Shared base for generic tools
 # ---------------------------------------------------------------------------
@@ -366,9 +391,9 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
 
     handle_tool_error: bool = True
 
-    apify_api_token: SecretStr | None = Field(
-        default_factory=secret_from_env('APIFY_API_TOKEN', default=None),
-        description='Apify API token. Falls back to the APIFY_API_TOKEN environment variable when None.',
+    apify_token: SecretStr | None = Field(
+        default_factory=_apify_token_secret_factory,
+        description='Apify API token. Falls back to the APIFY_TOKEN environment variable when None.',
         exclude=True,
         repr=False,
     )
@@ -379,23 +404,38 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
 
     _client: ApifyToolsClient = PrivateAttr()
 
+    @model_validator(mode='before')
+    @classmethod
+    def _handle_deprecated_apify_api_token(cls, values: dict) -> dict:
+        if isinstance(values, dict) and 'apify_api_token' in values:
+            if 'apify_token' in values:
+                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
+                del values['apify_api_token']
+            else:
+                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
+                values['apify_token'] = values.pop('apify_api_token')
+        return values
+
     def model_post_init(self, context: Any) -> None:  # noqa: ANN401
-        if self.apify_api_token is None:
+        if self.apify_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self._client = ApifyToolsClient(apify_api_token=self.apify_api_token.get_secret_value())
+        self._client = ApifyToolsClient(apify_token=self.apify_token.get_secret_value())
         super().model_post_init(context)
 
     def _clamp_timeout(self, value: int) -> int:
         return max(1, min(value, self.max_timeout_secs))
 
     def _clamp_memory(self, value: int | None) -> int | None:
-        # Non-positive values fall through to the platform default. Positive
-        # values are floored at 128 MB (the Apify platform minimum) so the LLM
-        # cannot drive into an API rejection by requesting too little memory.
         if value is None or value <= 0:
             return None
-        return max(128, min(value, self.max_memory_mbytes))
+        clamped = max(128, min(value, self.max_memory_mbytes))
+        idx = bisect.bisect_left(_VALID_MEMORY_MBYTES, clamped)
+        # If snap-up exceeds cap, use largest valid at-or-below cap
+        if idx >= len(_VALID_MEMORY_MBYTES) or _VALID_MEMORY_MBYTES[idx] > self.max_memory_mbytes:
+            idx = bisect.bisect_right(_VALID_MEMORY_MBYTES, self.max_memory_mbytes) - 1
+        # Misconfigured cap below the platform minimum, return the minimum.
+        return _VALID_MEMORY_MBYTES[max(idx, 0)]
 
     def _clamp_items(self, value: int) -> int:
         return max(1, min(value, self.max_items))
@@ -418,7 +458,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
     results from the dataset.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -429,7 +469,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyRunActorTool
 
@@ -444,7 +484,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
     description: str = (
         'Run an Apify Actor synchronously and return run metadata as a JSON string.'
         ' Required: actor_id (str) — Actor ID or name (e.g. "apify/python-example").'
-        ' Optional: run_input (dict), timeout_secs (int, default 300),'
+        f' Optional: run_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
         ' memory_mbytes (int|null).'
         ' Returns JSON with keys: run_id, status, dataset_id, started_at, finished_at.'
         ' Use apify_get_dataset_items with the returned dataset_id to fetch results.'
@@ -455,7 +495,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
         self,
         actor_id: str,
         run_input: dict | None = None,
-        timeout_secs: int = 300,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
@@ -476,7 +516,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
     included.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -486,7 +526,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyGetDatasetItemsTool
 
@@ -498,19 +538,19 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
     description: str = (
         'Fetch items from an Apify dataset by ID. Returns a JSON object with an "items" array.'
         ' Required: dataset_id (str) — Apify dataset ID.'
-        ' Optional: limit (int, default 100), offset (int, default 0).'
+        f' Optional: limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}), offset (int, default 0).'
     )
     args_schema: type[BaseModel] = ApifyGetDatasetItemsInput
 
     def _run(
         self,
         dataset_id: str,
-        limit: int = 100,
+        limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
         offset: int = 0,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            items = self._client.get_dataset_items(dataset_id, self._clamp_items(limit), offset)
+            items = self._client.get_dataset_items(dataset_id, self._clamp_items(limit), max(0, offset))
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
         if not items:
@@ -526,7 +566,7 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
     ``items`` (list of dicts) keys.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -538,7 +578,7 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyRunActorAndGetDatasetTool
 
@@ -553,8 +593,8 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
     description: str = (
         'Run an Apify Actor synchronously and return both run metadata and dataset items.'
         ' Required: actor_id (str) — Actor ID or name (e.g. "apify/python-example").'
-        ' Optional: run_input (dict), timeout_secs (int, default 300),'
-        ' memory_mbytes (int|null), dataset_items_limit (int, default 100).'
+        f' Optional: run_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
+        f' memory_mbytes (int|null), dataset_items_limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at)'
         ' and items (list of dataset item dicts).'
     )
@@ -564,9 +604,9 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
         self,
         actor_id: str,
         run_input: dict | None = None,
-        timeout_secs: int = 300,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
-        dataset_items_limit: int = 100,
+        dataset_items_limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
@@ -590,7 +630,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
     (not JSON).
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -601,7 +641,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyScrapeUrlTool
 
@@ -613,7 +653,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
     description: str = (
         'Scrape a single URL using Apify and return its full content as a markdown string.'
         ' Required: url (str) — the URL to scrape.'
-        ' Optional: timeout_secs (int, default 120).'
+        f' Optional: timeout_secs (int, default {_DEFAULT_SCRAPE_TIMEOUT_SECS}).'
         ' Returns the page content as markdown (or plain text if markdown is unavailable).'
     )
     args_schema: type[BaseModel] = ApifyScrapeUrlInput
@@ -621,7 +661,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
     def _run(
         self,
         url: str,
-        timeout_secs: int = 120,
+        timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
@@ -639,7 +679,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
     Use :class:`ApifyGetDatasetItemsTool` afterwards to retrieve results.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -650,7 +690,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyRunTaskTool
 
@@ -665,7 +705,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
     description: str = (
         'Run a saved Apify Actor task synchronously and return run metadata as a JSON string.'
         ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
-        ' Optional: task_input (dict), timeout_secs (int, default 300),'
+        f' Optional: task_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
         ' memory_mbytes (int|null).'
         ' Returns JSON with keys: run_id, status, dataset_id, started_at, finished_at.'
         ' Use apify_get_dataset_items with the returned dataset_id to fetch results.'
@@ -676,7 +716,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
         self,
         task_id: str,
         task_input: dict | None = None,
-        timeout_secs: int = 300,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
@@ -697,7 +737,7 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
     ``items`` (list of dicts) keys.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -709,7 +749,7 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyRunTaskAndGetDatasetTool
 
@@ -724,8 +764,8 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
     description: str = (
         'Run a saved Apify Actor task synchronously and return both run metadata and dataset items.'
         ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
-        ' Optional: task_input (dict), timeout_secs (int, default 300),'
-        ' memory_mbytes (int|null), dataset_items_limit (int, default 100).'
+        f' Optional: task_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
+        f' memory_mbytes (int|null), dataset_items_limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at)'
         ' and items (list of dataset item dicts).'
     )
@@ -735,9 +775,9 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
         self,
         task_id: str,
         task_input: dict | None = None,
-        timeout_secs: int = 300,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
-        dataset_items_limit: int = 100,
+        dataset_items_limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:

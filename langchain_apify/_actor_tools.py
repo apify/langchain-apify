@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from langchain_core.tools import ToolException
 from pydantic import BaseModel  # noqa: TCH002
 
+from langchain_apify._client import _DEFAULT_RUN_TIMEOUT_SECS
 from langchain_apify.tools import (
     ApifyGoogleSearchInput,
     ApifyWebCrawlerInput,
@@ -36,7 +37,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
     result objects, each with ``title``, ``url``, and ``description`` keys.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -46,7 +47,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyGoogleSearchTool
 
@@ -61,7 +62,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         ' Required: query (str) — the search query.'
         ' Optional: max_results (int, default 10),'
         ' country_code (str|null), language_code (str|null),'
-        ' timeout_secs (int, default 300).'
+        f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
     )
     args_schema: type[BaseModel] = ApifyGoogleSearchInput
 
@@ -71,7 +72,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         max_results: int = 10,
         country_code: str | None = None,
         language_code: str | None = None,
-        timeout_secs: int = 300,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
@@ -95,7 +96,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
     ``content`` (markdown) keys.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -105,7 +106,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyWebCrawlerTool
 
@@ -124,7 +125,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
         ' Optional: max_crawl_pages (int, default 10),'
         ' max_crawl_depth (int, default 1),'
         ' crawler_type (str, default "cheerio"),'
-        ' timeout_secs (int, default 300).'
+        f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
     )
     args_schema: type[BaseModel] = ApifyWebCrawlerInput
 
@@ -134,7 +135,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
         max_crawl_pages: int = 10,
         max_crawl_depth: int = 1,
         crawler_type: CrawlerType = 'cheerio',
-        timeout_secs: int = 300,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:

@@ -24,7 +24,7 @@ def test_apify_dataset_loader_load() -> None:
         )
 
         loader = ApifyDatasetLoader(
-            apify_api_token='dummy-token',
+            apify_token='dummy-token',
             dataset_id='dummy-dataset-id',
             dataset_mapping_function=lambda item: Document(
                 page_content=item['text'],
@@ -49,7 +49,7 @@ def test_apify_dataset_loader_lazy_load() -> None:
         )
 
         loader = ApifyDatasetLoader(
-            apify_api_token='dummy-token',
+            apify_token='dummy-token',
             dataset_id='dummy-dataset-id',
             dataset_mapping_function=lambda item: Document(
                 page_content=item['text'],
@@ -90,7 +90,7 @@ def _make_crawl_loader(
     **kwargs: Any,  # noqa: ANN401
 ) -> ApifyCrawlLoader:
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
-        loader = ApifyCrawlLoader(url='https://example.com', apify_api_token='dummy', **kwargs)
+        loader = ApifyCrawlLoader(url='https://example.com', apify_token='dummy', **kwargs)
     loader._client = mock_client
     return loader
 
@@ -182,13 +182,14 @@ def test_crawl_loader_missing_metadata() -> None:
 
 def test_crawl_loader_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyCrawlLoader(url='https://example.com')
 
 
 def test_crawl_loader_accepts_secretstr_token() -> None:
     with patch('langchain_apify._client._create_apify_client'):
-        loader = ApifyCrawlLoader(url='https://example.com', apify_api_token=SecretStr('s'))
+        loader = ApifyCrawlLoader(url='https://example.com', apify_token=SecretStr('s'))
     assert loader.url == 'https://example.com'
 
 
@@ -218,7 +219,7 @@ def test_apify_dataset_loader_apify_token_fallback(monkeypatch: pytest.MonkeyPat
 def test_apify_dataset_loader_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
     monkeypatch.delenv('APIFY_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyDatasetLoader(
             dataset_id='d',
             dataset_mapping_function=lambda _item: Document(page_content='x'),

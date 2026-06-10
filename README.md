@@ -40,7 +40,7 @@ pip install langchain-apify
 ## Prerequisites
 
 You should configure credentials by setting the following environment variables:
-- `APIFY_API_TOKEN` - Apify API token
+- `APIFY_TOKEN` - Apify API token
 
 Register your free Apify account [here](https://console.apify.com/sign-up) and learn how to get your API token in the [Apify documentation](https://docs.apify.com/platform/integrations/api).
 
@@ -57,7 +57,7 @@ import json
 from langchain_apify import ApifyActorsTool
 
 os.environ["OPENAI_API_KEY"] = "YOUR_OPENAI_API_KEY"
-os.environ["APIFY_API_TOKEN"] = "YOUR_APIFY_API_TOKEN"
+os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
 
 browser = ApifyActorsTool('apify/rag-web-browser')
 search_results = browser.invoke(input={
@@ -92,7 +92,7 @@ Example usage for `ApifyDatasetLoader` with a custom dataset mapping function fo
 import os
 from langchain_apify import ApifyDatasetLoader
 
-os.environ["APIFY_API_TOKEN"] = "YOUR_APIFY_API_TOKEN"
+os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
 
 # Example dataset structure
 # [
@@ -129,7 +129,7 @@ import os
 from langchain_apify import ApifyWrapper
 from langchain_core.documents import Document
 
-os.environ["APIFY_API_TOKEN"] = "YOUR_APIFY_API_TOKEN"
+os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
 
 apify = ApifyWrapper()
 

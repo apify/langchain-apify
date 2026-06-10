@@ -85,7 +85,8 @@ def test_google_search_tool_failure_raises_tool_exception(mock_tools_client: Mag
 
 def test_google_search_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyGoogleSearchTool()
 
 
@@ -204,7 +205,8 @@ def test_web_crawler_tool_failure_raises_tool_exception(mock_tools_client: Magic
 
 def test_web_crawler_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
-    with pytest.raises(ValueError, match='APIFY_API_TOKEN'):
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
         ApifyWebCrawlerTool()
 
 
@@ -221,8 +223,8 @@ def test_actor_tools_inherit_from_generic_base() -> None:
 def test_actor_tools_have_correct_metadata() -> None:
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         tools = [
-            ApifyGoogleSearchTool(apify_api_token=SecretStr('dummy')),
-            ApifyWebCrawlerTool(apify_api_token=SecretStr('dummy')),
+            ApifyGoogleSearchTool(apify_token=SecretStr('dummy')),
+            ApifyWebCrawlerTool(apify_token=SecretStr('dummy')),
         ]
 
     expected_names = ['apify_google_search', 'apify_web_crawler']

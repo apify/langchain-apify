@@ -42,12 +42,12 @@ make test
 To run integration tests, use the following command:
 
 ```bash
-APIFY_API_TOKEN="YOUR_TOKEN" make integration_test
+APIFY_TOKEN="YOUR_TOKEN" make integration_test
 ```
 
 To run single test file, use `TEST_FILE` argument:
 
 ```bash
 make test TEST_FILE=path_to/test_file.py
-APIFY_API_TOKEN="YOUR_TOKEN" make integration_test TEST_FILE=path_to/test_file.py
+APIFY_TOKEN="YOUR_TOKEN" make integration_test TEST_FILE=path_to/test_file.py
 ```

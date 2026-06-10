@@ -7,7 +7,7 @@ from langgraph.prebuilt import create_react_agent
 from langchain_apify import ApifyActorsTool
 
 os.environ['OPENAI_API_KEY'] = 'YOUR_OPENAI_API_KEY'
-os.environ['APIFY_API_TOKEN'] = 'YOUR_APIFY_API_TOKEN'
+os.environ['APIFY_TOKEN'] = 'YOUR_APIFY_TOKEN'
 
 model = ChatOpenAI(model='gpt-4o-mini')
 
