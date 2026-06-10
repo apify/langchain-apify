@@ -55,7 +55,6 @@ APIFY_SOCIAL_TOOLS: list[type[BaseTool]] = [
     ApifyTikTokScraperTool,
     ApifyFacebookPostsScraperTool,
 ]
-
 __all__ = [
     # Existing components (backward-compatible)
     'ApifyActorsTool',

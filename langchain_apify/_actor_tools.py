@@ -151,7 +151,7 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
     Uses the ``apify/instagram-scraper`` Actor under the hood.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -163,7 +163,7 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyInstagramScraperTool
 
@@ -214,7 +214,7 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override
     Uses the ``apimaestro/linkedin-profile-posts`` Actor under the hood.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -226,7 +226,7 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyLinkedInProfilePostsTool
 
@@ -270,7 +270,7 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[overrid
     Uses the ``harvestapi/linkedin-profile-search`` Actor under the hood.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -282,7 +282,7 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[overrid
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyLinkedInProfileSearchTool
 
@@ -326,7 +326,7 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[overrid
     Uses the ``apimaestro/linkedin-profile-detail`` Actor under the hood.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -338,7 +338,7 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[overrid
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyLinkedInProfileDetailTool
 
@@ -382,7 +382,7 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
     Uses the ``apidojo/twitter-scraper-lite`` Actor under the hood.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -394,7 +394,7 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyTwitterScraperTool
 
@@ -451,7 +451,7 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
     Uses the ``clockworks/tiktok-scraper`` Actor under the hood.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -463,7 +463,7 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyTikTokScraperTool
 
@@ -513,7 +513,7 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override
     be scraped.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
@@ -525,7 +525,7 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifyFacebookPostsScraperTool
 

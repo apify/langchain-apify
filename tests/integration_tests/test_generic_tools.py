@@ -1,8 +1,9 @@
 """Integration smoke tests for the generic Apify tools.
 
-These tests hit the real Apify API and require the ``APIFY_API_TOKEN``
-environment variable to be set.  They use ``apify/python-example`` (a
-trivial Actor that adds two numbers) to keep execution fast and cheap.
+These tests hit the real Apify API and require the ``APIFY_TOKEN``
+environment variable to be set (``APIFY_API_TOKEN`` is also accepted for
+backwards compatibility).  They use ``apify/python-example`` (a trivial
+Actor that adds two numbers) to keep execution fast and cheap.
 """
 
 from __future__ import annotations
@@ -20,13 +21,14 @@ from langchain_apify import (
     ApifyRunTaskTool,
     ApifyScrapeUrlTool,
 )
+from langchain_apify._utils import _resolve_apify_token
 
 _ACTOR_ID = 'apify/python-example'
 _RUN_INPUT = {'first_number': 2, 'second_number': 3}
 
 pytestmark = pytest.mark.skipif(
-    not os.getenv('APIFY_API_TOKEN'),
-    reason='APIFY_API_TOKEN not set',
+    not _resolve_apify_token(),
+    reason='APIFY_TOKEN not set',
 )
 
 
