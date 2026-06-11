@@ -461,3 +461,62 @@ def test_apify_search_tools_list() -> None:
         ApifyEcommerceScraperTool,
     }
     assert len(APIFY_SEARCH_TOOLS) == 6
+
+
+# ---------------------------------------------------------------------------
+# Regression: dataset items containing datetime values must not break JSON
+# serialisation. The Apify client's clean=True deserialiser returns datetime
+# objects for certain timestamp fields (notably Google Maps reviews and
+# YouTube publishedAt), which previously raised
+# ``TypeError: Object of type datetime is not JSON serializable`` inside
+# ``_serialize_tool_response``.
+# ---------------------------------------------------------------------------
+
+
+# Tools that hand the client's items list straight to _serialize_tool_response,
+# i.e. those most exposed to raw datetime values from the Actor's dataset.
+_RETURN_LIST = 'list'
+_RETURN_ENVELOPE = 'envelope'
+
+# Each entry: (tool_cls, client_helper_attr, run_kwargs, client_return_shape).
+# Listed tools hand the client's items straight to _serialize_tool_response,
+# i.e. they are most exposed to raw datetime values from the Actor's dataset.
+_PASSTHROUGH_TOOL_INVOCATIONS: list[tuple[type[_ApifyGenericTool], str, dict, str]] = [
+    (ApifyGoogleSearchTool, 'google_search', {'query': 'q'}, _RETURN_LIST),
+    (ApifyGoogleMapsTool, 'google_maps_search', {'query': 'q'}, _RETURN_ENVELOPE),
+    (ApifyYouTubeScraperTool, 'youtube_scrape', {'search_query': 'q'}, _RETURN_ENVELOPE),
+    (ApifyEcommerceScraperTool, 'ecommerce_scrape', {'url': 'https://example.com'}, _RETURN_ENVELOPE),
+]
+
+
+@pytest.mark.parametrize(
+    ('tool_cls', 'helper_attr', 'run_kwargs', 'client_return_shape'),
+    _PASSTHROUGH_TOOL_INVOCATIONS,
+)
+def test_search_tool_serialises_datetime_in_items(
+    mock_tools_client: MagicMock,
+    tool_cls: type,
+    helper_attr: str,
+    run_kwargs: dict,
+    client_return_shape: str,
+) -> None:
+    from datetime import datetime, timezone
+
+    timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    item_with_datetime = {'id': 'item-1', 'published_at': timestamp, 'text': 'hi'}
+    items = [item_with_datetime]
+
+    if client_return_shape == _RETURN_ENVELOPE:
+        getattr(mock_tools_client, helper_attr).return_value = (SUCCEEDED_RUN, items)
+    else:
+        getattr(mock_tools_client, helper_attr).return_value = items
+    tool = make_tool(tool_cls, mock_tools_client)
+
+    result = tool._run(**run_kwargs)
+    parsed = json.loads(result)
+
+    assert isinstance(parsed['items'], list)
+    assert len(parsed['items']) == 1
+    assert parsed['items'][0]['id'] == 'item-1'
+    assert isinstance(parsed['items'][0]['published_at'], str)
+    assert '2026-01-02' in parsed['items'][0]['published_at']

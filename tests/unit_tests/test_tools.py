@@ -23,6 +23,7 @@ from langchain_apify.tools import (
     _ApifyGenericTool,
     _iso,
     _run_meta,
+    _serialize_tool_response,
 )
 from tests.unit_tests.conftest import SAMPLE_ITEMS, SUCCEEDED_RUN, make_tool
 
@@ -172,6 +173,26 @@ def test_run_actor_tool_with_datetime_run(mock_tools_client: MagicMock) -> None:
     assert parsed['run_id'] == 'run-real'
     assert parsed['started_at'] == '2025-06-01T08:00:00+00:00'
     assert parsed['finished_at'] == '2025-06-01T08:05:00+00:00'
+
+
+def test_serialize_tool_response_handles_datetime_in_items() -> None:
+    """Regression: datetime values inside ``items`` must not break the envelope.
+
+    The Apify client's ``clean=True`` deserialiser returns ``datetime``
+    objects for certain timestamp fields (Google Maps reviews, YouTube
+    publishedAt, etc.). Without ``default=str`` in ``json.dumps``, this
+    raised ``TypeError: Object of type datetime is not JSON serializable``
+    and the LLM saw an empty / error tool result instead of data.
+    """
+    timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    items = [{'id': 'item-1', 'published_at': timestamp, 'text': 'hi'}]
+
+    serialised = _serialize_tool_response(tool_name='apify_test', items=items)
+    parsed = json.loads(serialised)
+
+    assert parsed['items'][0]['id'] == 'item-1'
+    assert isinstance(parsed['items'][0]['published_at'], str)
+    assert '2026-01-02' in parsed['items'][0]['published_at']
 
 
 # ---------------------------------------------------------------------------

@@ -431,7 +431,11 @@ def _serialize_tool_response(  # noqa: PLR0913
     if legacy_fields:
         payload.update(legacy_fields)
 
-    return json.dumps(payload)
+    # default=str coerces non-JSON-native types (notably datetime objects
+    # surfaced by the Apify client's clean=True deserialiser for some
+    # Actors) to their string repr so the LLM never sees a serialisation
+    # failure.
+    return json.dumps(payload, default=str)
 
 
 # Apify accepts memory_mbytes only as one of these power-of-2 values.
