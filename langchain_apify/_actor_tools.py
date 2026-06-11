@@ -205,7 +205,7 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items})
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
 
 class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override]
@@ -261,7 +261,7 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items})
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
 
 class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[override]
@@ -317,7 +317,7 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[overrid
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items})
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
 
 class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[override]
@@ -373,7 +373,7 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[overrid
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items})
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
 
 class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
@@ -442,7 +442,7 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items})
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
 
 class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
@@ -502,7 +502,7 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items})
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
 
 class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override]
@@ -566,4 +566,4 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items})
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)

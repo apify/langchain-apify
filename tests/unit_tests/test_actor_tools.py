@@ -413,3 +413,37 @@ def test_social_tool_returns_valid_json_for_empty_items(
 
     assert parsed['items'] == []
     assert parsed['run'] == EXPECTED_RUN_META
+
+
+# ---------------------------------------------------------------------------
+# Regression: dataset items containing datetime values must not break JSON
+# serialisation. The Apify client's clean=True deserialiser returns datetime
+# objects for certain timestamp fields (notably on the Instagram, LinkedIn
+# search and Facebook posts Actors), which previously caused
+# `TypeError: Object of type datetime is not JSON serializable`.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(('tool_cls', 'method_name', 'run_kwargs'), _TOOL_INVOCATIONS)
+def test_social_tool_serialises_datetime_in_items(
+    tool_cls: type,
+    method_name: str,
+    run_kwargs: dict,
+    mock_tools_client: MagicMock,
+) -> None:
+    from datetime import datetime, timezone
+
+    timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    items_with_datetime = [{'id': 'post-1', 'timestamp': timestamp, 'text': 'hello'}]
+    getattr(mock_tools_client, method_name).return_value = (SUCCEEDED_RUN, items_with_datetime)
+    tool = make_tool(tool_cls, mock_tools_client)
+
+    result = tool._run(**run_kwargs)
+    parsed = json.loads(result)
+
+    assert isinstance(parsed['items'], list)
+    assert len(parsed['items']) == 1
+    assert parsed['items'][0]['id'] == 'post-1'
+    assert isinstance(parsed['items'][0]['timestamp'], str)
+    assert '2026-01-02' in parsed['items'][0]['timestamp']
+    assert parsed['run'] == EXPECTED_RUN_META
