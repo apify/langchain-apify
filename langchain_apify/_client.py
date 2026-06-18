@@ -34,7 +34,6 @@ _YOUTUBE_SEARCH_TYPES = ('search', 'video', 'channel')
 _ECOMMERCE_URL_TYPES = ('product', 'category')
 _DEFAULT_RUN_TIMEOUT_SECS = 300
 _DEFAULT_SCRAPE_TIMEOUT_SECS = 120
-_DEFAULT_CRAWL_TIMEOUT_SECS = 300
 _DEFAULT_DATASET_ITEMS_LIMIT = 100
 _RUN_STATUS_SUCCEEDED = 'SUCCEEDED'
 
@@ -493,7 +492,7 @@ class ApifyToolsClient:
         max_crawl_pages: int = 10,
         max_crawl_depth: int = 1,
         crawler_type: str = 'cheerio',
-        timeout_secs: int = _DEFAULT_CRAWL_TIMEOUT_SECS,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
     ) -> list[dict]:
         """Crawl a website and return page content.
 

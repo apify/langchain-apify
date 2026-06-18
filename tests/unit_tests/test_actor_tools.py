@@ -444,7 +444,7 @@ def test_search_tools_have_correct_metadata() -> None:
     ]
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         for tool_cls, expected_name in cases:
-            tool = tool_cls(apify_api_token=SecretStr('dummy'))
+            tool = tool_cls(apify_token=SecretStr('dummy'))
             assert tool.name == expected_name
             assert tool.description
             assert tool.args_schema is not None

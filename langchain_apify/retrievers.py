@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import warnings
 from typing import TYPE_CHECKING, Any
 
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
-from langchain_core.utils import secret_from_env
-from pydantic import Field, PrivateAttr, SecretStr
+from pydantic import Field, PrivateAttr, SecretStr, model_validator
 
 from langchain_apify._client import ApifyToolsClient
+from langchain_apify._utils import (
+    _BOTH_TOKENS_MSG,
+    _DEPRECATED_APIFY_API_TOKEN_MSG,
+    _apify_token_secret_factory,
+)
 
 if TYPE_CHECKING:
     from langchain_core.callbacks import (
@@ -29,7 +34,7 @@ class ApifySearchRetriever(BaseRetriever):
     ``Document`` objects ready for a RAG pipeline.
 
     Args:
-        apify_api_token: Apify API token. Falls back to the ``APIFY_API_TOKEN``
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
         max_results: Maximum number of ``Document`` objects to return per query.
         timeout_secs: Maximum time in seconds to wait for the Actor run.
@@ -42,7 +47,7 @@ class ApifySearchRetriever(BaseRetriever):
         .. code-block:: python
 
             import os
-            os.environ["APIFY_API_TOKEN"] = "your-apify-api-token"
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
 
             from langchain_apify import ApifySearchRetriever
 
@@ -50,9 +55,9 @@ class ApifySearchRetriever(BaseRetriever):
             docs = retriever.invoke("What is LangChain?")
     """
 
-    apify_api_token: SecretStr | None = Field(
-        default_factory=secret_from_env('APIFY_API_TOKEN', default=None),
-        description='Apify API token. Falls back to the APIFY_API_TOKEN environment variable when None.',
+    apify_token: SecretStr | None = Field(
+        default_factory=_apify_token_secret_factory,
+        description='Apify API token. Falls back to the APIFY_TOKEN environment variable when None.',
         exclude=True,
         repr=False,
     )
@@ -61,13 +66,25 @@ class ApifySearchRetriever(BaseRetriever):
 
     _client: ApifyToolsClient = PrivateAttr()
 
+    @model_validator(mode='before')
+    @classmethod
+    def _handle_deprecated_apify_api_token(cls, values: dict) -> dict:
+        if isinstance(values, dict) and 'apify_api_token' in values:
+            if 'apify_token' in values:
+                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
+                del values['apify_api_token']
+            else:
+                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
+                values['apify_token'] = values.pop('apify_api_token')
+        return values
+
     def model_post_init(self, context: Any) -> None:  # noqa: ANN401
         """Construct the underlying ``ApifyToolsClient``.
 
         The helper handles ``None`` / ``SecretStr`` / env-fallback and raises
         ``ValueError`` if no token is available.
         """
-        self._client = ApifyToolsClient(apify_api_token=self.apify_api_token)
+        self._client = ApifyToolsClient(apify_token=self.apify_token)
         super().model_post_init(context)
 
     def _get_relevant_documents(

@@ -248,9 +248,6 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
 _DESC_RUN_TIMEOUT_SECS = 'Maximum time in seconds to wait for the run to finish.'
 _DESC_MEMORY_MBYTES = 'Memory per run in MB. Power of 2 from 128 to 32768, or null for default.'
 _DESC_DATASET_ITEMS_LIMIT = 'Maximum number of dataset items to return.'
-_DEPRECATION_RUN_FIELDS = 'Top-level run_id/status/dataset_id fields are deprecated; use run.* instead.'
-_DEPRECATION_MESSAGE_FIELD = 'The top-level message field is deprecated; use meta.empty_reason instead.'
-_DEPRECATION_LEGACY_CONTENT = 'legacy_content is deprecated; use content instead.'
 
 
 class ApifyRunActorInput(BaseModel):
@@ -375,9 +372,7 @@ def _serialize_tool_response(  # noqa: PLR0913
     items: list[dict] | None = None,
     content: str | None = None,
     empty_message: str | None = None,
-    deprecations: list[str] | None = None,
     extra_meta: dict[str, Any] | None = None,
-    legacy_fields: dict[str, Any] | None = None,
 ) -> str:
     """Serialize all tool outputs into a single normalized envelope.
 
@@ -386,34 +381,21 @@ def _serialize_tool_response(  # noqa: PLR0913
     - ``items``: list payload (possibly empty)
     - ``content``: text/markdown payload (empty string when absent)
     - ``meta``: schema metadata and edge-case flags
-
-    During migration, legacy top-level fields remain present for compatibility.
     """
     run_payload = _run_meta(run) if run else None
     items_payload = items or []
     content_payload = content or ''
-
-    no_items_count = sum(
-        1
-        for item in items_payload
-        if isinstance(item, dict) and isinstance(item.get('error'), str) and item.get('error') == 'no_items'
-    )
     item_count = len(items_payload)
-    effective_item_count = max(item_count - no_items_count, 0)
 
     meta: dict[str, Any] = {
         'schema_version': 'normalized.v1',
         'tool': tool_name,
         'item_count': item_count,
-        'effective_item_count': effective_item_count,
-        'no_items_count': no_items_count,
         'content_length': len(content_payload),
-        'is_empty': effective_item_count == 0 and not content_payload,
+        'is_empty': item_count == 0 and not content_payload,
     }
     if empty_message:
         meta['empty_reason'] = empty_message
-    if deprecations:
-        meta['deprecations'] = deprecations
     if extra_meta:
         meta.update(extra_meta)
 
@@ -423,13 +405,6 @@ def _serialize_tool_response(  # noqa: PLR0913
         'content': content_payload,
         'meta': meta,
     }
-
-    if run_payload:
-        payload.update(run_payload)
-    if empty_message:
-        payload['message'] = empty_message
-    if legacy_fields:
-        payload.update(legacy_fields)
 
     # default=str coerces non-JSON-native types (notably datetime objects
     # surfaced by the Apify client's clean=True deserialiser for some
@@ -522,17 +497,18 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
 class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
     """Run any Apify Actor by ID with an arbitrary JSON input.
 
-    Returns run metadata (run ID, status, dataset ID, timestamps) as a JSON
-    string.  Use :class:`ApifyGetDatasetItemsTool` afterwards to retrieve the
-    results from the dataset.
+    Returns run metadata (run ID, status, dataset ID, timestamps) in a
+    normalized JSON envelope.  Use :class:`ApifyGetDatasetItemsTool` afterwards
+    to retrieve the results from the dataset.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run_id``, ``status``, ``dataset_id``,
-        ``started_at``, and ``finished_at``.
+        JSON string with keys ``run`` (dict with ``run_id``, ``status``,
+        ``dataset_id``, ``started_at``, ``finished_at``), ``items``,
+        ``content``, and ``meta``.
 
     Example:
         .. code-block:: python
@@ -556,8 +532,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
         ' Optional: run_input (dict), timeout_secs (int, default 300),'
         ' memory_mbytes (int|null).'
         ' Returns keys: run, items, content, meta.'
-        ' Legacy top-level run_id/status/dataset_id fields are still present temporarily.'
-        ' Use apify_get_dataset_items with the returned dataset_id to fetch results.'
+        ' Use apify_get_dataset_items with the run.dataset_id to fetch results.'
     )
     args_schema: type[BaseModel] = ApifyRunActorInput
 
@@ -578,23 +553,21 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
         return _serialize_tool_response(
             tool_name=self.name,
             run=run,
-            deprecations=[_DEPRECATION_RUN_FIELDS],
         )
 
 
 class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
     """Fetch items from an existing Apify dataset by ID.
 
-    Returns a JSON object with an ``"items"`` key containing the list of item
-    dicts.  When the dataset is empty an additional ``"message"`` key is
-    included.
+    Returns a normalized JSON envelope (``run``/``items``/``content``/``meta``).
+    When the dataset is empty, ``meta.empty_reason`` explains why.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON object ``{"items": [...]}``; includes ``"message"`` when empty.
+        JSON string with keys ``run``, ``items``, ``content``, ``meta``.
 
     Example:
         .. code-block:: python
@@ -613,7 +586,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
         'Fetch items from an Apify dataset by ID and return a normalized JSON envelope.'
         ' Required: dataset_id (str) — Apify dataset ID.'
         ' Optional: limit (int, default 100), offset (int, default 0).'
-        ' Returns keys: run, items, content, meta; legacy message field remains temporarily.'
+        ' Returns keys: run, items, content, meta (meta.empty_reason explains an empty result).'
     )
     args_schema: type[BaseModel] = ApifyGetDatasetItemsInput
 
@@ -633,7 +606,6 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
             tool_name=self.name,
             items=items,
             empty_message=empty_message,
-            deprecations=[_DEPRECATION_MESSAGE_FIELD],
         )
 
 
@@ -641,17 +613,16 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
     """Run any Apify Actor and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunActorTool` and :class:`ApifyGetDatasetItemsTool`
-    into a single call.  Returns a JSON string with ``run`` (metadata) and
-    ``items`` (list of dicts) keys.
+    into a single call.  Returns a normalized JSON envelope.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
-        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (list
-        of dataset item dicts).
+        JSON string with keys ``run`` (dict with ``run_id``, ``status``,
+        ``dataset_id``, ``started_at``, ``finished_at``), ``items`` (list of
+        dataset item dicts), ``content``, and ``meta``.
 
     Example:
         .. code-block:: python
@@ -675,7 +646,6 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
         ' Optional: run_input (dict), timeout_secs (int, default 300),'
         ' memory_mbytes (int|null), dataset_items_limit (int, default 100).'
         ' Returns keys: run, items, content, meta.'
-        ' Legacy top-level run_id/status/dataset_id fields are still present temporarily.'
     )
     args_schema: type[BaseModel] = ApifyRunActorAndGetDatasetInput
 
@@ -702,24 +672,23 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
             tool_name=self.name,
             run=run,
             items=items,
-            deprecations=[_DEPRECATION_RUN_FIELDS],
         )
 
 
 class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
-    """Scrape a single URL and return its content as markdown.
+    """Scrape a single URL and return its content in a normalized envelope.
 
     Uses the ``apify/website-content-crawler`` Actor under the hood with
-    ``maxCrawlPages=1``.  Returns the page content as a plain markdown string
-    (not JSON).
+    ``maxCrawlPages=1``.  The scraped page content (markdown, or plain text
+    when markdown is unavailable) is in the envelope's ``content`` field.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        Markdown string with the full text content of the scraped page, or a
-        plain-text fallback when markdown is unavailable.
+        JSON string with keys ``run``, ``items``, ``content`` (the page's
+        markdown or plain-text content), and ``meta``.
 
     Example:
         .. code-block:: python
@@ -739,7 +708,6 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
         ' Required: url (str) — the URL to scrape.'
         ' Optional: timeout_secs (int, default 120).'
         ' Returns keys: run, items, content, meta (content is markdown or plain text fallback).'
-        ' Legacy field legacy_content is still present temporarily.'
     )
     args_schema: type[BaseModel] = ApifyScrapeUrlInput
 
@@ -761,8 +729,6 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
             items=items,
             content=content,
             extra_meta={'content_source': content_source},
-            legacy_fields={'legacy_content': content},
-            deprecations=[_DEPRECATION_LEGACY_CONTENT],
         )
 
 
@@ -779,8 +745,9 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run_id``, ``status``, ``dataset_id``,
-        ``started_at``, and ``finished_at``.
+        JSON string with keys ``run`` (dict with ``run_id``, ``status``,
+        ``dataset_id``, ``started_at``, ``finished_at``), ``items``,
+        ``content``, and ``meta``.
 
     Example:
         .. code-block:: python
@@ -804,8 +771,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
         ' Optional: task_input (dict), timeout_secs (int, default 300),'
         ' memory_mbytes (int|null).'
         ' Returns keys: run, items, content, meta.'
-        ' Legacy top-level run_id/status/dataset_id fields are still present temporarily.'
-        ' Use apify_get_dataset_items with the returned dataset_id to fetch results.'
+        ' Use apify_get_dataset_items with the run.dataset_id to fetch results.'
     )
     args_schema: type[BaseModel] = ApifyRunTaskInput
 
@@ -826,7 +792,6 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
         return _serialize_tool_response(
             tool_name=self.name,
             run=run,
-            deprecations=[_DEPRECATION_RUN_FIELDS],
         )
 
 
@@ -834,17 +799,16 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
     """Run a saved Apify Actor task and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunTaskTool` and :class:`ApifyGetDatasetItemsTool`
-    into a single call.  Returns a JSON string with ``run`` (metadata) and
-    ``items`` (list of dicts) keys.
+    into a single call.  Returns a normalized JSON envelope.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
-        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (list
-        of dataset item dicts).
+        JSON string with keys ``run`` (dict with ``run_id``, ``status``,
+        ``dataset_id``, ``started_at``, ``finished_at``), ``items`` (list of
+        dataset item dicts), ``content``, and ``meta``.
 
     Example:
         .. code-block:: python
@@ -868,7 +832,6 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
         ' Optional: task_input (dict), timeout_secs (int, default 300),'
         ' memory_mbytes (int|null), dataset_items_limit (int, default 100).'
         ' Returns keys: run, items, content, meta.'
-        ' Legacy top-level run_id/status/dataset_id fields are still present temporarily.'
     )
     args_schema: type[BaseModel] = ApifyRunTaskAndGetDatasetInput
 
@@ -895,5 +858,4 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
             tool_name=self.name,
             run=run,
             items=items,
-            deprecations=[_DEPRECATION_RUN_FIELDS],
         )

@@ -34,8 +34,6 @@ def _assert_envelope_shape(payload: dict) -> None:
     assert payload['meta']['schema_version'] == 'normalized.v1'
     assert isinstance(payload['meta']['is_empty'], bool)
     assert isinstance(payload['meta']['item_count'], int)
-    assert isinstance(payload['meta']['effective_item_count'], int)
-    assert isinstance(payload['meta']['no_items_count'], int)
 
 
 @pytest.mark.parametrize(
@@ -91,15 +89,14 @@ def test_all_tools_return_normalized_envelope(
     assert payload['meta']['tool'] == tool.name
 
 
-def test_no_items_edge_case_is_normalized(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.google_maps_search.return_value = (SUCCEEDED_RUN, [{'error': 'no_items'}])
+def test_empty_result_is_normalized(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.google_maps_search.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyGoogleMapsTool, mock_tools_client)
 
     payload = json.loads(tool._run(query='empty'))
     _assert_envelope_shape(payload)
-    assert payload['meta']['item_count'] == 1
-    assert payload['meta']['effective_item_count'] == 0
-    assert payload['meta']['no_items_count'] == 1
+    assert payload['items'] == []
+    assert payload['meta']['item_count'] == 0
     assert payload['meta']['is_empty'] is True
 
 

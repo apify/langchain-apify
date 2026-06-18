@@ -27,7 +27,7 @@ RAG_ITEMS: list[dict] = [
 def _make_retriever(mock_client: MagicMock, **kwargs: Any) -> ApifySearchRetriever:  # noqa: ANN401
     """Instantiate a retriever with a mocked ApifyToolsClient."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
-        retriever = ApifySearchRetriever(apify_api_token=SecretStr('dummy-token'), **kwargs)
+        retriever = ApifySearchRetriever(apify_token=SecretStr('dummy-token'), **kwargs)
     retriever._client = mock_client
     return retriever
 
@@ -46,16 +46,25 @@ def test_missing_token_raises(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_init_with_explicit_token() -> None:
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
-        retriever = ApifySearchRetriever(apify_api_token=SecretStr('my-token'))
+        retriever = ApifySearchRetriever(apify_token=SecretStr('my-token'))
         assert retriever.max_results == 5
         assert retriever.timeout_secs == 300
 
 
 def test_init_custom_params() -> None:
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
-        retriever = ApifySearchRetriever(apify_api_token=SecretStr('t'), max_results=3, timeout_secs=60)
+        retriever = ApifySearchRetriever(apify_token=SecretStr('t'), max_results=3, timeout_secs=60)
         assert retriever.max_results == 3
         assert retriever.timeout_secs == 60
+
+
+def test_deprecated_apify_api_token_alias_warns() -> None:
+    # ``apify_api_token`` is a runtime alias handled by a model validator, not a
+    # declared field, hence the call-arg ignore.
+    with patch.object(ApifyToolsClient, '__init__', return_value=None):
+        with pytest.warns(DeprecationWarning, match='apify_api_token'):
+            retriever = ApifySearchRetriever(apify_api_token=SecretStr('legacy-token'))  # type: ignore[call-arg]
+        assert retriever.apify_token == SecretStr('legacy-token')
 
 
 # ---------------------------------------------------------------------------
