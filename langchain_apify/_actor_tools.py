@@ -13,11 +13,18 @@ from typing import TYPE_CHECKING
 from langchain_core.tools import ToolException
 from pydantic import BaseModel  # noqa: TCH002
 
-from langchain_apify._client import _DEFAULT_RUN_TIMEOUT_SECS
+from langchain_apify._client import (
+    _DEFAULT_CRAWLER_TYPE,
+    _DEFAULT_GOOGLE_MAX_RESULTS,
+    _DEFAULT_MAX_CRAWL_DEPTH,
+    _DEFAULT_MAX_CRAWL_PAGES,
+    _DEFAULT_RUN_TIMEOUT_SECS,
+)
+from langchain_apify._types import CrawlerType
+from langchain_apify._utils import _extract_content, _safe_title
 from langchain_apify.tools import (
     ApifyGoogleSearchInput,
     ApifyWebCrawlerInput,
-    CrawlerType,
     _ApifyGenericTool,
 )
 
@@ -60,7 +67,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         'Search Google using Apify and return structured results as a JSON array.'
         ' Each result has keys: title, url, description.'
         ' Required: query (str) — the search query.'
-        ' Optional: max_results (int, default 10),'
+        f' Optional: max_results (int, default {_DEFAULT_GOOGLE_MAX_RESULTS}),'
         ' country_code (str|null), language_code (str|null),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
     )
@@ -69,7 +76,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
     def _run(
         self,
         query: str,
-        max_results: int = 10,
+        max_results: int = _DEFAULT_GOOGLE_MAX_RESULTS,
         country_code: str | None = None,
         language_code: str | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
@@ -125,9 +132,9 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
         'Crawl a website using Apify and return page content as a JSON array.'
         ' Each page object has keys: url, title, content (markdown).'
         ' Required: url (str) — seed URL to crawl.'
-        ' Optional: max_crawl_pages (int, default 10),'
-        ' max_crawl_depth (int, default 1),'
-        ' crawler_type (str, default "cheerio"),'
+        f' Optional: max_crawl_pages (int, default {_DEFAULT_MAX_CRAWL_PAGES}),'
+        f' max_crawl_depth (int, default {_DEFAULT_MAX_CRAWL_DEPTH}),'
+        f' crawler_type (str, default "{_DEFAULT_CRAWLER_TYPE}"),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
     )
     args_schema: type[BaseModel] = ApifyWebCrawlerInput
@@ -135,9 +142,9 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
     def _run(
         self,
         url: str,
-        max_crawl_pages: int = 10,
-        max_crawl_depth: int = 1,
-        crawler_type: CrawlerType = 'cheerio',
+        max_crawl_pages: int = _DEFAULT_MAX_CRAWL_PAGES,
+        max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
+        crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
@@ -157,8 +164,8 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
         pages = [
             {
                 'url': item.get('url', ''),
-                'title': item.get('metadata', {}).get('title', '') if isinstance(item.get('metadata'), dict) else '',
-                'content': item.get('markdown') or item.get('text', ''),
+                'title': _safe_title(item),
+                'content': _extract_content(item),
             }
             for item in items
             if isinstance(item, dict)

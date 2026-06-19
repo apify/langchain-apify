@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
@@ -9,19 +8,26 @@ from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
-from langchain_apify._client import _DEFAULT_RUN_TIMEOUT_SECS, ApifyToolsClient
+from langchain_apify._client import (
+    _DEFAULT_CRAWLER_TYPE,
+    _DEFAULT_MAX_CRAWL_DEPTH,
+    _DEFAULT_MAX_CRAWL_PAGES,
+    _DEFAULT_RUN_TIMEOUT_SECS,
+    ApifyToolsClient,
+)
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import (
-    _BOTH_TOKENS_MSG,
-    _DEPRECATED_APIFY_API_TOKEN_MSG,
     _apify_token_secret_factory,
     _create_apify_client,
+    _extract_content,
+    _resolve_deprecated_token,
+    _safe_title,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from langchain_apify.tools import CrawlerType
+    from langchain_apify._types import CrawlerType
 
 
 class ApifyDatasetLoader(BaseLoader, BaseModel):
@@ -82,12 +88,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
                 ``APIFY_TOKEN`` environment variable when *None*.
             apify_api_token: Deprecated alias for ``apify_token``.
         """
-        if apify_api_token is not None:
-            if apify_token is not None:
-                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
-            else:
-                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
-                apify_token = apify_api_token
+        apify_token = _resolve_deprecated_token(apify_token, apify_api_token)
 
         init_kwargs: dict[str, Any] = {
             'dataset_id': dataset_id,
@@ -148,7 +149,7 @@ class ApifyCrawlLoader(BaseLoader):
             environment variable when *None*.
         max_crawl_pages: Maximum number of pages to crawl.
         max_crawl_depth: Maximum link-follow depth from the seed URL.
-        crawler_type: Crawler engine (e.g. ``"cheerio"``, ``"playwright"``).
+        crawler_type: Crawler engine (e.g. ``"cheerio"``, ``"playwright:firefox"``).
         timeout_secs: Maximum time in seconds to wait for the crawl.
 
     Returns:
@@ -177,17 +178,12 @@ class ApifyCrawlLoader(BaseLoader):
         apify_token: str | SecretStr | None = None,
         *,
         apify_api_token: str | SecretStr | None = None,
-        max_crawl_pages: int = 10,
-        max_crawl_depth: int = 1,
-        crawler_type: CrawlerType = 'cheerio',
+        max_crawl_pages: int = _DEFAULT_MAX_CRAWL_PAGES,
+        max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
+        crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
     ) -> None:
-        if apify_api_token is not None:
-            if apify_token is not None:
-                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
-            else:
-                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
-                apify_token = apify_api_token
+        apify_token = _resolve_deprecated_token(apify_token, apify_api_token)
 
         self.url = url
         self.max_crawl_pages = max_crawl_pages
@@ -214,10 +210,13 @@ class ApifyCrawlLoader(BaseLoader):
             # arrays for sitemap-style outputs). Skip anything non-dict.
             if not isinstance(item, dict):
                 continue
-            page_content = item.get('markdown') or item.get('text') or ''
+            page_content = _extract_content(item)
+            # website-content-crawler nests depth under crawl.depth; there is no
+            # top-level crawlDepth field.
+            crawl_meta = item.get('crawl')
             metadata: dict[str, Any] = {
                 'source': item.get('url', ''),
-                'title': item.get('metadata', {}).get('title', '') if isinstance(item.get('metadata'), dict) else '',
-                'crawl_depth': item.get('crawlDepth', 0),
+                'title': _safe_title(item),
+                'crawl_depth': crawl_meta.get('depth', 0) if isinstance(crawl_meta, dict) else 0,
             }
             yield Document(page_content=page_content, metadata=metadata)

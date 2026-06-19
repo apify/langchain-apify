@@ -73,14 +73,14 @@ CRAWL_ITEMS: list[dict] = [
         'markdown': '# Home',
         'text': 'Home',
         'metadata': {'title': 'Home Page'},
-        'crawlDepth': 0,
+        'crawl': {'depth': 0},
     },
     {
         'url': 'https://example.com/about',
         'markdown': '# About',
         'text': 'About',
         'metadata': {'title': 'About Page'},
-        'crawlDepth': 1,
+        'crawl': {'depth': 1},
     },
 ]
 

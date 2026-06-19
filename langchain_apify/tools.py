@@ -20,24 +20,26 @@ from __future__ import annotations
 
 import bisect
 import json
-import warnings
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool, ToolException
 from pydantic import BaseModel, Field, PrivateAttr, SecretStr, create_model, field_validator, model_validator
 
 from langchain_apify._client import (
+    _DEFAULT_CRAWLER_TYPE,
     _DEFAULT_DATASET_ITEMS_LIMIT,
+    _DEFAULT_GOOGLE_MAX_RESULTS,
+    _DEFAULT_MAX_CRAWL_DEPTH,
+    _DEFAULT_MAX_CRAWL_PAGES,
     _DEFAULT_RUN_TIMEOUT_SECS,
     _DEFAULT_SCRAPE_TIMEOUT_SECS,
     ApifyToolsClient,
 )
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+from langchain_apify._types import CrawlerType
 from langchain_apify._utils import (
-    _BOTH_TOKENS_MSG,
-    _DEPRECATED_APIFY_API_TOKEN_MSG,
     _MAX_DESCRIPTION_LEN,
     _actor_id_to_tool_name,
     _apify_token_secret_factory,
@@ -45,14 +47,14 @@ from langchain_apify._utils import (
     _get_actor_latest_build,
     _prune_actor_input_schema,
     _resolve_apify_token,
+    _resolve_deprecated_token,
+    _resolve_deprecated_token_values,
 )
 
 if TYPE_CHECKING:
     from langchain_core.callbacks import (
         CallbackManagerForToolRun,
     )
-
-CrawlerType = Literal['cheerio', 'playwright:adaptive', 'playwright:firefox']
 
 
 class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
@@ -110,12 +112,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
             ValueError: If the ``APIFY_TOKEN`` environment variable is not set
         """
         if 'apify_api_token' in kwargs:
-            legacy = kwargs.pop('apify_api_token')
-            if apify_token is not None:
-                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
-            else:
-                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
-                apify_token = legacy
+            apify_token = _resolve_deprecated_token(apify_token, kwargs.pop('apify_api_token'))
 
         _raw_token: str | None = (
             apify_token.get_secret_value()
@@ -290,7 +287,9 @@ class ApifyGoogleSearchInput(BaseModel):
     """Input schema for :class:`ApifyGoogleSearchTool`."""
 
     query: str = Field(description='Search query string.')
-    max_results: int = Field(default=10, description='Maximum number of search results to return.')
+    max_results: int = Field(
+        default=_DEFAULT_GOOGLE_MAX_RESULTS, description='Maximum number of search results to return.'
+    )
     country_code: str | None = Field(
         default=None,
         description='Two-letter country code (case-insensitive; normalised to lowercase, e.g. "us", "gb").',
@@ -313,10 +312,12 @@ class ApifyWebCrawlerInput(BaseModel):
     """Input schema for :class:`ApifyWebCrawlerTool`."""
 
     url: str = Field(description='Seed URL to start crawling from.')
-    max_crawl_pages: int = Field(default=10, description='Maximum number of pages to crawl.')
-    max_crawl_depth: int = Field(default=1, description='Maximum link-follow depth from the seed URL.')
+    max_crawl_pages: int = Field(default=_DEFAULT_MAX_CRAWL_PAGES, description='Maximum number of pages to crawl.')
+    max_crawl_depth: int = Field(
+        default=_DEFAULT_MAX_CRAWL_DEPTH, description='Maximum link-follow depth from the seed URL.'
+    )
     crawler_type: CrawlerType = Field(
-        default='cheerio',
+        default=_DEFAULT_CRAWLER_TYPE,
         description='Crawler engine: "cheerio" (fast, static HTML), "playwright:adaptive" or "playwright:firefox".',
     )
     timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
@@ -407,14 +408,7 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     @model_validator(mode='before')
     @classmethod
     def _handle_deprecated_apify_api_token(cls, values: dict) -> dict:
-        if isinstance(values, dict) and 'apify_api_token' in values:
-            if 'apify_token' in values:
-                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
-                del values['apify_api_token']
-            else:
-                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
-                values['apify_token'] = values.pop('apify_api_token')
-        return values
+        return _resolve_deprecated_token_values(values)
 
     def model_post_init(self, context: Any) -> None:  # noqa: ANN401
         if self.apify_token is None:

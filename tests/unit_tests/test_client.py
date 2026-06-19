@@ -439,14 +439,14 @@ def test_crawl_website_passes_params(client: ApifyToolsClient, mock_apify_client
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = []
 
-    client.crawl_website('https://example.com', max_crawl_pages=5, max_crawl_depth=2, crawler_type='playwright')
+    client.crawl_website('https://example.com', max_crawl_pages=5, max_crawl_depth=2, crawler_type='playwright:firefox')
 
     call_args = mock_apify_client.actor.return_value.call.call_args
     run_input = call_args.kwargs['run_input']
     assert run_input['startUrls'] == [{'url': 'https://example.com'}]
     assert run_input['maxCrawlPages'] == 5
     assert run_input['maxCrawlDepth'] == 2
-    assert run_input['crawlerType'] == 'playwright'
+    assert run_input['crawlerType'] == 'playwright:firefox'
 
 
 def test_crawl_website_empty(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import string
+import warnings
 from typing import TypeVar
 
 import requests
@@ -20,6 +21,42 @@ _REQUESTS_TIMEOUT_SECS: float = 10.0
 _APIFY_API_ENDPOINT_GET_DEFAULT_BUILD: str = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
 
 
+def _resolve_deprecated_token(
+    apify_token: SecretStr | str | None,
+    apify_api_token: SecretStr | str | None,
+) -> SecretStr | str | None:
+    """Apply the ``apify_api_token`` → ``apify_token`` deprecation policy.
+
+    For classes with an explicit ``__init__`` (``ApifyToolsClient``,
+    ``ApifyDatasetLoader``, ``ApifyCrawlLoader``, ``ApifyActorsTool``). Emits a
+    ``DeprecationWarning`` when the legacy ``apify_api_token`` is supplied and
+    prefers ``apify_token`` when both are given. Returns the token to use.
+    """
+    if apify_api_token is None:
+        return apify_token
+    if apify_token is not None:
+        warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=3)
+        return apify_token
+    warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=3)
+    return apify_api_token
+
+
+def _resolve_deprecated_token_values(values: dict) -> dict:
+    """Same deprecation policy as :func:`_resolve_deprecated_token`, for dicts.
+
+    For pydantic ``model_validator(mode='before')`` hooks (``_ApifyGenericTool``,
+    ``ApifySearchRetriever``), which receive the raw input ``values`` dict.
+    """
+    if isinstance(values, dict) and 'apify_api_token' in values:
+        if 'apify_token' in values:
+            warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=3)
+            del values['apify_api_token']
+        else:
+            warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=3)
+            values['apify_token'] = values.pop('apify_api_token')
+    return values
+
+
 def _resolve_apify_token() -> str | None:
     """Resolve the Apify API token from environment variables.
 
@@ -34,6 +71,27 @@ def _apify_token_secret_factory() -> SecretStr | None:
     """Pydantic ``default_factory`` returning the resolved token as ``SecretStr``."""
     token = _resolve_apify_token()
     return SecretStr(token) if token else None
+
+
+def _extract_content(item: dict) -> str:
+    """Return an Actor item's content, preferring markdown over plain text.
+
+    Both ``apify/website-content-crawler`` and ``apify/rag-web-browser`` emit
+    ``markdown`` (the richer field) and ``text`` (the plain-text fallback). The
+    trailing ``or ''`` guarantees a string even when a key is present but null.
+    """
+    return item.get('markdown') or item.get('text') or ''
+
+
+def _safe_title(item: dict) -> str:
+    """Return an Actor item's title from its nested ``metadata`` object.
+
+    Both ``apify/website-content-crawler`` and ``apify/rag-web-browser`` nest
+    the page title under ``metadata.title``. The ``isinstance`` guard tolerates
+    Actor responses where ``metadata`` is missing or not a dict.
+    """
+    metadata = item.get('metadata')
+    return metadata.get('title', '') if isinstance(metadata, dict) else ''
 
 
 def _prune_actor_input_schema(
