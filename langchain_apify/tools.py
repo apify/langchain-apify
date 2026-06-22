@@ -657,7 +657,9 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            run, _, content, _ = self._client.scrape_url_with_meta(url, self._clamp_timeout(timeout_secs))
+            # _scrape_url is the rich primitive; scrape_url() drops the metadata
+            # this tool needs (run + content source), so access it directly.
+            run, _, content, _ = self._client._scrape_url(url, self._clamp_timeout(timeout_secs))  # noqa: SLF001
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps({'run': _run_meta(run), 'items': [{'url': url, 'content': content}]}, default=str)

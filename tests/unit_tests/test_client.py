@@ -315,32 +315,30 @@ def test_run_actor_programming_error_propagates(client: ApifyToolsClient, mock_a
 
 
 # ---------------------------------------------------------------------------
-# scrape_url_with_meta
+# _scrape_url
 # ---------------------------------------------------------------------------
 
 
-def test_scrape_url_with_meta_returns_markdown_and_metadata(
-    client: ApifyToolsClient, mock_apify_client: MagicMock
-) -> None:
+def test__scrape_url_returns_markdown_and_metadata(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = [
         {'markdown': '# Hello', 'text': 'Hello', 'url': 'https://example.com'},
     ]
 
-    run, items, content, source = client.scrape_url_with_meta('https://example.com')
+    run, items, content, source = client._scrape_url('https://example.com')
     assert run == SUCCEEDED_RUN
     assert items
     assert content == '# Hello'
     assert source == 'markdown'
 
 
-def test_scrape_url_with_meta_falls_back_to_text(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+def test__scrape_url_falls_back_to_text(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = [
         {'text': 'Plain text content', 'url': 'https://example.com'},
     ]
 
-    _, _, content, source = client.scrape_url_with_meta('https://example.com')
+    _, _, content, source = client._scrape_url('https://example.com')
     assert content == 'Plain text content'
     assert source == 'text'
 
@@ -368,12 +366,23 @@ def test_google_search_input_mapping(client: ApifyToolsClient, mock_apify_client
     assert run_input == {
         'queries': 'langchain',
         'maxPagesPerQuery': 1,
-        'resultsPerPage': 5,
         'countryCode': 'us',
         'languageCode': 'en',
     }
     assert len(results) == 2
     assert results[0]['title'] == 'A'
+
+
+def test_google_search_scales_pages_to_max_results(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = []
+
+    # ~10 results/page, so 25 results needs ceil(25 / 10) == 3 pages.
+    client.google_search('langchain', max_results=25)
+
+    run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
+    assert run_input['maxPagesPerQuery'] == 3
+    assert 'resultsPerPage' not in run_input
 
 
 def test_google_search_omits_optional_locale_params(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:

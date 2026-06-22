@@ -22,7 +22,7 @@ from langchain_apify._client import (
     _DEFAULT_RUN_TIMEOUT_SECS,
 )
 from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: shared Literal alias
-from langchain_apify._utils import _extract_content, _safe_title
+from langchain_apify._utils import _extract_content, _extract_source, _safe_title
 from langchain_apify.tools import (
     ApifyGoogleSearchInput,
     ApifyWebCrawlerInput,
@@ -37,17 +37,6 @@ if TYPE_CHECKING:
 _DEFAULT_GOOGLE_MAPS_MAX_RESULTS = 10
 _DEFAULT_YOUTUBE_MAX_RESULTS = 10
 _DEFAULT_ECOMMERCE_MAX_RESULTS = 20
-
-
-def _item_metadata(item: dict) -> dict:
-    """Return an item's ``metadata`` block, or ``{}`` if missing/non-dict.
-
-    Some Actors surface a ``null`` (or otherwise non-dict) ``metadata`` value,
-    so a plain ``item.get('metadata', {})`` would raise ``AttributeError`` on
-    the chained ``.get(...)``.
-    """
-    meta = item.get('metadata')
-    return meta if isinstance(meta, dict) else {}
 
 
 # ---------------------------------------------------------------------------
@@ -306,7 +295,7 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
             raise ToolException(str(exc)) from exc
         results = [
             {
-                'url': _item_metadata(item).get('url') or item.get('crawledUrl', ''),
+                'url': _extract_source(item),
                 'title': _safe_title(item),
                 'content': _extract_content(item),
             }
