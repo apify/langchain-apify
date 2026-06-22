@@ -23,7 +23,6 @@ from langchain_apify.tools import (
     _ApifyGenericTool,
     _iso,
     _run_meta,
-    _serialize_tool_response,
 )
 from tests.unit_tests.conftest import SAMPLE_ITEMS, SUCCEEDED_RUN, make_tool
 
@@ -175,8 +174,8 @@ def test_run_actor_tool_with_datetime_run(mock_tools_client: MagicMock) -> None:
     assert parsed['run']['finished_at'] == '2025-06-01T08:05:00+00:00'
 
 
-def test_serialize_tool_response_handles_datetime_in_items() -> None:
-    """Regression: datetime values inside ``items`` must not break the envelope.
+def test_tool_response_handles_datetime_in_items(mock_tools_client: MagicMock) -> None:
+    """Regression: datetime values inside ``items`` must not break serialization.
 
     The Apify client's ``clean=True`` deserialiser returns ``datetime``
     objects for certain timestamp fields (Google Maps reviews, YouTube
@@ -186,9 +185,10 @@ def test_serialize_tool_response_handles_datetime_in_items() -> None:
     """
     timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
     items = [{'id': 'item-1', 'published_at': timestamp, 'text': 'hi'}]
+    mock_tools_client.run_actor_and_get_items.return_value = (SUCCEEDED_RUN, items)
+    tool = make_tool(ApifyRunActorAndGetDatasetTool, mock_tools_client)
 
-    serialised = _serialize_tool_response(tool_name='apify_test', items=items)
-    parsed = json.loads(serialised)
+    parsed = json.loads(tool._run(actor_id='apify/test'))
 
     assert parsed['items'][0]['id'] == 'item-1'
     assert isinstance(parsed['items'][0]['published_at'], str)
@@ -247,16 +247,14 @@ def test_get_dataset_items_tool_returns_json_object(mock_tools_client: MagicMock
     mock_tools_client.get_dataset_items.assert_called_once_with('dataset-xyz', 50, 5)
 
 
-def test_get_dataset_items_tool_empty_returns_message(mock_tools_client: MagicMock) -> None:
+def test_get_dataset_items_tool_empty_returns_empty_items(mock_tools_client: MagicMock) -> None:
     mock_tools_client.get_dataset_items.return_value = []
     tool = make_tool(ApifyGetDatasetItemsTool, mock_tools_client)
 
     result = tool._run(dataset_id='dataset-empty')
 
     parsed = json.loads(result)
-    assert parsed['items'] == []
-    assert parsed['meta']['is_empty'] is True
-    assert 'empty' in parsed['meta']['empty_reason'].lower()
+    assert parsed == {'run': None, 'items': []}
 
 
 def test_get_dataset_items_tool_network_error_raises_tool_exception(mock_tools_client: MagicMock) -> None:
@@ -328,8 +326,8 @@ def test_scrape_url_tool_returns_markdown(mock_tools_client: MagicMock) -> None:
     result = tool._run(url='https://example.com')
 
     parsed = json.loads(result)
-    assert parsed['content'] == '# Hello World'
-    assert parsed['meta']['content_source'] == 'markdown'
+    assert parsed['run']['status'] == 'SUCCEEDED'
+    assert parsed['items'] == [{'url': 'https://example.com', 'content': '# Hello World'}]
     mock_tools_client.scrape_url_with_meta.assert_called_once_with('https://example.com', 120)
 
 

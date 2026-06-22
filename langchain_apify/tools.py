@@ -365,54 +365,6 @@ def _run_meta(run: dict) -> dict:
     }
 
 
-def _serialize_tool_response(  # noqa: PLR0913
-    *,
-    tool_name: str,
-    run: dict | None = None,
-    items: list[dict] | None = None,
-    content: str | None = None,
-    empty_message: str | None = None,
-    extra_meta: dict[str, Any] | None = None,
-) -> str:
-    """Serialize all tool outputs into a single normalized envelope.
-
-    Envelope keys:
-    - ``run``: compact run metadata or ``null``
-    - ``items``: list payload (possibly empty)
-    - ``content``: text/markdown payload (empty string when absent)
-    - ``meta``: schema metadata and edge-case flags
-    """
-    run_payload = _run_meta(run) if run else None
-    items_payload = items or []
-    content_payload = content or ''
-    item_count = len(items_payload)
-
-    meta: dict[str, Any] = {
-        'schema_version': 'normalized.v1',
-        'tool': tool_name,
-        'item_count': item_count,
-        'content_length': len(content_payload),
-        'is_empty': item_count == 0 and not content_payload,
-    }
-    if empty_message:
-        meta['empty_reason'] = empty_message
-    if extra_meta:
-        meta.update(extra_meta)
-
-    payload: dict[str, Any] = {
-        'run': run_payload,
-        'items': items_payload,
-        'content': content_payload,
-        'meta': meta,
-    }
-
-    # default=str coerces non-JSON-native types (notably datetime objects
-    # surfaced by the Apify client's clean=True deserialiser for some
-    # Actors) to their string repr so the LLM never sees a serialisation
-    # failure.
-    return json.dumps(payload, default=str)
-
-
 # Apify accepts memory_mbytes only as one of these power-of-2 values.
 # https://docs.apify.com/api/v2/act-runs-post
 _VALID_MEMORY_MBYTES: tuple[int, ...] = (128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768)
@@ -498,7 +450,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
     """Run any Apify Actor by ID with an arbitrary JSON input.
 
     Returns run metadata (run ID, status, dataset ID, timestamps) in a
-    normalized JSON envelope.  Use :class:`ApifyGetDatasetItemsTool` afterwards
+    JSON envelope.  Use :class:`ApifyGetDatasetItemsTool` afterwards
     to retrieve the results from the dataset.
 
     Args:
@@ -506,9 +458,8 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run`` (dict with ``run_id``, ``status``,
-        ``dataset_id``, ``started_at``, ``finished_at``), ``items``,
-        ``content``, and ``meta``.
+        JSON object ``{"run": {...}, "items": []}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``.
 
     Example:
         .. code-block:: python
@@ -527,11 +478,11 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_run_actor'
     description: str = (
-        'Run an Apify Actor synchronously and return a normalized JSON envelope.'
+        'Run an Apify Actor synchronously and return a JSON envelope.'
         ' Required: actor_id (str) — Actor ID or name (e.g. "apify/python-example").'
         ' Optional: run_input (dict), timeout_secs (int, default 300),'
         ' memory_mbytes (int|null).'
-        ' Returns keys: run, items, content, meta.'
+        ' Returns keys: run, items.'
         ' Use apify_get_dataset_items with the run.dataset_id to fetch results.'
     )
     args_schema: type[BaseModel] = ApifyRunActorInput
@@ -550,24 +501,21 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return _serialize_tool_response(
-            tool_name=self.name,
-            run=run,
-        )
+        return json.dumps({'run': _run_meta(run), 'items': []}, default=str)
 
 
 class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
     """Fetch items from an existing Apify dataset by ID.
 
-    Returns a normalized JSON envelope (``run``/``items``/``content``/``meta``).
-    When the dataset is empty, ``meta.empty_reason`` explains why.
+    Returns a JSON envelope ``{"run": null, "items": [...]}``. ``items`` is an
+    empty array when the dataset has no items.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run``, ``items``, ``content``, ``meta``.
+        JSON object ``{"run": null, "items": [...]}``.
 
     Example:
         .. code-block:: python
@@ -583,10 +531,10 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_get_dataset_items'
     description: str = (
-        'Fetch items from an Apify dataset by ID and return a normalized JSON envelope.'
+        'Fetch items from an Apify dataset by ID and return a JSON envelope.'
         ' Required: dataset_id (str) — Apify dataset ID.'
         ' Optional: limit (int, default 100), offset (int, default 0).'
-        ' Returns keys: run, items, content, meta (meta.empty_reason explains an empty result).'
+        ' Returns keys: run (null), items (empty array when the dataset has no items).'
     )
     args_schema: type[BaseModel] = ApifyGetDatasetItemsInput
 
@@ -601,28 +549,23 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
             items = self._client.get_dataset_items(dataset_id, self._clamp_items(limit), max(0, offset))
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        empty_message = f'Dataset {dataset_id} is empty.' if not items else None
-        return _serialize_tool_response(
-            tool_name=self.name,
-            items=items,
-            empty_message=empty_message,
-        )
+        return json.dumps({'run': None, 'items': items}, default=str)
 
 
 class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override]
     """Run any Apify Actor and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunActorTool` and :class:`ApifyGetDatasetItemsTool`
-    into a single call.  Returns a normalized JSON envelope.
+    into a single call.  Returns a JSON envelope.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run`` (dict with ``run_id``, ``status``,
-        ``dataset_id``, ``started_at``, ``finished_at``), ``items`` (list of
-        dataset item dicts), ``content``, and ``meta``.
+        JSON object ``{"run": {...}, "items": [...]}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``
+        and ``items`` are the dataset item dicts.
 
     Example:
         .. code-block:: python
@@ -641,11 +584,11 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
 
     name: str = 'apify_run_actor_and_get_dataset'
     description: str = (
-        'Run an Apify Actor synchronously and return a normalized JSON envelope.'
+        'Run an Apify Actor synchronously and return a JSON envelope.'
         ' Required: actor_id (str) — Actor ID or name (e.g. "apify/python-example").'
         ' Optional: run_input (dict), timeout_secs (int, default 300),'
         ' memory_mbytes (int|null), dataset_items_limit (int, default 100).'
-        ' Returns keys: run, items, content, meta.'
+        ' Returns keys: run, items.'
     )
     args_schema: type[BaseModel] = ApifyRunActorAndGetDatasetInput
 
@@ -668,27 +611,22 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return _serialize_tool_response(
-            tool_name=self.name,
-            run=run,
-            items=items,
-        )
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
 
 class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
-    """Scrape a single URL and return its content in a normalized envelope.
+    """Scrape a single URL and return its content in a JSON envelope.
 
     Uses the ``apify/website-content-crawler`` Actor under the hood with
-    ``maxCrawlPages=1``.  The scraped page content (markdown, or plain text
-    when markdown is unavailable) is in the envelope's ``content`` field.
+    ``maxCrawlPages=1``.  The scraped content (markdown, or plain text when
+    markdown is unavailable) is the ``content`` field of the single item.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run``, ``items``, ``content`` (the page's
-        markdown or plain-text content), and ``meta``.
+        JSON object ``{"run": {...}, "items": [{"url": ..., "content": ...}]}``.
 
     Example:
         .. code-block:: python
@@ -704,10 +642,10 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_scrape_url'
     description: str = (
-        'Scrape a single URL using Apify and return a normalized JSON envelope.'
+        'Scrape a single URL using Apify and return a JSON envelope.'
         ' Required: url (str) — the URL to scrape.'
         ' Optional: timeout_secs (int, default 120).'
-        ' Returns keys: run, items, content, meta (content is markdown or plain text fallback).'
+        ' Returns keys: run, items ([{url, content}]; content is markdown or plain text fallback).'
     )
     args_schema: type[BaseModel] = ApifyScrapeUrlInput
 
@@ -718,18 +656,10 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            run, items, content, content_source = self._client.scrape_url_with_meta(
-                url, self._clamp_timeout(timeout_secs)
-            )
+            run, _, content, _ = self._client.scrape_url_with_meta(url, self._clamp_timeout(timeout_secs))
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return _serialize_tool_response(
-            tool_name=self.name,
-            run=run,
-            items=items,
-            content=content,
-            extra_meta={'content_source': content_source},
-        )
+        return json.dumps({'run': _run_meta(run), 'items': [{'url': url, 'content': content}]}, default=str)
 
 
 class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
@@ -745,9 +675,8 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run`` (dict with ``run_id``, ``status``,
-        ``dataset_id``, ``started_at``, ``finished_at``), ``items``,
-        ``content``, and ``meta``.
+        JSON object ``{"run": {...}, "items": []}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``.
 
     Example:
         .. code-block:: python
@@ -766,11 +695,11 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_run_task'
     description: str = (
-        'Run a saved Apify Actor task synchronously and return a normalized JSON envelope.'
+        'Run a saved Apify Actor task synchronously and return a JSON envelope.'
         ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
         ' Optional: task_input (dict), timeout_secs (int, default 300),'
         ' memory_mbytes (int|null).'
-        ' Returns keys: run, items, content, meta.'
+        ' Returns keys: run, items.'
         ' Use apify_get_dataset_items with the run.dataset_id to fetch results.'
     )
     args_schema: type[BaseModel] = ApifyRunTaskInput
@@ -789,26 +718,23 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return _serialize_tool_response(
-            tool_name=self.name,
-            run=run,
-        )
+        return json.dumps({'run': _run_meta(run), 'items': []}, default=str)
 
 
 class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override]
     """Run a saved Apify Actor task and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunTaskTool` and :class:`ApifyGetDatasetItemsTool`
-    into a single call.  Returns a normalized JSON envelope.
+    into a single call.  Returns a JSON envelope.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run`` (dict with ``run_id``, ``status``,
-        ``dataset_id``, ``started_at``, ``finished_at``), ``items`` (list of
-        dataset item dicts), ``content``, and ``meta``.
+        JSON object ``{"run": {...}, "items": [...]}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``
+        and ``items`` are the dataset item dicts.
 
     Example:
         .. code-block:: python
@@ -827,11 +753,11 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
 
     name: str = 'apify_run_task_and_get_dataset'
     description: str = (
-        'Run a saved Apify Actor task synchronously and return a normalized JSON envelope.'
+        'Run a saved Apify Actor task synchronously and return a JSON envelope.'
         ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
         ' Optional: task_input (dict), timeout_secs (int, default 300),'
         ' memory_mbytes (int|null), dataset_items_limit (int, default 100).'
-        ' Returns keys: run, items, content, meta.'
+        ' Returns keys: run, items.'
     )
     args_schema: type[BaseModel] = ApifyRunTaskAndGetDatasetInput
 
@@ -854,8 +780,4 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return _serialize_tool_response(
-            tool_name=self.name,
-            run=run,
-            items=items,
-        )
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)

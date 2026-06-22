@@ -7,6 +7,7 @@ LLM-friendly interface. They inherit from
 
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, Literal
 
 from langchain_core.tools import ToolException
@@ -18,7 +19,7 @@ from langchain_apify.tools import (
     ApifyWebCrawlerInput,
     CrawlerType,
     _ApifyGenericTool,
-    _serialize_tool_response,
+    _run_meta,
 )
 
 if TYPE_CHECKING:
@@ -56,7 +57,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
     """Search Google and return structured results via Apify.
 
     Wraps the ``apify/google-search-scraper`` Actor behind a simplified,
-    LLM-friendly interface.  Returns a normalized JSON envelope whose
+    LLM-friendly interface.  Returns a JSON envelope whose
     ``items`` are objects with ``title``, ``url``, and ``description`` keys.
 
     Args:
@@ -64,8 +65,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run``, ``items`` (each
-        ``{"title", "url", "description"}``), ``content``, and ``meta``.
+        JSON object ``{"run": null, "items": [{"title", "url", "description"}]}``.
 
     Example:
         .. code-block:: python
@@ -81,13 +81,13 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_google_search'
     description: str = (
-        'Search Google using Apify and return a normalized JSON envelope.'
+        'Search Google using Apify and return a JSON envelope.'
         ' Each item has keys: title, url, description.'
         ' Required: query (str) — the search query.'
         f' Optional: max_results (int, default {_DEFAULT_GOOGLE_SEARCH_MAX_RESULTS}),'
         ' country_code (str|null), language_code (str|null),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
-        ' Returns keys: run, items, content, meta.'
+        ' Returns keys: run, items.'
     )
     args_schema: type[BaseModel] = ApifyGoogleSearchInput
 
@@ -110,14 +110,14 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return _serialize_tool_response(tool_name=self.name, items=results)
+        return json.dumps({'run': None, 'items': results}, default=str)
 
 
 class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
     """Crawl a website and return page content as JSON via Apify.
 
-    Wraps the ``apify/website-content-crawler`` Actor.  Returns a normalized
-    JSON envelope whose ``items`` are page objects with ``url``, ``title``,
+    Wraps the ``apify/website-content-crawler`` Actor.  Returns a JSON
+    envelope whose ``items`` are page objects with ``url``, ``title``,
     and ``content`` (markdown) keys.
 
     Args:
@@ -125,8 +125,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run``, ``items`` (each
-        ``{"url", "title", "content"}``), ``content``, and ``meta``.
+        JSON object ``{"run": null, "items": [{"url", "title", "content"}]}``.
 
     Example:
         .. code-block:: python
@@ -145,14 +144,14 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_web_crawler'
     description: str = (
-        'Crawl a website using Apify and return a normalized JSON envelope.'
+        'Crawl a website using Apify and return a JSON envelope.'
         ' Each item has keys: url, title, content.'
         ' Required: url (str) — seed URL to crawl.'
         f' Optional: max_crawl_pages (int, default {_DEFAULT_WEB_CRAWLER_MAX_PAGES}),'
         f' max_crawl_depth (int, default {_DEFAULT_WEB_CRAWLER_MAX_DEPTH}),'
         f' crawler_type (str, default "{_DEFAULT_WEB_CRAWLER_TYPE}"),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
-        ' Returns keys: run, items, content, meta.'
+        ' Returns keys: run, items.'
     )
     args_schema: type[BaseModel] = ApifyWebCrawlerInput
 
@@ -183,7 +182,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
             }
             for item in items
         ]
-        return _serialize_tool_response(tool_name=self.name, items=pages)
+        return json.dumps({'run': None, 'items': pages}, default=str)
 
 
 # ---------------------------------------------------------------------------
@@ -250,7 +249,7 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
 
     Wraps the ``apify/rag-web-browser`` Actor.  Unlike
     :class:`ApifySearchRetriever` (which returns LangChain ``Document``
-    objects for RAG pipelines), this tool returns a normalized JSON envelope
+    objects for RAG pipelines), this tool returns a JSON envelope
     suitable for agent tool-calling.
 
     Args:
@@ -258,8 +257,7 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run``, ``items`` (each
-        ``{"url", "title", "content"}``), ``content``, and ``meta``.
+        JSON object ``{"run": {...}, "items": [{"url", "title", "content"}]}``.
 
     Example:
         .. code-block:: python
@@ -275,11 +273,11 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_rag_web_browser'
     description: str = (
-        'Search the web and return a normalized JSON envelope with crawled results.'
+        'Search the web and return a JSON envelope with crawled results.'
         ' Each item has keys: url, title, content.'
         ' Required: query (str) - the search query.'
         f' Optional: max_results (int, default {_DEFAULT_RAG_MAX_RESULTS}).'
-        ' Returns keys: run, items, content, meta.'
+        ' Returns keys: run, items.'
     )
     args_schema: type[BaseModel] = ApifyRAGWebBrowserInput
 
@@ -305,11 +303,7 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
             }
             for item in items
         ]
-        return _serialize_tool_response(
-            tool_name=self.name,
-            run=run,
-            items=results,
-        )
+        return json.dumps({'run': _run_meta(run), 'items': results}, default=str)
 
 
 class ApifyGoogleMapsTool(_ApifyGenericTool):  # type: ignore[override]
@@ -322,9 +316,9 @@ class ApifyGoogleMapsTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run`` (dict with ``run_id``, ``status``,
-        ``dataset_id``, ``started_at``, ``finished_at``), ``items`` (list of
-        place dicts), ``content``, and ``meta``.
+        JSON object ``{"run": {...}, "items": [...]}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``
+        and ``items`` are place dicts.
 
     Example:
         .. code-block:: python
@@ -340,11 +334,11 @@ class ApifyGoogleMapsTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_google_maps'
     description: str = (
-        'Search Google Maps places, reviews, and business details and return a normalized JSON envelope.'
+        'Search Google Maps places, reviews, and business details and return a JSON envelope.'
         ' Required: query (str) - the search query.'
         f' Optional: max_results (int, default {_DEFAULT_GOOGLE_MAPS_MAX_RESULTS}),'
         ' language (str|null - ISO code, e.g. "en").'
-        ' Returns keys: run, items, content, meta.'
+        ' Returns keys: run, items.'
     )
     args_schema: type[BaseModel] = ApifyGoogleMapsInput
 
@@ -364,11 +358,7 @@ class ApifyGoogleMapsTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return _serialize_tool_response(
-            tool_name=self.name,
-            run=run,
-            items=items,
-        )
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
 
 class ApifyYouTubeScraperTool(_ApifyGenericTool):  # type: ignore[override]
@@ -381,9 +371,9 @@ class ApifyYouTubeScraperTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run`` (dict with ``run_id``, ``status``,
-        ``dataset_id``, ``started_at``, ``finished_at``), ``items`` (list of
-        video / channel dicts), ``content``, and ``meta``.
+        JSON object ``{"run": {...}, "items": [...]}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``
+        and ``items`` are video / channel dicts.
 
     Example:
         .. code-block:: python
@@ -403,11 +393,11 @@ class ApifyYouTubeScraperTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_youtube_scraper'
     description: str = (
-        'Scrape YouTube by keyword, video URL, or channel URL and return a normalized JSON envelope.'
+        'Scrape YouTube by keyword, video URL, or channel URL and return a JSON envelope.'
         ' Required: search_query (str - keyword for "search" mode, or a video/channel URL).'
         ' Optional: search_type (one of "search", "video", "channel"; default "search"),'
         f' max_results (int, default {_DEFAULT_YOUTUBE_MAX_RESULTS}).'
-        ' Returns keys: run, items, content, meta.'
+        ' Returns keys: run, items.'
     )
     args_schema: type[BaseModel] = ApifyYouTubeScraperInput
 
@@ -427,11 +417,7 @@ class ApifyYouTubeScraperTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return _serialize_tool_response(
-            tool_name=self.name,
-            run=run,
-            items=items,
-        )
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
 
 class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
@@ -444,9 +430,9 @@ class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run`` (dict with ``run_id``, ``status``,
-        ``dataset_id``, ``started_at``, ``finished_at``), ``items`` (list of
-        product / listing dicts), ``content``, and ``meta``.
+        JSON object ``{"run": {...}, "items": [...]}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``
+        and ``items`` are product / listing dicts.
 
     Example:
         .. code-block:: python
@@ -466,11 +452,11 @@ class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_ecommerce_scraper'
     description: str = (
-        'Extract product data from an e-commerce URL and return a normalized JSON envelope.'
+        'Extract product data from an e-commerce URL and return a JSON envelope.'
         ' Required: url (str) - product-detail or category / listing URL.'
         ' Optional: url_type (one of "product", "category"; default "product"),'
         f' max_results (int, default {_DEFAULT_ECOMMERCE_MAX_RESULTS}).'
-        ' Returns keys: run, items, content, meta.'
+        ' Returns keys: run, items.'
     )
     args_schema: type[BaseModel] = ApifyEcommerceScraperInput
 
@@ -490,8 +476,4 @@ class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return _serialize_tool_response(
-            tool_name=self.name,
-            run=run,
-            items=items,
-        )
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)

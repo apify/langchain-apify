@@ -27,13 +27,9 @@ from tests.unit_tests.conftest import SAMPLE_ITEMS, SUCCEEDED_RUN, make_tool
 
 
 def _assert_envelope_shape(payload: dict) -> None:
-    assert set(payload).issuperset({'run', 'items', 'content', 'meta'})
+    assert set(payload) == {'run', 'items'}
     assert isinstance(payload['items'], list)
-    assert isinstance(payload['content'], str)
-    assert isinstance(payload['meta'], dict)
-    assert payload['meta']['schema_version'] == 'normalized.v1'
-    assert isinstance(payload['meta']['is_empty'], bool)
-    assert isinstance(payload['meta']['item_count'], int)
+    assert payload['run'] is None or isinstance(payload['run'], dict)
 
 
 @pytest.mark.parametrize(
@@ -86,7 +82,6 @@ def test_all_tools_return_normalized_envelope(
     tool = make_tool(tool_cls, mock_tools_client)
     payload = json.loads(tool._run(**run_kwargs))
     _assert_envelope_shape(payload)
-    assert payload['meta']['tool'] == tool.name
 
 
 def test_empty_result_is_normalized(mock_tools_client: MagicMock) -> None:
@@ -96,8 +91,6 @@ def test_empty_result_is_normalized(mock_tools_client: MagicMock) -> None:
     payload = json.loads(tool._run(query='empty'))
     _assert_envelope_shape(payload)
     assert payload['items'] == []
-    assert payload['meta']['item_count'] == 0
-    assert payload['meta']['is_empty'] is True
 
 
 def test_tool_group_lists_cover_all_normalized_tools() -> None:

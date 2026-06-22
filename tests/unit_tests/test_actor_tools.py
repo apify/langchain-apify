@@ -82,8 +82,7 @@ def test_google_search_tool_empty_results(mock_tools_client: MagicMock) -> None:
     result = tool._run(query='nothing')
 
     parsed = json.loads(result)
-    assert parsed['items'] == []
-    assert parsed['meta']['is_empty'] is True
+    assert parsed == {'run': None, 'items': []}
 
 
 def test_google_search_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
@@ -204,8 +203,7 @@ def test_web_crawler_tool_empty_results(mock_tools_client: MagicMock) -> None:
     result = tool._run(url='https://example.com')
 
     parsed = json.loads(result)
-    assert parsed['items'] == []
-    assert parsed['meta']['is_empty'] is True
+    assert parsed == {'run': None, 'items': []}
 
 
 def test_web_crawler_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
@@ -397,7 +395,7 @@ def test_rag_web_browser_tool_empty_dataset_returns_empty_array(mock_tools_clien
 
     parsed = json.loads(tool._run(query='q'))
     assert parsed['items'] == []
-    assert parsed['meta']['is_empty'] is True
+    assert parsed['run']['status'] == 'SUCCEEDED'
 
 
 @pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _TOOL_INVOCATIONS)
