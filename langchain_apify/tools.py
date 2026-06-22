@@ -70,7 +70,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         .. code-block:: python
 
             from langchain_apify import ApifyActorsTool
-            from langchain.agents import create_agent
+            from langgraph.prebuilt import create_react_agent
 
             tool = ApifyActorsTool(actor_id="apify/rag-web-browser")
             # Use the tool directly to call the Apify Actor
@@ -80,7 +80,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
 
             # Use the tool with an agent
             tools = [tool]
-            agent = create_agent(model, tools)
+            agent = create_react_agent(model, tools)
 
             for chunk in agent.stream(
                 {"messages": [("human", "search for what is Apify?")]},
