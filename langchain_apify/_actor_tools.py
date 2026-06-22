@@ -38,6 +38,10 @@ _DEFAULT_GOOGLE_MAPS_MAX_RESULTS = 10
 _DEFAULT_YOUTUBE_MAX_RESULTS = 10
 _DEFAULT_ECOMMERCE_MAX_RESULTS = 20
 
+# Errors a tool ``_run`` converts into a ``ToolException``: ``RuntimeError`` from
+# a failed/empty Actor run, ``ValueError`` from client-side input validation.
+_TOOL_RUN_ERRORS: tuple[type[Exception], ...] = (RuntimeError, ValueError)
+
 # Shared Literal aliases so each social tool declares its accepted values once
 # (used in both the input schema and the tool ``_run`` signature).
 InstagramSearchType = Literal['user', 'hashtag', 'post', 'comments']
@@ -106,7 +110,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
                 language_code=language_code,
                 timeout_secs=self._clamp_timeout(timeout_secs),
             )
-        except RuntimeError as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         # default=str coerces any non-JSON-native types (e.g. datetime from
         # the Apify client's clean=True deserialiser) to their string repr
@@ -173,7 +177,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
                 crawler_type=crawler_type,
                 timeout_secs=self._clamp_timeout(timeout_secs),
             )
-        except RuntimeError as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         # Defensive filter: some Actor responses occasionally surface list-typed
         # entries (e.g. nested arrays for sitemap-style outputs). Skip anything
@@ -298,7 +302,7 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
                 max_results=self._clamp_items(max_results),
                 timeout_secs=self.max_timeout_secs,
             )
-        except RuntimeError as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         results = [
             {
@@ -362,7 +366,7 @@ class ApifyGoogleMapsTool(_ApifyGenericTool):  # type: ignore[override]
                 language=language,
                 timeout_secs=self.max_timeout_secs,
             )
-        except RuntimeError as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, items)
 
@@ -421,7 +425,7 @@ class ApifyYouTubeScraperTool(_ApifyGenericTool):  # type: ignore[override]
                 max_results=self._clamp_items(max_results),
                 timeout_secs=self.max_timeout_secs,
             )
-        except (RuntimeError, ValueError) as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, items)
 
@@ -480,7 +484,7 @@ class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
                 max_results=self._clamp_items(max_results),
                 timeout_secs=self.max_timeout_secs,
             )
-        except (RuntimeError, ValueError) as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, items)
 
@@ -673,7 +677,7 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
                 only_posts_newer_than=only_posts_newer_than,
                 timeout_secs=self.max_timeout_secs,
             )
-        except (RuntimeError, ValueError) as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, items)
 
@@ -729,7 +733,7 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override
                 max_results=self._clamp_items(max_results),
                 timeout_secs=self.max_timeout_secs,
             )
-        except (RuntimeError, ValueError) as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, items)
 
@@ -785,7 +789,7 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[overrid
                 max_results=self._clamp_items(max_results),
                 timeout_secs=self.max_timeout_secs,
             )
-        except (RuntimeError, ValueError) as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, items)
 
@@ -841,7 +845,7 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[overrid
                 include_email=include_email,
                 timeout_secs=self.max_timeout_secs,
             )
-        except (RuntimeError, ValueError) as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, items)
 
@@ -910,7 +914,7 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
                 sort=sort,
                 timeout_secs=self.max_timeout_secs,
             )
-        except (RuntimeError, ValueError) as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, items)
 
@@ -970,7 +974,7 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
                 max_results=self._clamp_items(max_results),
                 timeout_secs=self.max_timeout_secs,
             )
-        except (RuntimeError, ValueError) as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, items)
 
@@ -1034,6 +1038,6 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override
                 only_posts_older_than=only_posts_older_than,
                 timeout_secs=self.max_timeout_secs,
             )
-        except (RuntimeError, ValueError) as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, items)
