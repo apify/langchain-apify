@@ -3,7 +3,9 @@ from __future__ import annotations
 from importlib import metadata
 from typing import TYPE_CHECKING
 
-from langchain_apify.document_loaders import ApifyDatasetLoader
+from langchain_apify._actor_tools import ApifyGoogleSearchTool, ApifyWebCrawlerTool
+from langchain_apify.document_loaders import ApifyCrawlLoader, ApifyDatasetLoader
+from langchain_apify.retrievers import ApifySearchRetriever
 from langchain_apify.tools import (
     ApifyActorsTool,
     ApifyGetDatasetItemsTool,
@@ -37,6 +39,11 @@ APIFY_CORE_TOOLS: list[type[BaseTool]] = [
     ApifyRunTaskAndGetDatasetTool,
 ]
 
+APIFY_SEARCH_TOOLS: list[type[BaseTool]] = [
+    ApifyGoogleSearchTool,
+    ApifyWebCrawlerTool,
+]
+
 __all__ = [
     # Existing components (backward-compatible)
     'ApifyActorsTool',
@@ -49,7 +56,15 @@ __all__ = [
     'ApifyRunTaskAndGetDatasetTool',
     'ApifyRunTaskTool',
     'ApifyScrapeUrlTool',
+    # Actor-specific tools
+    'ApifyGoogleSearchTool',
+    'ApifyWebCrawlerTool',
+    # Retriever
+    'ApifySearchRetriever',
+    # Loaders
+    'ApifyCrawlLoader',
     # Tool group lists
+    'APIFY_SEARCH_TOOLS',
     'APIFY_CORE_TOOLS',
     # Meta
     '__version__',

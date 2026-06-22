@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import warnings
-
 import httpx
 from apify_client import ApifyClient
 from apify_client.errors import ApifyClientError
@@ -12,20 +10,28 @@ from langchain_apify._error_messages import (
     _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET,
     _ERROR_SCRAPE_EMPTY,
 )
+from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: shared Literal alias
 from langchain_apify._utils import (
-    _BOTH_TOKENS_MSG,
-    _DEPRECATED_APIFY_API_TOKEN_MSG,
     _create_apify_client,
+    _extract_content,
     _resolve_apify_token,
+    _resolve_deprecated_token,
 )
 
 # Only catches ApifyClientError and httpx.HTTPError. Other errors propagate.
 _TRANSPORT_EXCEPTIONS = (ApifyClientError, httpx.HTTPError)
 
-_SCRAPE_ACTOR_ID = 'apify/website-content-crawler'
+_WEBSITE_CONTENT_CRAWLER_ACTOR_ID = 'apify/website-content-crawler'
+_GOOGLE_SEARCH_ACTOR_ID = 'apify/google-search-scraper'
+_RAG_WEB_BROWSER_ACTOR_ID = 'apify/rag-web-browser'
 _DEFAULT_RUN_TIMEOUT_SECS = 300
 _DEFAULT_SCRAPE_TIMEOUT_SECS = 120
 _DEFAULT_DATASET_ITEMS_LIMIT = 100
+_DEFAULT_MAX_CRAWL_PAGES = 10
+_DEFAULT_MAX_CRAWL_DEPTH = 1
+_DEFAULT_CRAWLER_TYPE: CrawlerType = 'cheerio'
+_DEFAULT_GOOGLE_MAX_RESULTS = 10
+_DEFAULT_RAG_MAX_RESULTS = 5
 _RUN_STATUS_SUCCEEDED = 'SUCCEEDED'
 
 
@@ -50,12 +56,7 @@ class ApifyToolsClient:
         *,
         apify_api_token: SecretStr | str | None = None,
     ) -> None:
-        if apify_api_token is not None:
-            if apify_token is not None:
-                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
-            else:
-                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
-                apify_token = apify_api_token
+        apify_token = _resolve_deprecated_token(apify_token, apify_api_token)
 
         if isinstance(apify_token, SecretStr):
             _token: str | None = apify_token.get_secret_value()
@@ -242,7 +243,7 @@ class ApifyToolsClient:
             'maxCrawlPages': 1,
         }
         _, items = self.run_actor_and_get_items(
-            _SCRAPE_ACTOR_ID,
+            _WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=1,
@@ -251,11 +252,138 @@ class ApifyToolsClient:
             msg = _ERROR_SCRAPE_EMPTY.format(url=url)
             raise RuntimeError(msg)
 
-        content = items[0].get('markdown') or items[0].get('text') or ''
+        content = _extract_content(items[0])
         if not content:
             msg = _ERROR_SCRAPE_EMPTY.format(url=url)
             raise RuntimeError(msg)
         return content
+
+    def google_search(
+        self,
+        query: str,
+        max_results: int = _DEFAULT_GOOGLE_MAX_RESULTS,
+        country_code: str | None = None,
+        language_code: str | None = None,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> list[dict]:
+        """Run a Google search and return structured results.
+
+        Uses ``apify/google-search-scraper`` with a single query.
+
+        Args:
+            query: Search query string.
+            max_results: Maximum number of results to return.
+            country_code: Two-letter country code for localised results.
+            language_code: Two-letter language code.
+            timeout_secs: Maximum time to wait for the run to finish.
+
+        Returns:
+            List of result dicts, each with ``title``, ``url``, and
+            ``description`` keys.
+
+        Raises:
+            RuntimeError: If the Actor run fails.
+        """
+        run_input: dict = {
+            'queries': query,
+            'maxPagesPerQuery': 1,
+            'resultsPerPage': max_results,
+        }
+        if country_code is not None:
+            run_input['countryCode'] = country_code
+        if language_code is not None:
+            run_input['languageCode'] = language_code
+
+        _, items = self.run_actor_and_get_items(
+            _GOOGLE_SEARCH_ACTOR_ID,
+            run_input=run_input,
+            timeout_secs=timeout_secs,
+            dataset_items_limit=max_results,
+        )
+        results: list[dict] = [
+            {
+                'title': organic.get('title', ''),
+                'url': organic.get('url', ''),
+                'description': organic.get('description', ''),
+            }
+            for item in items
+            for organic in item.get('organicResults', [])
+        ]
+        return results[:max_results]
+
+    def rag_web_search(
+        self,
+        query: str,
+        max_results: int = _DEFAULT_RAG_MAX_RESULTS,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> list[dict]:
+        """Search the web and return crawled page content for RAG.
+
+        Uses ``apify/rag-web-browser``.
+
+        Args:
+            query: Search query string.
+            max_results: Maximum number of results to return.
+            timeout_secs: Maximum time to wait for the run to finish.
+
+        Returns:
+            List of result dicts with ``crawledUrl``, ``title``, and
+            ``text`` keys (among others from the Actor).
+
+        Raises:
+            RuntimeError: If the Actor run fails.
+        """
+        run_input: dict = {
+            'query': query,
+            'maxResults': max_results,
+        }
+        _, items = self.run_actor_and_get_items(
+            _RAG_WEB_BROWSER_ACTOR_ID,
+            run_input=run_input,
+            timeout_secs=timeout_secs,
+            dataset_items_limit=max_results,
+        )
+        return items
+
+    def crawl_website(
+        self,
+        url: str,
+        max_crawl_pages: int = _DEFAULT_MAX_CRAWL_PAGES,
+        max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
+        crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> list[dict]:
+        """Crawl a website and return page content.
+
+        Uses ``apify/website-content-crawler``.
+
+        Args:
+            url: Seed URL to start crawling from.
+            max_crawl_pages: Maximum number of pages to crawl.
+            max_crawl_depth: Maximum link-follow depth from the seed URL.
+            crawler_type: Crawler engine (e.g. ``"cheerio"``, ``"playwright:firefox"``).
+            timeout_secs: Maximum time to wait for the run to finish.
+
+        Returns:
+            List of page dicts, each with at least ``url``, ``title``, and
+            ``markdown`` (or ``text``) keys.
+
+        Raises:
+            RuntimeError: If the Actor run fails.
+        """
+        run_input: dict = {
+            'startUrls': [{'url': url}],
+            'maxCrawlPages': max_crawl_pages,
+            'maxCrawlDepth': max_crawl_depth,
+            'crawlerType': crawler_type,
+        }
+        _, items = self.run_actor_and_get_items(
+            _WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
+            run_input=run_input,
+            timeout_secs=timeout_secs,
+            dataset_items_limit=max_crawl_pages,
+        )
+        return items
 
     def _list_items_or_raise(self, dataset_id: str, limit: int) -> list[dict]:
         """Fetch dataset items, wrapping any network error in a RuntimeError."""

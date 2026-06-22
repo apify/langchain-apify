@@ -1,24 +1,33 @@
 from __future__ import annotations
 
-import warnings
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.document_loaders.base import BaseLoader
-from langchain_core.documents import Document  # noqa: TCH002
+from langchain_core.documents import Document
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
+from langchain_apify._client import (
+    _DEFAULT_CRAWLER_TYPE,
+    _DEFAULT_MAX_CRAWL_DEPTH,
+    _DEFAULT_MAX_CRAWL_PAGES,
+    _DEFAULT_RUN_TIMEOUT_SECS,
+    ApifyToolsClient,
+)
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import (
-    _BOTH_TOKENS_MSG,
-    _DEPRECATED_APIFY_API_TOKEN_MSG,
     _apify_token_secret_factory,
     _create_apify_client,
+    _extract_content,
+    _resolve_deprecated_token,
+    _safe_title,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+    from langchain_apify._types import CrawlerType
 
 
 class ApifyDatasetLoader(BaseLoader, BaseModel):
@@ -79,12 +88,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
                 ``APIFY_TOKEN`` environment variable when *None*.
             apify_api_token: Deprecated alias for ``apify_token``.
         """
-        if apify_api_token is not None:
-            if apify_token is not None:
-                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
-            else:
-                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
-                apify_token = apify_api_token
+        apify_token = _resolve_deprecated_token(apify_token, apify_api_token)
 
         init_kwargs: dict[str, Any] = {
             'dataset_id': dataset_id,
@@ -130,3 +134,89 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         )
         for item in dataset_items:
             yield self.dataset_mapping_function(item)
+
+
+class ApifyCrawlLoader(BaseLoader):
+    """Crawl a website and load pages as LangChain Documents.
+
+    Wraps the ``apify/website-content-crawler`` Actor.  Runs a crawl starting
+    from the seed URL and converts each crawled page into a ``Document`` with
+    markdown content and metadata (source URL, title, crawl depth).
+
+    Args:
+        url: Seed URL to start crawling from.
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
+            environment variable when *None*.
+        max_crawl_pages: Maximum number of pages to crawl.
+        max_crawl_depth: Maximum link-follow depth from the seed URL.
+        crawler_type: Crawler engine (e.g. ``"cheerio"``, ``"playwright:firefox"``).
+        timeout_secs: Maximum time in seconds to wait for the crawl.
+
+    Returns:
+        Iterator (or list) of ``Document`` objects.  ``page_content`` contains
+        the page markdown; ``metadata`` includes ``source``, ``title``, and
+        ``crawl_depth``.
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
+
+            from langchain_apify import ApifyCrawlLoader
+
+            loader = ApifyCrawlLoader(
+                url="https://docs.apify.com",
+                max_crawl_pages=5,
+            )
+            documents = loader.load()
+    """
+
+    def __init__(  # noqa: PLR0913
+        self,
+        url: str,
+        apify_token: str | SecretStr | None = None,
+        *,
+        apify_api_token: str | SecretStr | None = None,
+        max_crawl_pages: int = _DEFAULT_MAX_CRAWL_PAGES,
+        max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
+        crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> None:
+        apify_token = _resolve_deprecated_token(apify_token, apify_api_token)
+
+        self.url = url
+        self.max_crawl_pages = max_crawl_pages
+        self.max_crawl_depth = max_crawl_depth
+        self.crawler_type = crawler_type
+        self.timeout_secs = timeout_secs
+        self._client = ApifyToolsClient(apify_token=apify_token)
+
+    def lazy_load(self) -> Iterator[Document]:
+        """Crawl the website and yield Documents.
+
+        Yields:
+            Document: One document per crawled page.
+        """
+        items = self._client.crawl_website(
+            self.url,
+            max_crawl_pages=self.max_crawl_pages,
+            max_crawl_depth=self.max_crawl_depth,
+            crawler_type=self.crawler_type,
+            timeout_secs=self.timeout_secs,
+        )
+        for item in items:
+            # Some Actor responses surface list-typed entries (e.g. nested
+            # arrays for sitemap-style outputs). Skip anything non-dict.
+            if not isinstance(item, dict):
+                continue
+            page_content = _extract_content(item)
+            # website-content-crawler nests depth under crawl.depth; there is no
+            # top-level crawlDepth field.
+            crawl_meta = item.get('crawl')
+            metadata: dict[str, Any] = {
+                'source': item.get('url', ''),
+                'title': _safe_title(item),
+                'crawl_depth': crawl_meta.get('depth', 0) if isinstance(crawl_meta, dict) else 0,
+            }
+            yield Document(page_content=page_content, metadata=metadata)

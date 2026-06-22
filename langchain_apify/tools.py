@@ -20,24 +20,26 @@ from __future__ import annotations
 
 import bisect
 import json
-import warnings
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool, ToolException
-from pydantic import BaseModel, Field, PrivateAttr, SecretStr, create_model, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, SecretStr, create_model, field_validator, model_validator
 
 from langchain_apify._client import (
+    _DEFAULT_CRAWLER_TYPE,
     _DEFAULT_DATASET_ITEMS_LIMIT,
+    _DEFAULT_GOOGLE_MAX_RESULTS,
+    _DEFAULT_MAX_CRAWL_DEPTH,
+    _DEFAULT_MAX_CRAWL_PAGES,
     _DEFAULT_RUN_TIMEOUT_SECS,
     _DEFAULT_SCRAPE_TIMEOUT_SECS,
     ApifyToolsClient,
 )
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: pydantic Field annotation
 from langchain_apify._utils import (
-    _BOTH_TOKENS_MSG,
-    _DEPRECATED_APIFY_API_TOKEN_MSG,
     _MAX_DESCRIPTION_LEN,
     _actor_id_to_tool_name,
     _apify_token_secret_factory,
@@ -45,6 +47,8 @@ from langchain_apify._utils import (
     _get_actor_latest_build,
     _prune_actor_input_schema,
     _resolve_apify_token,
+    _resolve_deprecated_token,
+    _resolve_deprecated_token_values,
 )
 
 if TYPE_CHECKING:
@@ -108,12 +112,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
             ValueError: If the ``APIFY_TOKEN`` environment variable is not set
         """
         if 'apify_api_token' in kwargs:
-            legacy = kwargs.pop('apify_api_token')
-            if apify_token is not None:
-                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
-            else:
-                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
-                apify_token = legacy
+            apify_token = _resolve_deprecated_token(apify_token, kwargs.pop('apify_api_token'))
 
         _raw_token: str | None = (
             apify_token.get_secret_value()
@@ -284,6 +283,46 @@ class ApifyScrapeUrlInput(BaseModel):
     )
 
 
+class ApifyGoogleSearchInput(BaseModel):
+    """Input schema for :class:`ApifyGoogleSearchTool`."""
+
+    query: str = Field(description='Search query string.')
+    max_results: int = Field(
+        default=_DEFAULT_GOOGLE_MAX_RESULTS, description='Maximum number of search results to return.'
+    )
+    country_code: str | None = Field(
+        default=None,
+        description='Two-letter country code (case-insensitive; normalised to lowercase, e.g. "us", "gb").',
+        pattern=r'^[a-zA-Z]{2}$',
+    )
+    language_code: str | None = Field(
+        default=None,
+        description='Two-letter language code (case-insensitive; normalised to lowercase, e.g. "en", "fr").',
+        pattern=r'^[a-zA-Z]{2}$',
+    )
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
+
+    @field_validator('country_code', 'language_code')
+    @classmethod
+    def _normalise_locale_code(cls, value: str | None) -> str | None:
+        return value.lower() if value else value
+
+
+class ApifyWebCrawlerInput(BaseModel):
+    """Input schema for :class:`ApifyWebCrawlerTool`."""
+
+    url: str = Field(description='Seed URL to start crawling from.')
+    max_crawl_pages: int = Field(default=_DEFAULT_MAX_CRAWL_PAGES, description='Maximum number of pages to crawl.')
+    max_crawl_depth: int = Field(
+        default=_DEFAULT_MAX_CRAWL_DEPTH, description='Maximum link-follow depth from the seed URL.'
+    )
+    crawler_type: CrawlerType = Field(
+        default=_DEFAULT_CRAWLER_TYPE,
+        description='Crawler engine: "cheerio" (fast, static HTML), "playwright:adaptive" or "playwright:firefox".',
+    )
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description=_DESC_RUN_TIMEOUT_SECS)
+
+
 class ApifyRunTaskInput(BaseModel):
     """Input schema for :class:`ApifyRunTaskTool`."""
 
@@ -362,20 +401,14 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     max_timeout_secs: int = Field(default=600, description='Upper bound for timeout_secs the LLM may request.')
     max_memory_mbytes: int = Field(default=32768, description='Upper bound for memory_mbytes the LLM may request.')
     max_items: int = Field(default=1000, description='Upper bound for limit / dataset_items_limit the LLM may request.')
+    max_crawl_depth: int = Field(default=5, description='Upper bound for max_crawl_depth the LLM may request.')
 
     _client: ApifyToolsClient = PrivateAttr()
 
     @model_validator(mode='before')
     @classmethod
     def _handle_deprecated_apify_api_token(cls, values: dict) -> dict:
-        if isinstance(values, dict) and 'apify_api_token' in values:
-            if 'apify_token' in values:
-                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
-                del values['apify_api_token']
-            else:
-                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
-                values['apify_token'] = values.pop('apify_api_token')
-        return values
+        return _resolve_deprecated_token_values(values)
 
     def model_post_init(self, context: Any) -> None:  # noqa: ANN401
         if self.apify_token is None:
@@ -401,6 +434,10 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     def _clamp_items(self, value: int) -> int:
         return max(1, min(value, self.max_items))
 
+    def _clamp_depth(self, value: int) -> int:
+        # Floor at 0 (a depth of 0 means "only crawl the seed URL").
+        return max(0, min(value, self.max_crawl_depth))
+
 
 # ---------------------------------------------------------------------------
 # Generic tools
@@ -410,17 +447,17 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
 class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
     """Run any Apify Actor by ID with an arbitrary JSON input.
 
-    Returns run metadata (run ID, status, dataset ID, timestamps) as a JSON
-    string.  Use :class:`ApifyGetDatasetItemsTool` afterwards to retrieve the
-    results from the dataset.
+    Returns run metadata in a JSON envelope.  Use
+    :class:`ApifyGetDatasetItemsTool` afterwards to retrieve the results from
+    the dataset.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run_id``, ``status``, ``dataset_id``,
-        ``started_at``, and ``finished_at``.
+        JSON object ``{"run": {...}, "items": []}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``.
 
     Example:
         .. code-block:: python
@@ -441,10 +478,10 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
     description: str = (
         'Run an Apify Actor synchronously and return run metadata as a JSON string.'
         ' Required: actor_id (str) — Actor ID or name (e.g. "apify/python-example").'
-        ' Optional: run_input (dict), timeout_secs (int, default 300),'
+        f' Optional: run_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
         ' memory_mbytes (int|null).'
-        ' Returns JSON with keys: run_id, status, dataset_id, started_at, finished_at.'
-        ' Use apify_get_dataset_items with the returned dataset_id to fetch results.'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at), items.'
+        ' Use apify_get_dataset_items with run.dataset_id to fetch results.'
     )
     args_schema: type[BaseModel] = ApifyRunActorInput
 
@@ -462,22 +499,22 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps(_run_meta(run))
+        return json.dumps({'run': _run_meta(run), 'items': []}, default=str)
 
 
 class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
     """Fetch items from an existing Apify dataset by ID.
 
-    Returns a JSON object with an ``"items"`` key containing the list of item
-    dicts.  When the dataset is empty an additional ``"message"`` key is
-    included.
+    Returns a JSON object with ``"run"`` (always ``null`` here, since no Actor
+    is run) and ``"items"`` (the list of item dicts, empty when the dataset
+    has no items).
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON object ``{"items": [...]}``; includes ``"message"`` when empty.
+        JSON object ``{"run": null, "items": [...]}``.
 
     Example:
         .. code-block:: python
@@ -493,9 +530,10 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_get_dataset_items'
     description: str = (
-        'Fetch items from an Apify dataset by ID. Returns a JSON object with an "items" array.'
+        'Fetch items from an Apify dataset by ID and return a JSON envelope.'
         ' Required: dataset_id (str) — Apify dataset ID.'
-        ' Optional: limit (int, default 100), offset (int, default 0).'
+        f' Optional: limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}), offset (int, default 0).'
+        ' Returns JSON with keys: run (null), items (empty array when the dataset has no items).'
     )
     args_schema: type[BaseModel] = ApifyGetDatasetItemsInput
 
@@ -510,9 +548,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
             items = self._client.get_dataset_items(dataset_id, self._clamp_items(limit), max(0, offset))
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        if not items:
-            return json.dumps({'items': [], 'message': f'Dataset {dataset_id} is empty.'})
-        return json.dumps({'items': items})
+        return json.dumps({'run': None, 'items': items}, default=str)
 
 
 class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override]
@@ -550,8 +586,8 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
     description: str = (
         'Run an Apify Actor synchronously and return both run metadata and dataset items.'
         ' Required: actor_id (str) — Actor ID or name (e.g. "apify/python-example").'
-        ' Optional: run_input (dict), timeout_secs (int, default 300),'
-        ' memory_mbytes (int|null), dataset_items_limit (int, default 100).'
+        f' Optional: run_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
+        f' memory_mbytes (int|null), dataset_items_limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at)'
         ' and items (list of dataset item dicts).'
     )
@@ -576,23 +612,22 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items})
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
 
 class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
-    """Scrape a single URL and return its content as markdown.
+    """Scrape a single URL and return its content in a JSON envelope.
 
     Uses the ``apify/website-content-crawler`` Actor under the hood with
-    ``maxCrawlPages=1``.  Returns the page content as a plain markdown string
-    (not JSON).
+    ``maxCrawlPages=1``.  The scraped content (markdown, or plain text when
+    markdown is unavailable) is the ``content`` field of the single item.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        Markdown string with the full text content of the scraped page, or a
-        plain-text fallback when markdown is unavailable.
+        JSON object ``{"run": null, "items": [{"url": ..., "content": ...}]}``.
 
     Example:
         .. code-block:: python
@@ -608,10 +643,11 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_scrape_url'
     description: str = (
-        'Scrape a single URL using Apify and return its full content as a markdown string.'
+        'Scrape a single URL using Apify and return a JSON envelope.'
         ' Required: url (str) — the URL to scrape.'
-        ' Optional: timeout_secs (int, default 120).'
-        ' Returns the page content as markdown (or plain text if markdown is unavailable).'
+        f' Optional: timeout_secs (int, default {_DEFAULT_SCRAPE_TIMEOUT_SECS}).'
+        ' Returns JSON with keys: run (null), items ([{url, content}];'
+        ' content is markdown, or plain text when markdown is unavailable).'
     )
     args_schema: type[BaseModel] = ApifyScrapeUrlInput
 
@@ -622,9 +658,10 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            return self._client.scrape_url(url, self._clamp_timeout(timeout_secs))
+            content = self._client.scrape_url(url, self._clamp_timeout(timeout_secs))
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
+        return json.dumps({'run': None, 'items': [{'url': url, 'content': content}]}, default=str)
 
 
 class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
@@ -632,16 +669,16 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
 
     Actor tasks are pre-configured Actor runs saved in the Apify Console.
     This tool starts a task with optional input overrides and returns run
-    metadata (run ID, status, dataset ID, timestamps) as a JSON string.
-    Use :class:`ApifyGetDatasetItemsTool` afterwards to retrieve results.
+    metadata in a JSON envelope.  Use :class:`ApifyGetDatasetItemsTool`
+    afterwards to retrieve results.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON string with keys ``run_id``, ``status``, ``dataset_id``,
-        ``started_at``, and ``finished_at``.
+        JSON object ``{"run": {...}, "items": []}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``.
 
     Example:
         .. code-block:: python
@@ -662,10 +699,10 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
     description: str = (
         'Run a saved Apify Actor task synchronously and return run metadata as a JSON string.'
         ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
-        ' Optional: task_input (dict), timeout_secs (int, default 300),'
+        f' Optional: task_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
         ' memory_mbytes (int|null).'
-        ' Returns JSON with keys: run_id, status, dataset_id, started_at, finished_at.'
-        ' Use apify_get_dataset_items with the returned dataset_id to fetch results.'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at), items.'
+        ' Use apify_get_dataset_items with run.dataset_id to fetch results.'
     )
     args_schema: type[BaseModel] = ApifyRunTaskInput
 
@@ -683,7 +720,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps(_run_meta(run))
+        return json.dumps({'run': _run_meta(run), 'items': []}, default=str)
 
 
 class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override]
@@ -721,8 +758,8 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
     description: str = (
         'Run a saved Apify Actor task synchronously and return both run metadata and dataset items.'
         ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
-        ' Optional: task_input (dict), timeout_secs (int, default 300),'
-        ' memory_mbytes (int|null), dataset_items_limit (int, default 100).'
+        f' Optional: task_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
+        f' memory_mbytes (int|null), dataset_items_limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at)'
         ' and items (list of dataset item dicts).'
     )
@@ -747,4 +784,4 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items})
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
