@@ -2,7 +2,7 @@ import os
 
 from langchain_core.messages import ToolMessage
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 from langchain_apify import ApifyActorsTool
 
@@ -21,7 +21,7 @@ for result in results:
 
 # Example: Use the tool with an agent
 tools = [tool]
-agent = create_react_agent(model, tools)
+agent = create_agent(model, tools)
 
 for chunk in agent.stream(
     {'messages': [('human', 'search for what is Apify?')]},
