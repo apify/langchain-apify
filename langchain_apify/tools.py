@@ -438,6 +438,20 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
         # Floor at 0 (a depth of 0 means "only crawl the seed URL").
         return max(0, min(value, self.max_crawl_depth))
 
+    @staticmethod
+    def _envelope(run: dict | None, items: list) -> str:
+        """Serialise the standard ``{"run": ..., "items": ...}`` tool envelope.
+
+        ``run`` is a raw Apify run-details dict (passed through :func:`_run_meta`)
+        or ``None`` for dataset-only tools. ``default=str`` coerces non-JSON-native
+        values (e.g. ``datetime`` objects from the ``clean=True`` deserialiser) so
+        serialisation never raises ``TypeError``.
+        """
+        return json.dumps(
+            {'run': _run_meta(run) if run is not None else None, 'items': items},
+            default=str,
+        )
+
 
 # ---------------------------------------------------------------------------
 # Generic tools
@@ -499,7 +513,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': []}, default=str)
+        return self._envelope(run, [])
 
 
 class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
@@ -548,7 +562,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
             items = self._client.get_dataset_items(dataset_id, self._clamp_items(limit), max(0, offset))
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': None, 'items': items}, default=str)
+        return self._envelope(None, items)
 
 
 class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override]
@@ -611,7 +625,7 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+        return self._envelope(run, items)
 
 
 class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
@@ -662,7 +676,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
             run, _, content, _ = self._client._scrape_url(url, self._clamp_timeout(timeout_secs))  # noqa: SLF001
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': [{'url': url, 'content': content}]}, default=str)
+        return self._envelope(run, [{'url': url, 'content': content}])
 
 
 class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
@@ -721,7 +735,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': []}, default=str)
+        return self._envelope(run, [])
 
 
 class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override]
@@ -784,4 +798,4 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+        return self._envelope(run, items)

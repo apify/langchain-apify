@@ -7,7 +7,6 @@ LLM-friendly interface. They inherit from
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING, Literal
 
 from langchain_core.tools import ToolException
@@ -29,7 +28,6 @@ from langchain_apify.tools import (
     ApifyGoogleSearchInput,
     ApifyWebCrawlerInput,
     _ApifyGenericTool,
-    _run_meta,
 )
 
 if TYPE_CHECKING:
@@ -113,7 +111,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         # default=str coerces any non-JSON-native types (e.g. datetime from
         # the Apify client's clean=True deserialiser) to their string repr
         # so the LLM never sees a serialisation failure.
-        return json.dumps({'run': None, 'items': results}, default=str)
+        return self._envelope(None, results)
 
 
 class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
@@ -189,7 +187,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
             for item in items
             if isinstance(item, dict)
         ]
-        return json.dumps({'run': None, 'items': pages}, default=str)
+        return self._envelope(None, pages)
 
 
 # ---------------------------------------------------------------------------
@@ -311,7 +309,7 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
             for item in items
             if isinstance(item, dict)
         ]
-        return json.dumps({'run': _run_meta(run), 'items': results}, default=str)
+        return self._envelope(run, results)
 
 
 class ApifyGoogleMapsTool(_ApifyGenericTool):  # type: ignore[override]
@@ -366,7 +364,7 @@ class ApifyGoogleMapsTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+        return self._envelope(run, items)
 
 
 class ApifyYouTubeScraperTool(_ApifyGenericTool):  # type: ignore[override]
@@ -425,7 +423,7 @@ class ApifyYouTubeScraperTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+        return self._envelope(run, items)
 
 
 class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
@@ -484,7 +482,7 @@ class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+        return self._envelope(run, items)
 
 
 # ---------------------------------------------------------------------------
@@ -677,7 +675,7 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+        return self._envelope(run, items)
 
 
 class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override]
@@ -733,7 +731,7 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+        return self._envelope(run, items)
 
 
 class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[override]
@@ -789,7 +787,7 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[overrid
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+        return self._envelope(run, items)
 
 
 class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[override]
@@ -845,7 +843,7 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[overrid
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+        return self._envelope(run, items)
 
 
 class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
@@ -914,7 +912,7 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+        return self._envelope(run, items)
 
 
 class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
@@ -974,7 +972,7 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+        return self._envelope(run, items)
 
 
 class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override]
@@ -1038,4 +1036,4 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override
             )
         except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+        return self._envelope(run, items)
