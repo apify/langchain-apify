@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
@@ -9,10 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import (
-    _BOTH_TOKENS_MSG,
-    _DEPRECATED_APIFY_API_TOKEN_MSG,
     _apify_token_secret_factory,
     _create_apify_client,
+    _resolve_deprecated_token,
 )
 from langchain_apify.document_loaders import ApifyDatasetLoader
 
@@ -84,12 +82,7 @@ class ApifyWrapper(BaseModel):
             **kwargs: Any: Additional keyword arguments forwarded to Pydantic.
         """
         if 'apify_api_token' in kwargs:
-            legacy = kwargs.pop('apify_api_token')
-            if apify_token is not None:
-                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
-            else:
-                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
-                apify_token = legacy
+            apify_token = _resolve_deprecated_token(apify_token, kwargs.pop('apify_api_token'))
 
         if apify_token is not None:
             kwargs['apify_token'] = apify_token

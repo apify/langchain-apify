@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-import warnings
 from typing import TYPE_CHECKING, Any
 
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from pydantic import Field, PrivateAttr, SecretStr, model_validator
 
-from langchain_apify._client import ApifyToolsClient
+from langchain_apify._client import _DEFAULT_RAG_MAX_RESULTS, _DEFAULT_RUN_TIMEOUT_SECS, ApifyToolsClient
 from langchain_apify._utils import (
-    _BOTH_TOKENS_MSG,
-    _DEPRECATED_APIFY_API_TOKEN_MSG,
     _apify_token_secret_factory,
+    _extract_content,
+    _resolve_deprecated_token_values,
+    _safe_title,
 )
 
 if TYPE_CHECKING:
@@ -22,8 +22,6 @@ if TYPE_CHECKING:
         AsyncCallbackManagerForRetrieverRun,
         CallbackManagerForRetrieverRun,
     )
-
-_DEFAULT_TIMEOUT_SECS = 300
 
 
 class ApifySearchRetriever(BaseRetriever):
@@ -36,6 +34,7 @@ class ApifySearchRetriever(BaseRetriever):
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
+        apify_api_token: Deprecated alias for ``apify_token``.
         max_results: Maximum number of ``Document`` objects to return per query.
         timeout_secs: Maximum time in seconds to wait for the Actor run.
 
@@ -61,22 +60,15 @@ class ApifySearchRetriever(BaseRetriever):
         exclude=True,
         repr=False,
     )
-    max_results: int = Field(default=5, description='Maximum number of documents to return.')
-    timeout_secs: int = Field(default=_DEFAULT_TIMEOUT_SECS, description='Maximum Actor run time in seconds.')
+    max_results: int = Field(default=_DEFAULT_RAG_MAX_RESULTS, description='Maximum number of documents to return.')
+    timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description='Maximum Actor run time in seconds.')
 
     _client: ApifyToolsClient = PrivateAttr()
 
     @model_validator(mode='before')
     @classmethod
     def _handle_deprecated_apify_api_token(cls, values: dict) -> dict:
-        if isinstance(values, dict) and 'apify_api_token' in values:
-            if 'apify_token' in values:
-                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
-                del values['apify_api_token']
-            else:
-                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
-                values['apify_token'] = values.pop('apify_api_token')
-        return values
+        return _resolve_deprecated_token_values(values)
 
     def model_post_init(self, context: Any) -> None:  # noqa: ANN401
         """Construct the underlying ``ApifyToolsClient``.
@@ -93,7 +85,7 @@ class ApifySearchRetriever(BaseRetriever):
         *,
         run_manager: CallbackManagerForRetrieverRun | None = None,  # noqa: ARG002
     ) -> list[Document]:
-        _, items = self._client.rag_web_browser_search(
+        _, items = self._client.rag_web_search(
             query,
             max_results=self.max_results,
             timeout_secs=self.timeout_secs,
@@ -108,7 +100,7 @@ class ApifySearchRetriever(BaseRetriever):
     ) -> list[Document]:
         # ApifyToolsClient is sync-only.
         _, items = await asyncio.to_thread(
-            self._client.rag_web_browser_search,
+            self._client.rag_web_search,
             query,
             max_results=self.max_results,
             timeout_secs=self.timeout_secs,
@@ -120,14 +112,14 @@ class ApifySearchRetriever(BaseRetriever):
         """Convert Actor dataset items to LangChain Documents."""
         docs: list[Document] = []
         for item in items:
-            page_content = item.get('text') or item.get('markdown') or ''
+            page_content = _extract_content(item)
             raw_meta = item.get('metadata')
             item_metadata: dict = raw_meta if isinstance(raw_meta, dict) else {}
             metadata: dict[str, Any] = {
                 # apify/rag-web-browser nests url/title under "metadata"; older
                 # Actors and tests use top-level keys. Both are supported.
                 'source': item.get('crawledUrl') or item.get('url') or item_metadata.get('url', ''),
-                'title': item_metadata.get('title', ''),
+                'title': _safe_title(item),
             }
             docs.append(Document(page_content=page_content, metadata=metadata))
         return docs

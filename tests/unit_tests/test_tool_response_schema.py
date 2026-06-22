@@ -43,7 +43,7 @@ def _assert_envelope_shape(payload: dict) -> None:
         (ApifyRunTaskAndGetDatasetTool, 'run_task_and_get_items', {'task_id': 'user/my-task'}),
         (ApifyGoogleSearchTool, 'google_search', {'query': 'apify'}),
         (ApifyWebCrawlerTool, 'crawl_website', {'url': 'https://example.com'}),
-        (ApifyRAGWebBrowserTool, 'rag_web_browser_search', {'query': 'langchain'}),
+        (ApifyRAGWebBrowserTool, 'rag_web_search', {'query': 'langchain'}),
         (ApifyGoogleMapsTool, 'google_maps_search', {'query': 'coffee'}),
         (ApifyYouTubeScraperTool, 'youtube_scrape', {'search_query': 'langchain'}),
         (ApifyEcommerceScraperTool, 'ecommerce_scrape', {'url': 'https://shop.example.com/p/1'}),
@@ -71,8 +71,8 @@ def test_all_tools_return_normalized_envelope(
         mock_tools_client.crawl_website.return_value = [
             {'url': 'https://example.com', 'markdown': '# Home', 'metadata': {'title': 'Home'}}
         ]
-    elif setup_method == 'rag_web_browser_search':
-        mock_tools_client.rag_web_browser_search.return_value = (
+    elif setup_method == 'rag_web_search':
+        mock_tools_client.rag_web_search.return_value = (
             SUCCEEDED_RUN,
             [{'crawledUrl': 'https://example.com', 'metadata': {'title': 'Home'}, 'text': 'Home'}],
         )

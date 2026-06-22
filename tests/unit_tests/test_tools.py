@@ -172,6 +172,7 @@ def test_run_actor_tool_with_datetime_run(mock_tools_client: MagicMock) -> None:
     assert parsed['run']['run_id'] == 'run-real'
     assert parsed['run']['started_at'] == '2025-06-01T08:00:00+00:00'
     assert parsed['run']['finished_at'] == '2025-06-01T08:05:00+00:00'
+    assert parsed['items'] == []
 
 
 def test_tool_response_handles_datetime_in_items(mock_tools_client: MagicMock) -> None:
@@ -212,6 +213,7 @@ def test_run_actor_tool_returns_json(mock_tools_client: MagicMock) -> None:
     assert parsed['run']['dataset_id'] == 'dataset-xyz'
     assert parsed['run']['started_at'] == '2025-01-01T00:00:00.000Z'
     assert parsed['run']['finished_at'] == '2025-01-01T00:01:00.000Z'
+    assert parsed['items'] == []
     mock_tools_client.run_actor.assert_called_once_with('apify/test', {'key': 'val'}, 300, None)
 
 
@@ -363,6 +365,7 @@ def test_run_task_tool_returns_json(mock_tools_client: MagicMock) -> None:
     assert parsed['run']['dataset_id'] == 'dataset-xyz'
     assert parsed['run']['started_at'] == '2025-01-01T00:00:00.000Z'
     assert parsed['run']['finished_at'] == '2025-01-01T00:01:00.000Z'
+    assert parsed['items'] == []
     mock_tools_client.run_task.assert_called_once_with('user/my-task', {'key': 'val'}, 300, None)
 
 

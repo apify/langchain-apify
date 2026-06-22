@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import warnings
-
 import httpx
 from apify_client import ApifyClient
 from apify_client.errors import ApifyClientError
@@ -12,18 +10,18 @@ from langchain_apify._error_messages import (
     _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET,
     _ERROR_SCRAPE_EMPTY,
 )
+from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: shared Literal alias
 from langchain_apify._utils import (
-    _BOTH_TOKENS_MSG,
-    _DEPRECATED_APIFY_API_TOKEN_MSG,
     _create_apify_client,
+    _extract_content,
     _resolve_apify_token,
+    _resolve_deprecated_token,
 )
 
 # Only catches ApifyClientError and httpx.HTTPError. Other errors propagate.
 _TRANSPORT_EXCEPTIONS = (ApifyClientError, httpx.HTTPError)
 
-_SCRAPE_ACTOR_ID = 'apify/website-content-crawler'
-_CRAWL_ACTOR_ID = 'apify/website-content-crawler'
+_WEBSITE_CONTENT_CRAWLER_ACTOR_ID = 'apify/website-content-crawler'
 _GOOGLE_SEARCH_ACTOR_ID = 'apify/google-search-scraper'
 _RAG_WEB_BROWSER_ACTOR_ID = 'apify/rag-web-browser'
 _GOOGLE_MAPS_ACTOR_ID = 'compass/crawler-google-places'
@@ -35,6 +33,11 @@ _ECOMMERCE_URL_TYPES = ('product', 'category')
 _DEFAULT_RUN_TIMEOUT_SECS = 300
 _DEFAULT_SCRAPE_TIMEOUT_SECS = 120
 _DEFAULT_DATASET_ITEMS_LIMIT = 100
+_DEFAULT_MAX_CRAWL_PAGES = 10
+_DEFAULT_MAX_CRAWL_DEPTH = 1
+_DEFAULT_CRAWLER_TYPE: CrawlerType = 'cheerio'
+_DEFAULT_GOOGLE_MAX_RESULTS = 10
+_DEFAULT_RAG_MAX_RESULTS = 5
 _RUN_STATUS_SUCCEEDED = 'SUCCEEDED'
 
 
@@ -59,12 +62,7 @@ class ApifyToolsClient:
         *,
         apify_api_token: SecretStr | str | None = None,
     ) -> None:
-        if apify_api_token is not None:
-            if apify_token is not None:
-                warnings.warn(_BOTH_TOKENS_MSG, DeprecationWarning, stacklevel=2)
-            else:
-                warnings.warn(_DEPRECATED_APIFY_API_TOKEN_MSG, DeprecationWarning, stacklevel=2)
-                apify_token = apify_api_token
+        apify_token = _resolve_deprecated_token(apify_token, apify_api_token)
 
         if isinstance(apify_token, SecretStr):
             _token: str | None = apify_token.get_secret_value()
@@ -254,7 +252,7 @@ class ApifyToolsClient:
             'maxCrawlPages': 1,
         }
         run, items = self.run_actor_and_get_items(
-            _SCRAPE_ACTOR_ID,
+            _WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=1,
@@ -264,8 +262,7 @@ class ApifyToolsClient:
             raise RuntimeError(msg)
 
         markdown = items[0].get('markdown') or ''
-        text = items[0].get('text') or ''
-        content = markdown or text
+        content = _extract_content(items[0])
         if not content:
             msg = _ERROR_SCRAPE_EMPTY.format(url=url)
             raise RuntimeError(msg)
@@ -279,7 +276,7 @@ class ApifyToolsClient:
     def google_search(
         self,
         query: str,
-        max_results: int = 10,
+        max_results: int = _DEFAULT_GOOGLE_MAX_RESULTS,
         country_code: str | None = None,
         language_code: str | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
@@ -329,10 +326,10 @@ class ApifyToolsClient:
         ]
         return results[:max_results]
 
-    def rag_web_browser_search(
+    def rag_web_search(
         self,
         query: str,
-        max_results: int = 5,
+        max_results: int = _DEFAULT_RAG_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
     ) -> tuple[dict, list[dict]]:
         """Search the web and return crawled page content for RAG.
@@ -489,9 +486,9 @@ class ApifyToolsClient:
     def crawl_website(
         self,
         url: str,
-        max_crawl_pages: int = 10,
-        max_crawl_depth: int = 1,
-        crawler_type: str = 'cheerio',
+        max_crawl_pages: int = _DEFAULT_MAX_CRAWL_PAGES,
+        max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
+        crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
     ) -> list[dict]:
         """Crawl a website and return page content.
@@ -502,7 +499,7 @@ class ApifyToolsClient:
             url: Seed URL to start crawling from.
             max_crawl_pages: Maximum number of pages to crawl.
             max_crawl_depth: Maximum link-follow depth from the seed URL.
-            crawler_type: Crawler engine (e.g. ``"cheerio"``, ``"playwright"``).
+            crawler_type: Crawler engine (e.g. ``"cheerio"``, ``"playwright:firefox"``).
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
@@ -519,7 +516,7 @@ class ApifyToolsClient:
             'crawlerType': crawler_type,
         }
         _, items = self.run_actor_and_get_items(
-            _CRAWL_ACTOR_ID,
+            _WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_crawl_pages,

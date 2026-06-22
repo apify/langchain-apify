@@ -35,10 +35,10 @@ def test_google_search_tool_returns_json(mock_tools_client: MagicMock) -> None:
     result = tool._run(query='test query')
 
     parsed = json.loads(result)
+    assert parsed['run'] is None
     assert len(parsed['items']) == 2
     assert parsed['items'][0]['title'] == 'Result 1'
     assert parsed['items'][1]['url'] == 'https://example.com/2'
-    assert parsed['run'] is None
 
 
 def test_google_search_tool_passes_params(mock_tools_client: MagicMock) -> None:
@@ -147,6 +147,7 @@ def test_web_crawler_tool_returns_json(mock_tools_client: MagicMock) -> None:
     result = tool._run(url='https://example.com')
 
     parsed = json.loads(result)
+    assert parsed['run'] is None
     assert len(parsed['items']) == 2
     assert parsed['items'][0] == {'url': 'https://example.com/', 'title': 'Home', 'content': '# Home'}
     assert parsed['items'][1] == {'url': 'https://example.com/about', 'title': 'About', 'content': 'About us'}
@@ -240,7 +241,7 @@ def test_rag_web_browser_tool_returns_json(mock_tools_client: MagicMock) -> None
             'text': 'Page 2 plain',
         },
     ]
-    mock_tools_client.rag_web_browser_search.return_value = (SUCCEEDED_RUN, items)
+    mock_tools_client.rag_web_search.return_value = (SUCCEEDED_RUN, items)
     tool = make_tool(ApifyRAGWebBrowserTool, mock_tools_client)
 
     parsed = json.loads(tool._run(query='what is langchain', max_results=3))
@@ -250,7 +251,7 @@ def test_rag_web_browser_tool_returns_json(mock_tools_client: MagicMock) -> None
         {'url': 'https://example.com/2', 'title': 'Page 2', 'content': 'Page 2 plain'},
     ]
     assert parsed['run']['status'] == 'SUCCEEDED'
-    mock_tools_client.rag_web_browser_search.assert_called_once_with(
+    mock_tools_client.rag_web_search.assert_called_once_with(
         'what is langchain',
         max_results=3,
         timeout_secs=tool.max_timeout_secs,
@@ -346,7 +347,7 @@ def test_ecommerce_tool_invalid_url_type_raises_tool_exception(mock_tools_client
 _TOOL_INVOCATIONS: list[tuple[type[_ApifyGenericTool], str, dict]] = [
     (ApifyGoogleSearchTool, 'google_search', {'query': 'q'}),
     (ApifyWebCrawlerTool, 'crawl_website', {'url': 'https://example.com'}),
-    (ApifyRAGWebBrowserTool, 'rag_web_browser_search', {'query': 'q'}),
+    (ApifyRAGWebBrowserTool, 'rag_web_search', {'query': 'q'}),
     (ApifyGoogleMapsTool, 'google_maps_search', {'query': 'q'}),
     (ApifyYouTubeScraperTool, 'youtube_scrape', {'search_query': 'q'}),
     (ApifyEcommerceScraperTool, 'ecommerce_scrape', {'url': 'https://example.com'}),
@@ -390,7 +391,7 @@ def test_search_tool_empty_dataset_returns_empty_items(
 
 
 def test_rag_web_browser_tool_empty_dataset_returns_empty_array(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.rag_web_browser_search.return_value = (SUCCEEDED_RUN, [])
+    mock_tools_client.rag_web_search.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyRAGWebBrowserTool, mock_tools_client)
 
     parsed = json.loads(tool._run(query='q'))

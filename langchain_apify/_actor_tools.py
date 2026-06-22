@@ -13,11 +13,19 @@ from typing import TYPE_CHECKING, Literal
 from langchain_core.tools import ToolException
 from pydantic import BaseModel, Field
 
-from langchain_apify._client import _DEFAULT_RUN_TIMEOUT_SECS
+from langchain_apify._client import (
+    _DEFAULT_CRAWLER_TYPE,
+    _DEFAULT_GOOGLE_MAX_RESULTS,
+    _DEFAULT_MAX_CRAWL_DEPTH,
+    _DEFAULT_MAX_CRAWL_PAGES,
+    _DEFAULT_RAG_MAX_RESULTS,
+    _DEFAULT_RUN_TIMEOUT_SECS,
+)
+from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: shared Literal alias
+from langchain_apify._utils import _extract_content, _safe_title
 from langchain_apify.tools import (
     ApifyGoogleSearchInput,
     ApifyWebCrawlerInput,
-    CrawlerType,
     _ApifyGenericTool,
     _run_meta,
 )
@@ -25,13 +33,7 @@ from langchain_apify.tools import (
 if TYPE_CHECKING:
     from langchain_core.callbacks import CallbackManagerForToolRun
 
-# Default result/page limits per Actor tool. Kept here so the ``_run``
-# signature defaults and the description strings stay in sync.
-_DEFAULT_GOOGLE_SEARCH_MAX_RESULTS = 10
-_DEFAULT_WEB_CRAWLER_MAX_PAGES = 10
-_DEFAULT_WEB_CRAWLER_MAX_DEPTH = 1
-_DEFAULT_WEB_CRAWLER_TYPE: CrawlerType = 'cheerio'
-_DEFAULT_RAG_MAX_RESULTS = 5
+# Per-tool result limits not shared via ``_client`` (Maps/YouTube/Ecommerce).
 _DEFAULT_GOOGLE_MAPS_MAX_RESULTS = 10
 _DEFAULT_YOUTUBE_MAX_RESULTS = 10
 _DEFAULT_ECOMMERCE_MAX_RESULTS = 20
@@ -57,8 +59,8 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
     """Search Google and return structured results via Apify.
 
     Wraps the ``apify/google-search-scraper`` Actor behind a simplified,
-    LLM-friendly interface.  Returns a JSON envelope whose
-    ``items`` are objects with ``title``, ``url``, and ``description`` keys.
+    LLM-friendly interface.  Returns a JSON envelope whose ``items`` are
+    result objects, each with ``title``, ``url``, and ``description`` keys.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
@@ -84,17 +86,17 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         'Search Google using Apify and return a JSON envelope.'
         ' Each item has keys: title, url, description.'
         ' Required: query (str) — the search query.'
-        f' Optional: max_results (int, default {_DEFAULT_GOOGLE_SEARCH_MAX_RESULTS}),'
+        f' Optional: max_results (int, default {_DEFAULT_GOOGLE_MAX_RESULTS}),'
         ' country_code (str|null), language_code (str|null),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
-        ' Returns keys: run, items.'
+        ' Returns JSON with keys: run (null), items.'
     )
     args_schema: type[BaseModel] = ApifyGoogleSearchInput
 
     def _run(
         self,
         query: str,
-        max_results: int = _DEFAULT_GOOGLE_SEARCH_MAX_RESULTS,
+        max_results: int = _DEFAULT_GOOGLE_MAX_RESULTS,
         country_code: str | None = None,
         language_code: str | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
@@ -110,15 +112,18 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
+        # default=str coerces any non-JSON-native types (e.g. datetime from
+        # the Apify client's clean=True deserialiser) to their string repr
+        # so the LLM never sees a serialisation failure.
         return json.dumps({'run': None, 'items': results}, default=str)
 
 
 class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
     """Crawl a website and return page content as JSON via Apify.
 
-    Wraps the ``apify/website-content-crawler`` Actor.  Returns a JSON
-    envelope whose ``items`` are page objects with ``url``, ``title``,
-    and ``content`` (markdown) keys.
+    Wraps the ``apify/website-content-crawler`` Actor.  Returns a JSON envelope
+    whose ``items`` are page objects, each with ``url``, ``title``, and
+    ``content`` (markdown) keys.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
@@ -145,22 +150,22 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
     name: str = 'apify_web_crawler'
     description: str = (
         'Crawl a website using Apify and return a JSON envelope.'
-        ' Each item has keys: url, title, content.'
+        ' Each item has keys: url, title, content (markdown).'
         ' Required: url (str) — seed URL to crawl.'
-        f' Optional: max_crawl_pages (int, default {_DEFAULT_WEB_CRAWLER_MAX_PAGES}),'
-        f' max_crawl_depth (int, default {_DEFAULT_WEB_CRAWLER_MAX_DEPTH}),'
-        f' crawler_type (str, default "{_DEFAULT_WEB_CRAWLER_TYPE}"),'
+        f' Optional: max_crawl_pages (int, default {_DEFAULT_MAX_CRAWL_PAGES}),'
+        f' max_crawl_depth (int, default {_DEFAULT_MAX_CRAWL_DEPTH}),'
+        f' crawler_type (str, default "{_DEFAULT_CRAWLER_TYPE}"),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
-        ' Returns keys: run, items.'
+        ' Returns JSON with keys: run (null), items.'
     )
     args_schema: type[BaseModel] = ApifyWebCrawlerInput
 
     def _run(
         self,
         url: str,
-        max_crawl_pages: int = _DEFAULT_WEB_CRAWLER_MAX_PAGES,
-        max_crawl_depth: int = _DEFAULT_WEB_CRAWLER_MAX_DEPTH,
-        crawler_type: CrawlerType = _DEFAULT_WEB_CRAWLER_TYPE,
+        max_crawl_pages: int = _DEFAULT_MAX_CRAWL_PAGES,
+        max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
+        crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
@@ -174,13 +179,17 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
+        # Defensive filter: some Actor responses occasionally surface list-typed
+        # entries (e.g. nested arrays for sitemap-style outputs). Skip anything
+        # that isn't a dict so .get() never blows up.
         pages = [
             {
                 'url': item.get('url', ''),
-                'title': _item_metadata(item).get('title', ''),
-                'content': item.get('markdown') or item.get('text', ''),
+                'title': _safe_title(item),
+                'content': _extract_content(item),
             }
             for item in items
+            if isinstance(item, dict)
         ]
         return json.dumps({'run': None, 'items': pages}, default=str)
 
@@ -288,7 +297,7 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            run, items = self._client.rag_web_browser_search(
+            run, items = self._client.rag_web_search(
                 query,
                 max_results=self._clamp_items(max_results),
                 timeout_secs=self.max_timeout_secs,
@@ -298,10 +307,11 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
         results = [
             {
                 'url': _item_metadata(item).get('url') or item.get('crawledUrl', ''),
-                'title': _item_metadata(item).get('title', ''),
-                'content': item.get('markdown') or item.get('text', ''),
+                'title': _safe_title(item),
+                'content': _extract_content(item),
             }
             for item in items
+            if isinstance(item, dict)
         ]
         return json.dumps({'run': _run_meta(run), 'items': results}, default=str)
 

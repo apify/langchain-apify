@@ -74,7 +74,7 @@ def test_deprecated_apify_api_token_alias_warns() -> None:
 
 def test_sync_returns_documents() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_browser_search.return_value = ({}, RAG_ITEMS)
+    mock_client.rag_web_search.return_value = ({}, RAG_ITEMS)
     retriever = _make_retriever(mock_client, max_results=5)
 
     docs = retriever._get_relevant_documents('test query')
@@ -90,12 +90,12 @@ def test_sync_returns_documents() -> None:
 
 def test_sync_calls_helper_with_correct_args() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_browser_search.return_value = ({}, [])
+    mock_client.rag_web_search.return_value = ({}, [])
     retriever = _make_retriever(mock_client, max_results=3, timeout_secs=60)
 
     retriever._get_relevant_documents('my search')
 
-    mock_client.rag_web_browser_search.assert_called_once_with(
+    mock_client.rag_web_search.assert_called_once_with(
         'my search',
         max_results=3,
         timeout_secs=60,
@@ -104,7 +104,7 @@ def test_sync_calls_helper_with_correct_args() -> None:
 
 def test_sync_empty_results() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_browser_search.return_value = ({}, [])
+    mock_client.rag_web_search.return_value = ({}, [])
     retriever = _make_retriever(mock_client)
 
     docs = retriever._get_relevant_documents('test')
@@ -114,7 +114,7 @@ def test_sync_empty_results() -> None:
 
 def test_sync_helper_failure_propagates() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_browser_search.side_effect = RuntimeError(
+    mock_client.rag_web_search.side_effect = RuntimeError(
         'Actor run run-bad ended with status FAILED.',
     )
     retriever = _make_retriever(mock_client)
@@ -132,7 +132,7 @@ def test_sync_helper_failure_propagates() -> None:
 async def test_async_returns_documents() -> None:
     """Async path wraps the sync helper via asyncio.to_thread."""
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_browser_search.return_value = ({}, RAG_ITEMS)
+    mock_client.rag_web_search.return_value = ({}, RAG_ITEMS)
     retriever = _make_retriever(mock_client, max_results=5)
 
     docs = await retriever._aget_relevant_documents('test query')
@@ -146,12 +146,12 @@ async def test_async_returns_documents() -> None:
 @pytest.mark.asyncio
 async def test_async_calls_helper_with_correct_args() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_browser_search.return_value = ({}, [])
+    mock_client.rag_web_search.return_value = ({}, [])
     retriever = _make_retriever(mock_client, max_results=3, timeout_secs=60)
 
     await retriever._aget_relevant_documents('my search')
 
-    mock_client.rag_web_browser_search.assert_called_once_with(
+    mock_client.rag_web_search.assert_called_once_with(
         'my search',
         max_results=3,
         timeout_secs=60,
@@ -161,7 +161,7 @@ async def test_async_calls_helper_with_correct_args() -> None:
 @pytest.mark.asyncio
 async def test_async_empty_results() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_browser_search.return_value = ({}, [])
+    mock_client.rag_web_search.return_value = ({}, [])
     retriever = _make_retriever(mock_client)
 
     docs = await retriever._aget_relevant_documents('test')
@@ -172,7 +172,7 @@ async def test_async_empty_results() -> None:
 @pytest.mark.asyncio
 async def test_async_helper_failure_propagates() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_browser_search.side_effect = RuntimeError(
+    mock_client.rag_web_search.side_effect = RuntimeError(
         'Actor run run-bad ended with status FAILED.',
     )
     retriever = _make_retriever(mock_client)
