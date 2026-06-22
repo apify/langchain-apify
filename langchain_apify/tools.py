@@ -38,7 +38,7 @@ from langchain_apify._client import (
     ApifyToolsClient,
 )
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
-from langchain_apify._types import CrawlerType
+from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: pydantic Field annotation
 from langchain_apify._utils import (
     _MAX_DESCRIPTION_LEN,
     _actor_id_to_tool_name,

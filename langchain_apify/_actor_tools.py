@@ -20,7 +20,7 @@ from langchain_apify._client import (
     _DEFAULT_MAX_CRAWL_PAGES,
     _DEFAULT_RUN_TIMEOUT_SECS,
 )
-from langchain_apify._types import CrawlerType
+from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: shared Literal alias
 from langchain_apify._utils import _extract_content, _safe_title
 from langchain_apify.tools import (
     ApifyGoogleSearchInput,

@@ -10,7 +10,7 @@ from langchain_apify._error_messages import (
     _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET,
     _ERROR_SCRAPE_EMPTY,
 )
-from langchain_apify._types import CrawlerType
+from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: shared Literal alias
 from langchain_apify._utils import (
     _create_apify_client,
     _extract_content,
