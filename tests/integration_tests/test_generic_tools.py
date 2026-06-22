@@ -68,8 +68,9 @@ def test_scrape_url_tool_smoke() -> None:
     tool = ApifyScrapeUrlTool()
     result = tool.invoke({'url': 'https://crawlee.dev'})
 
-    assert isinstance(result, str)
-    assert len(result) > 0
+    parsed = json.loads(result)
+    assert parsed['content']
+    assert parsed['meta']['content_length'] > 0
 
 
 _TASK_ID = os.getenv('APIFY_TASK_ID', '')

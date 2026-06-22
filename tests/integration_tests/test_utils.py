@@ -1,3 +1,4 @@
+import pytest
 from apify_client.client import ApifyClient
 
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
@@ -11,8 +12,7 @@ def test_get_actor_latest_build() -> None:
         ValueError: If the APIFY_TOKEN environment variable is not set.
     """
     if (token := _resolve_apify_token()) is None:
-        msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
-        raise ValueError(msg)
+        pytest.skip(_ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET)
 
     apify_client = _create_apify_client(ApifyClient, token)
 

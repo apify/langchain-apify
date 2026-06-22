@@ -169,9 +169,31 @@ def test_run_actor_tool_with_datetime_run(mock_tools_client: MagicMock) -> None:
     result = tool._run(actor_id='apify/test')
 
     parsed = json.loads(result)
-    assert parsed['run_id'] == 'run-real'
-    assert parsed['started_at'] == '2025-06-01T08:00:00+00:00'
-    assert parsed['finished_at'] == '2025-06-01T08:05:00+00:00'
+    assert parsed['run']['run_id'] == 'run-real'
+    assert parsed['run']['started_at'] == '2025-06-01T08:00:00+00:00'
+    assert parsed['run']['finished_at'] == '2025-06-01T08:05:00+00:00'
+    assert parsed['items'] == []
+
+
+def test_tool_response_handles_datetime_in_items(mock_tools_client: MagicMock) -> None:
+    """Regression: datetime values inside ``items`` must not break serialization.
+
+    The Apify client's ``clean=True`` deserialiser returns ``datetime``
+    objects for certain timestamp fields (Google Maps reviews, YouTube
+    publishedAt, etc.). Without ``default=str`` in ``json.dumps``, this
+    raised ``TypeError: Object of type datetime is not JSON serializable``
+    and the LLM saw an empty / error tool result instead of data.
+    """
+    timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    items = [{'id': 'item-1', 'published_at': timestamp, 'text': 'hi'}]
+    mock_tools_client.run_actor_and_get_items.return_value = (SUCCEEDED_RUN, items)
+    tool = make_tool(ApifyRunActorAndGetDatasetTool, mock_tools_client)
+
+    parsed = json.loads(tool._run(actor_id='apify/test'))
+
+    assert parsed['items'][0]['id'] == 'item-1'
+    assert isinstance(parsed['items'][0]['published_at'], str)
+    assert '2026-01-02' in parsed['items'][0]['published_at']
 
 
 # ---------------------------------------------------------------------------
@@ -186,11 +208,12 @@ def test_run_actor_tool_returns_json(mock_tools_client: MagicMock) -> None:
     result = tool._run(actor_id='apify/test', run_input={'key': 'val'})
 
     parsed = json.loads(result)
-    assert parsed['run_id'] == 'run-abc'
-    assert parsed['status'] == 'SUCCEEDED'
-    assert parsed['dataset_id'] == 'dataset-xyz'
-    assert parsed['started_at'] == '2025-01-01T00:00:00.000Z'
-    assert parsed['finished_at'] == '2025-01-01T00:01:00.000Z'
+    assert parsed['run']['run_id'] == 'run-abc'
+    assert parsed['run']['status'] == 'SUCCEEDED'
+    assert parsed['run']['dataset_id'] == 'dataset-xyz'
+    assert parsed['run']['started_at'] == '2025-01-01T00:00:00.000Z'
+    assert parsed['run']['finished_at'] == '2025-01-01T00:01:00.000Z'
+    assert parsed['items'] == []
     mock_tools_client.run_actor.assert_called_once_with('apify/test', {'key': 'val'}, 300, None)
 
 
@@ -226,15 +249,14 @@ def test_get_dataset_items_tool_returns_json_object(mock_tools_client: MagicMock
     mock_tools_client.get_dataset_items.assert_called_once_with('dataset-xyz', 50, 5)
 
 
-def test_get_dataset_items_tool_empty_returns_message(mock_tools_client: MagicMock) -> None:
+def test_get_dataset_items_tool_empty_returns_empty_items(mock_tools_client: MagicMock) -> None:
     mock_tools_client.get_dataset_items.return_value = []
     tool = make_tool(ApifyGetDatasetItemsTool, mock_tools_client)
 
     result = tool._run(dataset_id='dataset-empty')
 
     parsed = json.loads(result)
-    assert parsed['items'] == []
-    assert 'empty' in parsed['message'].lower()
+    assert parsed == {'run': None, 'items': []}
 
 
 def test_get_dataset_items_tool_network_error_raises_tool_exception(mock_tools_client: MagicMock) -> None:
@@ -295,17 +317,24 @@ def test_run_actor_and_get_items_tool_missing_token(monkeypatch: pytest.MonkeyPa
 
 
 def test_scrape_url_tool_returns_markdown(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.scrape_url.return_value = '# Hello World'
+    mock_tools_client._scrape_url.return_value = (
+        SUCCEEDED_RUN,
+        [{'url': 'https://example.com', 'markdown': '# Hello World'}],
+        '# Hello World',
+        'markdown',
+    )
     tool = make_tool(ApifyScrapeUrlTool, mock_tools_client)
 
     result = tool._run(url='https://example.com')
 
-    assert result == '# Hello World'
-    mock_tools_client.scrape_url.assert_called_once_with('https://example.com', 120)
+    parsed = json.loads(result)
+    assert parsed['run']['status'] == 'SUCCEEDED'
+    assert parsed['items'] == [{'url': 'https://example.com', 'content': '# Hello World'}]
+    mock_tools_client._scrape_url.assert_called_once_with('https://example.com', 120)
 
 
 def test_scrape_url_tool_empty_raises_tool_exception(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.scrape_url.side_effect = RuntimeError('No content extracted from https://example.com.')
+    mock_tools_client._scrape_url.side_effect = RuntimeError('No content extracted from https://example.com.')
     tool = make_tool(ApifyScrapeUrlTool, mock_tools_client)
 
     with pytest.raises(ToolException, match='No content extracted'):
@@ -331,11 +360,12 @@ def test_run_task_tool_returns_json(mock_tools_client: MagicMock) -> None:
     result = tool._run(task_id='user/my-task', task_input={'key': 'val'})
 
     parsed = json.loads(result)
-    assert parsed['run_id'] == 'run-abc'
-    assert parsed['status'] == 'SUCCEEDED'
-    assert parsed['dataset_id'] == 'dataset-xyz'
-    assert parsed['started_at'] == '2025-01-01T00:00:00.000Z'
-    assert parsed['finished_at'] == '2025-01-01T00:01:00.000Z'
+    assert parsed['run']['run_id'] == 'run-abc'
+    assert parsed['run']['status'] == 'SUCCEEDED'
+    assert parsed['run']['dataset_id'] == 'dataset-xyz'
+    assert parsed['run']['started_at'] == '2025-01-01T00:00:00.000Z'
+    assert parsed['run']['finished_at'] == '2025-01-01T00:01:00.000Z'
+    assert parsed['items'] == []
     mock_tools_client.run_task.assert_called_once_with('user/my-task', {'key': 'val'}, 300, None)
 
 
@@ -446,12 +476,17 @@ def test_run_actor_and_get_items_tool_clamps_all(mock_tools_client: MagicMock) -
 
 
 def test_scrape_url_tool_clamps_timeout(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.scrape_url.return_value = '# content'
+    mock_tools_client._scrape_url.return_value = (
+        SUCCEEDED_RUN,
+        [{'url': 'https://example.com', 'text': '# content'}],
+        '# content',
+        'text',
+    )
     tool = make_tool(ApifyScrapeUrlTool, mock_tools_client, max_timeout_secs=30)
 
     tool._run(url='https://example.com', timeout_secs=9999)
 
-    mock_tools_client.scrape_url.assert_called_once_with('https://example.com', 30)
+    mock_tools_client._scrape_url.assert_called_once_with('https://example.com', 30)
 
 
 def test_run_task_tool_clamps_timeout_and_memory(mock_tools_client: MagicMock) -> None:
