@@ -40,7 +40,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
     """Search Google and return structured results via Apify.
 
     Wraps the ``apify/google-search-scraper`` Actor behind a simplified,
-    LLM-friendly interface.  Returns a JSON string containing an array of
+    LLM-friendly interface.  Returns a JSON envelope whose ``items`` are
     result objects, each with ``title``, ``url``, and ``description`` keys.
 
     Args:
@@ -48,7 +48,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON string — an array of ``{"title", "url", "description"}`` objects.
+        JSON object ``{"run": null, "items": [{"title", "url", "description"}]}``.
 
     Example:
         .. code-block:: python
@@ -64,12 +64,13 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_google_search'
     description: str = (
-        'Search Google using Apify and return structured results as a JSON array.'
-        ' Each result has keys: title, url, description.'
+        'Search Google using Apify and return a JSON envelope.'
+        ' Each item has keys: title, url, description.'
         ' Required: query (str) — the search query.'
         f' Optional: max_results (int, default {_DEFAULT_GOOGLE_MAX_RESULTS}),'
         ' country_code (str|null), language_code (str|null),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
+        ' Returns JSON with keys: run (null), items.'
     )
     args_schema: type[BaseModel] = ApifyGoogleSearchInput
 
@@ -95,14 +96,14 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         # default=str coerces any non-JSON-native types (e.g. datetime from
         # the Apify client's clean=True deserialiser) to their string repr
         # so the LLM never sees a serialisation failure.
-        return json.dumps(results, default=str)
+        return json.dumps({'run': None, 'items': results}, default=str)
 
 
 class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
     """Crawl a website and return page content as JSON via Apify.
 
-    Wraps the ``apify/website-content-crawler`` Actor.  Returns a JSON string
-    containing an array of page objects, each with ``url``, ``title``, and
+    Wraps the ``apify/website-content-crawler`` Actor.  Returns a JSON envelope
+    whose ``items`` are page objects, each with ``url``, ``title``, and
     ``content`` (markdown) keys.
 
     Args:
@@ -110,7 +111,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON string — an array of ``{"url", "title", "content"}`` objects.
+        JSON object ``{"run": null, "items": [{"url", "title", "content"}]}``.
 
     Example:
         .. code-block:: python
@@ -129,13 +130,14 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_web_crawler'
     description: str = (
-        'Crawl a website using Apify and return page content as a JSON array.'
-        ' Each page object has keys: url, title, content (markdown).'
+        'Crawl a website using Apify and return a JSON envelope.'
+        ' Each item has keys: url, title, content (markdown).'
         ' Required: url (str) — seed URL to crawl.'
         f' Optional: max_crawl_pages (int, default {_DEFAULT_MAX_CRAWL_PAGES}),'
         f' max_crawl_depth (int, default {_DEFAULT_MAX_CRAWL_DEPTH}),'
         f' crawler_type (str, default "{_DEFAULT_CRAWLER_TYPE}"),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
+        ' Returns JSON with keys: run (null), items.'
     )
     args_schema: type[BaseModel] = ApifyWebCrawlerInput
 
@@ -170,4 +172,4 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
             for item in items
             if isinstance(item, dict)
         ]
-        return json.dumps(pages, default=str)
+        return json.dumps({'run': None, 'items': pages}, default=str)

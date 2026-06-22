@@ -27,9 +27,10 @@ def test_google_search_tool_returns_json(mock_tools_client: MagicMock) -> None:
     result = tool._run(query='test query')
 
     parsed = json.loads(result)
-    assert len(parsed) == 2
-    assert parsed[0]['title'] == 'Result 1'
-    assert parsed[1]['url'] == 'https://example.com/2'
+    assert parsed['run'] is None
+    assert len(parsed['items']) == 2
+    assert parsed['items'][0]['title'] == 'Result 1'
+    assert parsed['items'][1]['url'] == 'https://example.com/2'
 
 
 def test_google_search_tool_passes_params(mock_tools_client: MagicMock) -> None:
@@ -72,7 +73,7 @@ def test_google_search_tool_empty_results(mock_tools_client: MagicMock) -> None:
 
     result = tool._run(query='nothing')
 
-    assert json.loads(result) == []
+    assert json.loads(result) == {'run': None, 'items': []}
 
 
 def test_google_search_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
@@ -137,9 +138,10 @@ def test_web_crawler_tool_returns_json(mock_tools_client: MagicMock) -> None:
     result = tool._run(url='https://example.com')
 
     parsed = json.loads(result)
-    assert len(parsed) == 2
-    assert parsed[0] == {'url': 'https://example.com/', 'title': 'Home', 'content': '# Home'}
-    assert parsed[1] == {'url': 'https://example.com/about', 'title': 'About', 'content': 'About us'}
+    assert parsed['run'] is None
+    assert len(parsed['items']) == 2
+    assert parsed['items'][0] == {'url': 'https://example.com/', 'title': 'Home', 'content': '# Home'}
+    assert parsed['items'][1] == {'url': 'https://example.com/about', 'title': 'About', 'content': 'About us'}
 
 
 def test_web_crawler_tool_passes_params(mock_tools_client: MagicMock) -> None:
@@ -192,7 +194,7 @@ def test_web_crawler_tool_empty_results(mock_tools_client: MagicMock) -> None:
 
     result = tool._run(url='https://example.com')
 
-    assert json.loads(result) == []
+    assert json.loads(result) == {'run': None, 'items': []}
 
 
 def test_web_crawler_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:

@@ -66,11 +66,11 @@ search_results = browser.invoke(input={
 
 # use the tool with an agent
 from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 model = ChatOpenAI(model="gpt-4o-mini")
 tools = [browser]
-agent = create_react_agent(model, tools)
+agent = create_agent(model, tools)
 
 for chunk in agent.stream(
     {"messages": [("human", "search for what is Apify?")]},
