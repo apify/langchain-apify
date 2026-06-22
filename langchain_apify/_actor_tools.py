@@ -650,7 +650,8 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
     description: str = (
         'Scrape Instagram profiles, hashtags, posts, or comments and return the results as JSON.'
         ' Required: search_type (one of "user", "hashtag", "post", "comments"),'
-        ' search_query (str - username, hashtag, or post URL).'
+        ' search_query (str - username, hashtag, or a full Instagram URL including the scheme,'
+        ' e.g. https://www.instagram.com/p/ABC123/; "comments" requires a full post URL).'
         f' Optional: max_results (int, default {_DEFAULT_SOCIAL_RESULTS_LIMIT}),'
         ' only_posts_newer_than (str - date filter, e.g. "2025-01-01" or "1 week").'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
