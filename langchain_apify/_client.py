@@ -49,6 +49,7 @@ _DEFAULT_CRAWLER_TYPE: CrawlerType = 'cheerio'
 _DEFAULT_GOOGLE_MAX_RESULTS = 10
 _DEFAULT_RAG_MAX_RESULTS = 5
 _DEFAULT_SOCIAL_RESULTS_LIMIT = 20
+_DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS = 10
 _RUN_STATUS_SUCCEEDED = 'SUCCEEDED'
 
 # Instagram-specific mappings
@@ -467,7 +468,7 @@ class ApifyToolsClient:
     def linkedin_profile_search(
         self,
         query: str,
-        max_results: int = 10,
+        max_results: int = _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
     ) -> tuple[dict, list[dict]]:
         """Search LinkedIn profiles via ``harvestapi/linkedin-profile-search``.
@@ -598,7 +599,7 @@ class ApifyToolsClient:
         if search_mode == 'search':
             run_input['searchTerms'] = [search_query]
         elif search_mode == 'user':
-            run_input['twitterHandles'] = [search_query.lstrip('@')]
+            run_input['twitterHandles'] = [search_query.removeprefix('@')]
         elif search_mode == 'replies':
             run_input['startUrls'] = [search_query]
         else:
@@ -643,9 +644,9 @@ class ApifyToolsClient:
         if search_type == 'search':
             run_input['searchQueries'] = [search_query]
         elif search_type == 'user':
-            run_input['profiles'] = [search_query.lstrip('@')]
+            run_input['profiles'] = [search_query.removeprefix('@')]
         elif search_type == 'hashtag':
-            run_input['hashtags'] = [search_query.lstrip('#')]
+            run_input['hashtags'] = [search_query.removeprefix('#')]
         elif search_type == 'post':
             run_input['postURLs'] = [search_query]
         else:
@@ -707,10 +708,10 @@ class ApifyToolsClient:
         if search_query.startswith(('http://', 'https://')):
             return search_query
         if search_type == 'hashtag':
-            tag = search_query.lstrip('#')
+            tag = search_query.removeprefix('#')
             return f'https://www.instagram.com/explore/tags/{tag}/'
         if search_type == 'user':
-            handle = search_query.lstrip('@')
+            handle = search_query.removeprefix('@')
             return f'https://www.instagram.com/{handle}/'
         # post/comments expect a URL; if a bare ID is given, build a /p/ URL
         return f'https://www.instagram.com/p/{search_query}/'

@@ -16,10 +16,12 @@ from pydantic import BaseModel, Field
 from langchain_apify._client import (
     _DEFAULT_CRAWLER_TYPE,
     _DEFAULT_GOOGLE_MAX_RESULTS,
+    _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
     _DEFAULT_MAX_CRAWL_DEPTH,
     _DEFAULT_MAX_CRAWL_PAGES,
     _DEFAULT_RAG_MAX_RESULTS,
     _DEFAULT_RUN_TIMEOUT_SECS,
+    _DEFAULT_SOCIAL_RESULTS_LIMIT,
 )
 from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: shared Literal alias
 from langchain_apify._utils import _extract_content, _extract_source, _safe_title
@@ -37,6 +39,13 @@ if TYPE_CHECKING:
 _DEFAULT_GOOGLE_MAPS_MAX_RESULTS = 10
 _DEFAULT_YOUTUBE_MAX_RESULTS = 10
 _DEFAULT_ECOMMERCE_MAX_RESULTS = 20
+
+# Shared Literal aliases so each social tool declares its accepted values once
+# (used in both the input schema and the tool ``_run`` signature).
+InstagramSearchType = Literal['user', 'hashtag', 'post', 'comments']
+TwitterSearchMode = Literal['search', 'user', 'replies']
+TwitterSort = Literal['Latest', 'Top']
+TikTokSearchType = Literal['search', 'user', 'hashtag', 'post']
 
 
 # ---------------------------------------------------------------------------
@@ -486,7 +495,7 @@ class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
 class ApifyInstagramScraperInput(BaseModel):
     """Input schema for :class:`ApifyInstagramScraperTool`."""
 
-    search_type: Literal['user', 'hashtag', 'post', 'comments'] = Field(
+    search_type: InstagramSearchType = Field(
         description=(
             'Type of data to scrape: "user" for a profile\'s posts, "hashtag" '
             'for posts under a tag, "post" for a single post, "comments" for '
@@ -495,11 +504,12 @@ class ApifyInstagramScraperInput(BaseModel):
     )
     search_query: str = Field(
         description=(
-            'Username, hashtag, or full Instagram URL depending on search_type. '
-            'For "comments" you must pass a post URL (e.g. instagram.com/p/...).'
+            'Username, hashtag, or a full Instagram URL including the scheme '
+            '(e.g. https://www.instagram.com/p/ABC123/). For "comments" you must '
+            'pass a full post URL.'
         ),
     )
-    max_results: int = Field(default=20, description='Maximum number of items to return.')
+    max_results: int = Field(default=_DEFAULT_SOCIAL_RESULTS_LIMIT, description='Maximum number of items to return.')
     only_posts_newer_than: str | None = Field(
         default=None,
         description=(
@@ -515,14 +525,16 @@ class ApifyLinkedInProfilePostsInput(BaseModel):
     profile_url: str = Field(
         description='LinkedIn profile URL or username (e.g. "satyanadella" or "linkedin.com/in/satyanadella").',
     )
-    max_results: int = Field(default=20, description='Maximum number of posts to return.')
+    max_results: int = Field(default=_DEFAULT_SOCIAL_RESULTS_LIMIT, description='Maximum number of posts to return.')
 
 
 class ApifyLinkedInProfileSearchInput(BaseModel):
     """Input schema for :class:`ApifyLinkedInProfileSearchTool`."""
 
     query: str = Field(description='Search keywords (e.g. name, title, company).')
-    max_results: int = Field(default=10, description='Maximum number of profiles to return.')
+    max_results: int = Field(
+        default=_DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS, description='Maximum number of profiles to return.'
+    )
 
 
 class ApifyLinkedInProfileDetailInput(BaseModel):
@@ -541,14 +553,14 @@ class ApifyTwitterScraperInput(BaseModel):
     """Input schema for :class:`ApifyTwitterScraperTool`."""
 
     search_query: str = Field(description='Search term, Twitter handle, or tweet URL.')
-    search_mode: Literal['search', 'user', 'replies'] = Field(
+    search_mode: TwitterSearchMode = Field(
         default='search',
         description=(
             'Scraping mode: "search" for keyword search, "user" for a handle\'s '
             'tweets, "replies" for a tweet URL\'s replies.'
         ),
     )
-    max_results: int = Field(default=20, description='Maximum number of tweets to return.')
+    max_results: int = Field(default=_DEFAULT_SOCIAL_RESULTS_LIMIT, description='Maximum number of tweets to return.')
     start: str | None = Field(
         default=None,
         description='Optional start date - only return tweets newer than this date.',
@@ -557,7 +569,7 @@ class ApifyTwitterScraperInput(BaseModel):
         default=None,
         description='Optional end date - only return tweets older than this date.',
     )
-    sort: Literal['Latest', 'Top'] | None = Field(
+    sort: TwitterSort | None = Field(
         default=None,
         description='Optional sort order: "Latest" for most recent first, "Top" for most popular.',
     )
@@ -567,7 +579,7 @@ class ApifyTikTokScraperInput(BaseModel):
     """Input schema for :class:`ApifyTikTokScraperTool`."""
 
     search_query: str = Field(description='Username, hashtag, search keyword, or TikTok post URL.')
-    search_type: Literal['search', 'user', 'hashtag', 'post'] = Field(
+    search_type: TikTokSearchType = Field(
         default='search',
         description=(
             'Type of content to scrape: "search" for keyword search, "user" for '
@@ -575,14 +587,14 @@ class ApifyTikTokScraperInput(BaseModel):
             'specific TikTok post URL.'
         ),
     )
-    max_results: int = Field(default=20, description='Maximum number of items to return.')
+    max_results: int = Field(default=_DEFAULT_SOCIAL_RESULTS_LIMIT, description='Maximum number of items to return.')
 
 
 class ApifyFacebookPostsScraperInput(BaseModel):
     """Input schema for :class:`ApifyFacebookPostsScraperTool`."""
 
     page_url: str = Field(description='Facebook page URL to scrape (public pages only).')
-    max_results: int = Field(default=20, description='Maximum number of posts to return.')
+    max_results: int = Field(default=_DEFAULT_SOCIAL_RESULTS_LIMIT, description='Maximum number of posts to return.')
     only_posts_newer_than: str | None = Field(
         default=None,
         description=(
@@ -639,7 +651,7 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
         'Scrape Instagram profiles, hashtags, posts, or comments and return the results as JSON.'
         ' Required: search_type (one of "user", "hashtag", "post", "comments"),'
         ' search_query (str - username, hashtag, or post URL).'
-        ' Optional: max_results (int, default 20),'
+        f' Optional: max_results (int, default {_DEFAULT_SOCIAL_RESULTS_LIMIT}),'
         ' only_posts_newer_than (str - date filter, e.g. "2025-01-01" or "1 week").'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
         ' Use only the data returned; do not hallucinate missing fields.'
@@ -648,9 +660,9 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
 
     def _run(
         self,
-        search_type: Literal['user', 'hashtag', 'post', 'comments'],
+        search_type: InstagramSearchType,
         search_query: str,
-        max_results: int = 20,
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         only_posts_newer_than: str | None = None,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
@@ -700,7 +712,7 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override
     description: str = (
         'Extract posts from a LinkedIn profile and return them as JSON.'
         ' Required: profile_url (str - LinkedIn profile URL or username, e.g. "satyanadella").'
-        ' Optional: max_results (int, default 20).'
+        f' Optional: max_results (int, default {_DEFAULT_SOCIAL_RESULTS_LIMIT}).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
         ' Use only the data returned; do not hallucinate missing fields.'
     )
@@ -709,7 +721,7 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override
     def _run(
         self,
         profile_url: str,
-        max_results: int = 20,
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
@@ -718,7 +730,7 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override
                 max_results=self._clamp_items(max_results),
                 timeout_secs=self.max_timeout_secs,
             )
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
@@ -756,7 +768,7 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[overrid
     description: str = (
         'Search for LinkedIn profiles by keyword (name, title, company) and return matching profiles as JSON.'
         ' Required: query (str - search keywords).'
-        ' Optional: max_results (int, default 10).'
+        f' Optional: max_results (int, default {_DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS}).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
         ' Use only the data returned; do not hallucinate missing fields.'
     )
@@ -765,7 +777,7 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[overrid
     def _run(
         self,
         query: str,
-        max_results: int = 10,
+        max_results: int = _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
@@ -774,7 +786,7 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[overrid
                 max_results=self._clamp_items(max_results),
                 timeout_secs=self.max_timeout_secs,
             )
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
@@ -830,7 +842,7 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[overrid
                 include_email=include_email,
                 timeout_secs=self.max_timeout_secs,
             )
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
 
@@ -870,7 +882,7 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
         'Scrape tweets from Twitter/X by search term, user handle, or tweet URL and return them as JSON.'
         ' Required: search_query (str - search term, handle, or tweet URL).'
         ' Optional: search_mode (one of "search", "user", "replies"; default "search"),'
-        ' max_results (int, default 20),'
+        f' max_results (int, default {_DEFAULT_SOCIAL_RESULTS_LIMIT}),'
         ' start (str - ISO date, only return tweets newer than this date),'
         ' end (str - ISO date, only return tweets older than this date),'
         ' sort (one of "Latest", "Top" - sort order for results).'
@@ -882,11 +894,11 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
     def _run(  # noqa: PLR0913
         self,
         search_query: str,
-        search_mode: Literal['search', 'user', 'replies'] = 'search',
-        max_results: int = 20,
+        search_mode: TwitterSearchMode = 'search',
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         start: str | None = None,
         end: str | None = None,
-        sort: Literal['Latest', 'Top'] | None = None,
+        sort: TwitterSort | None = None,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
@@ -939,7 +951,7 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
         'Scrape TikTok by search keyword, profile, hashtag, or post URL and return the results as JSON.'
         ' Required: search_query (str - keyword, username, hashtag, or TikTok post URL).'
         ' Optional: search_type (one of "search", "user", "hashtag", "post"; default "search"),'
-        ' max_results (int, default 20).'
+        f' max_results (int, default {_DEFAULT_SOCIAL_RESULTS_LIMIT}).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
         ' Use only the data returned; do not hallucinate missing fields.'
     )
@@ -948,8 +960,8 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
     def _run(
         self,
         search_query: str,
-        search_type: Literal['search', 'user', 'hashtag', 'post'] = 'search',
-        max_results: int = 20,
+        search_type: TikTokSearchType = 'search',
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
@@ -999,7 +1011,7 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override
     description: str = (
         'Scrape posts from a public Facebook page and return them as JSON.'
         ' Required: page_url (str - Facebook page URL; personal profiles are not supported).'
-        ' Optional: max_results (int, default 20),'
+        f' Optional: max_results (int, default {_DEFAULT_SOCIAL_RESULTS_LIMIT}),'
         ' only_posts_newer_than (str - date filter, e.g. "2025-01-01" or "1 week"),'
         ' only_posts_older_than (str - date filter, e.g. "2025-01-01" or "1 week").'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at) and items.'
@@ -1010,7 +1022,7 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override
     def _run(
         self,
         page_url: str,
-        max_results: int = 20,
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         only_posts_newer_than: str | None = None,
         only_posts_older_than: str | None = None,
         _run_manager: CallbackManagerForToolRun | None = None,
@@ -1023,6 +1035,6 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override
                 only_posts_older_than=only_posts_older_than,
                 timeout_secs=self.max_timeout_secs,
             )
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:
             raise ToolException(str(exc)) from exc
         return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
