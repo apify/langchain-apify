@@ -7,10 +7,18 @@ import pytest
 from langchain_core.tools import ToolException
 from pydantic import SecretStr
 
-from langchain_apify import APIFY_SEARCH_TOOLS, ApifyGoogleSearchTool, ApifyWebCrawlerTool
+from langchain_apify import (
+    APIFY_SEARCH_TOOLS,
+    ApifyEcommerceScraperTool,
+    ApifyGoogleMapsTool,
+    ApifyGoogleSearchTool,
+    ApifyRAGWebBrowserTool,
+    ApifyWebCrawlerTool,
+    ApifyYouTubeScraperTool,
+)
 from langchain_apify._client import ApifyToolsClient
 from langchain_apify.tools import _ApifyGenericTool
-from tests.unit_tests.conftest import make_tool
+from tests.unit_tests.conftest import SUCCEEDED_RUN, make_tool
 
 # ---------------------------------------------------------------------------
 # ApifyGoogleSearchTool
@@ -73,7 +81,8 @@ def test_google_search_tool_empty_results(mock_tools_client: MagicMock) -> None:
 
     result = tool._run(query='nothing')
 
-    assert json.loads(result) == {'run': None, 'items': []}
+    parsed = json.loads(result)
+    assert parsed == {'run': None, 'items': []}
 
 
 def test_google_search_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
@@ -194,7 +203,8 @@ def test_web_crawler_tool_empty_results(mock_tools_client: MagicMock) -> None:
 
     result = tool._run(url='https://example.com')
 
-    assert json.loads(result) == {'run': None, 'items': []}
+    parsed = json.loads(result)
+    assert parsed == {'run': None, 'items': []}
 
 
 def test_web_crawler_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
@@ -213,30 +223,299 @@ def test_web_crawler_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 # ---------------------------------------------------------------------------
-# Metadata & inheritance
+# Search & Crawling tools — happy paths
 # ---------------------------------------------------------------------------
 
 
-def test_actor_tools_inherit_from_generic_base() -> None:
-    for tool_cls in (ApifyGoogleSearchTool, ApifyWebCrawlerTool):
+def test_rag_web_browser_tool_returns_json(mock_tools_client: MagicMock) -> None:
+    items = [
+        {
+            'crawledUrl': 'https://example.com/1',
+            'metadata': {'url': 'https://example.com/1', 'title': 'Page 1'},
+            'markdown': '# Page 1',
+            'text': 'Page 1 plain',
+        },
+        {
+            'crawledUrl': 'https://example.com/2',
+            'metadata': {'title': 'Page 2'},
+            'text': 'Page 2 plain',
+        },
+    ]
+    mock_tools_client.rag_web_search.return_value = (SUCCEEDED_RUN, items)
+    tool = make_tool(ApifyRAGWebBrowserTool, mock_tools_client)
+
+    parsed = json.loads(tool._run(query='what is langchain', max_results=3))
+
+    assert parsed['items'] == [
+        {'url': 'https://example.com/1', 'title': 'Page 1', 'content': '# Page 1'},
+        {'url': 'https://example.com/2', 'title': 'Page 2', 'content': 'Page 2 plain'},
+    ]
+    assert parsed['run']['status'] == 'SUCCEEDED'
+    mock_tools_client.rag_web_search.assert_called_once_with(
+        'what is langchain',
+        max_results=3,
+        timeout_secs=tool.max_timeout_secs,
+    )
+
+
+def test_google_maps_tool_returns_json(mock_tools_client: MagicMock) -> None:
+    items = [{'name': 'Cafe A', 'address': 'Berlin'}]
+    mock_tools_client.google_maps_search.return_value = (SUCCEEDED_RUN, items)
+    tool = make_tool(ApifyGoogleMapsTool, mock_tools_client)
+
+    parsed = json.loads(tool._run(query='cafe in Berlin', max_results=2, language='en'))
+
+    assert parsed['run']['dataset_id'] == SUCCEEDED_RUN['defaultDatasetId']
+    assert parsed['items'] == items
+    mock_tools_client.google_maps_search.assert_called_once_with(
+        'cafe in Berlin',
+        max_results=2,
+        language='en',
+        timeout_secs=tool.max_timeout_secs,
+    )
+
+
+def test_youtube_tool_returns_json(mock_tools_client: MagicMock) -> None:
+    items = [{'title': 'Vid 1'}]
+    mock_tools_client.youtube_scrape.return_value = (SUCCEEDED_RUN, items)
+    tool = make_tool(ApifyYouTubeScraperTool, mock_tools_client)
+
+    parsed = json.loads(tool._run(search_query='langchain', search_type='search', max_results=4))
+
+    assert parsed['items'] == items
+    mock_tools_client.youtube_scrape.assert_called_once_with(
+        search_query='langchain',
+        search_type='search',
+        max_results=4,
+        timeout_secs=tool.max_timeout_secs,
+    )
+
+
+def test_youtube_tool_invalid_search_type_raises_tool_exception(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.youtube_scrape.side_effect = ValueError('Invalid search_type playlist')
+    tool = make_tool(ApifyYouTubeScraperTool, mock_tools_client)
+
+    with pytest.raises(ToolException, match='Invalid search_type'):
+        tool._run(search_query='x', search_type='search')
+
+
+def test_ecommerce_tool_returns_json(mock_tools_client: MagicMock) -> None:
+    items = [{'sku': 'A1', 'price': 9.99}]
+    mock_tools_client.ecommerce_scrape.return_value = (SUCCEEDED_RUN, items)
+    tool = make_tool(ApifyEcommerceScraperTool, mock_tools_client)
+
+    parsed = json.loads(tool._run(url='https://shop.example.com/p/123', max_results=5))
+
+    assert parsed['items'] == items
+    mock_tools_client.ecommerce_scrape.assert_called_once_with(
+        'https://shop.example.com/p/123',
+        url_type='product',
+        max_results=5,
+        timeout_secs=tool.max_timeout_secs,
+    )
+
+
+def test_ecommerce_tool_category_mode_passes_url_type(mock_tools_client: MagicMock) -> None:
+    items = [{'sku': 'B2', 'price': 19.99}]
+    mock_tools_client.ecommerce_scrape.return_value = (SUCCEEDED_RUN, items)
+    tool = make_tool(ApifyEcommerceScraperTool, mock_tools_client)
+
+    parsed = json.loads(tool._run(url='https://shop.example.com/cat/42', url_type='category', max_results=8))
+
+    assert parsed['items'] == items
+    mock_tools_client.ecommerce_scrape.assert_called_once_with(
+        'https://shop.example.com/cat/42',
+        url_type='category',
+        max_results=8,
+        timeout_secs=tool.max_timeout_secs,
+    )
+
+
+def test_ecommerce_tool_invalid_url_type_raises_tool_exception(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.ecommerce_scrape.side_effect = ValueError('Invalid url_type listing')
+    tool = make_tool(ApifyEcommerceScraperTool, mock_tools_client)
+
+    with pytest.raises(ToolException, match='Invalid url_type'):
+        tool._run(url='https://shop.example.com', url_type='product')
+
+
+# ---------------------------------------------------------------------------
+# US-4 Search & Crawling tools — parametrized error / empty / handle_tool_error
+# ---------------------------------------------------------------------------
+
+# Each entry: (tool_class, helper_attribute_name, kwargs_for_run)
+_TOOL_INVOCATIONS: list[tuple[type[_ApifyGenericTool], str, dict]] = [
+    (ApifyGoogleSearchTool, 'google_search', {'query': 'q'}),
+    (ApifyWebCrawlerTool, 'crawl_website', {'url': 'https://example.com'}),
+    (ApifyRAGWebBrowserTool, 'rag_web_search', {'query': 'q'}),
+    (ApifyGoogleMapsTool, 'google_maps_search', {'query': 'q'}),
+    (ApifyYouTubeScraperTool, 'youtube_scrape', {'search_query': 'q'}),
+    (ApifyEcommerceScraperTool, 'ecommerce_scrape', {'url': 'https://example.com'}),
+]
+
+# Tools that return the {run, items} envelope on success.
+_ENVELOPE_TOOL_INVOCATIONS: list[tuple[type[_ApifyGenericTool], str, dict]] = [
+    (ApifyGoogleMapsTool, 'google_maps_search', {'query': 'q'}),
+    (ApifyYouTubeScraperTool, 'youtube_scrape', {'search_query': 'q'}),
+    (ApifyEcommerceScraperTool, 'ecommerce_scrape', {'url': 'https://example.com'}),
+]
+
+
+@pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _TOOL_INVOCATIONS)
+def test_search_tool_runtime_error_raises_tool_exception(
+    mock_tools_client: MagicMock,
+    tool_cls: type,
+    helper_attr: str,
+    run_kwargs: dict,
+) -> None:
+    getattr(mock_tools_client, helper_attr).side_effect = RuntimeError('Actor run run-bad ended with status FAILED.')
+    tool = make_tool(tool_cls, mock_tools_client)
+
+    with pytest.raises(ToolException, match='FAILED'):
+        tool._run(**run_kwargs)
+
+
+@pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _ENVELOPE_TOOL_INVOCATIONS)
+def test_search_tool_empty_dataset_returns_empty_items(
+    mock_tools_client: MagicMock,
+    tool_cls: type,
+    helper_attr: str,
+    run_kwargs: dict,
+) -> None:
+    getattr(mock_tools_client, helper_attr).return_value = (SUCCEEDED_RUN, [])
+    tool = make_tool(tool_cls, mock_tools_client)
+
+    parsed = json.loads(tool._run(**run_kwargs))
+    assert parsed['items'] == []
+    assert parsed['run']['status'] == 'SUCCEEDED'
+
+
+def test_rag_web_browser_tool_empty_dataset_returns_empty_array(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.rag_web_search.return_value = (SUCCEEDED_RUN, [])
+    tool = make_tool(ApifyRAGWebBrowserTool, mock_tools_client)
+
+    parsed = json.loads(tool._run(query='q'))
+    assert parsed['items'] == []
+    assert parsed['run']['status'] == 'SUCCEEDED'
+
+
+@pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _TOOL_INVOCATIONS)
+def test_search_tool_handle_tool_error_swallows(
+    mock_tools_client: MagicMock,
+    tool_cls: type,
+    helper_attr: str,
+    run_kwargs: dict,
+) -> None:
+    """``handle_tool_error=True`` (inherited) means ``invoke`` returns the error string."""
+    getattr(mock_tools_client, helper_attr).side_effect = RuntimeError('Actor run run-bad ended with status FAILED.')
+    tool = make_tool(tool_cls, mock_tools_client)
+
+    result = tool.invoke(run_kwargs)
+    assert 'FAILED' in result
+
+
+@pytest.mark.parametrize(('tool_cls', 'helper_attr', 'run_kwargs'), _TOOL_INVOCATIONS)
+def test_search_tool_missing_token(
+    monkeypatch: pytest.MonkeyPatch,
+    tool_cls: type,
+    helper_attr: str,  # noqa: ARG001
+    run_kwargs: dict,  # noqa: ARG001
+) -> None:
+    monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+    monkeypatch.delenv('APIFY_TOKEN', raising=False)
+    with pytest.raises(ValueError, match='APIFY_TOKEN'):
+        tool_cls()
+
+
+def test_search_tools_inherit_from_generic_base() -> None:
+    for tool_cls, _, _ in _TOOL_INVOCATIONS:
         assert issubclass(tool_cls, _ApifyGenericTool), f'{tool_cls.__name__} must extend _ApifyGenericTool'
 
 
-def test_actor_tools_have_correct_metadata() -> None:
+def test_search_tools_have_correct_metadata() -> None:
+    cases: list[tuple[type, str]] = [
+        (ApifyGoogleSearchTool, 'apify_google_search'),
+        (ApifyWebCrawlerTool, 'apify_web_crawler'),
+        (ApifyRAGWebBrowserTool, 'apify_rag_web_browser'),
+        (ApifyGoogleMapsTool, 'apify_google_maps'),
+        (ApifyYouTubeScraperTool, 'apify_youtube_scraper'),
+        (ApifyEcommerceScraperTool, 'apify_ecommerce_scraper'),
+    ]
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
-        tools = [
-            ApifyGoogleSearchTool(apify_token=SecretStr('dummy')),
-            ApifyWebCrawlerTool(apify_token=SecretStr('dummy')),
-        ]
-
-    expected_names = ['apify_google_search', 'apify_web_crawler']
-    for tool, expected_name in zip(tools, expected_names):
-        assert tool.name == expected_name
-        assert tool.description
-        assert tool.args_schema is not None
-        assert tool.handle_tool_error is True
+        for tool_cls, expected_name in cases:
+            tool = tool_cls(apify_token=SecretStr('dummy'))
+            assert tool.name == expected_name
+            assert tool.description
+            assert tool.args_schema is not None
+            assert tool.handle_tool_error is True
 
 
 def test_apify_search_tools_list() -> None:
-    assert set(APIFY_SEARCH_TOOLS) == {ApifyGoogleSearchTool, ApifyWebCrawlerTool}
-    assert len(APIFY_SEARCH_TOOLS) == 2
+    assert set(APIFY_SEARCH_TOOLS) == {
+        ApifyGoogleSearchTool,
+        ApifyWebCrawlerTool,
+        ApifyRAGWebBrowserTool,
+        ApifyGoogleMapsTool,
+        ApifyYouTubeScraperTool,
+        ApifyEcommerceScraperTool,
+    }
+    assert len(APIFY_SEARCH_TOOLS) == 6
+
+
+# ---------------------------------------------------------------------------
+# Regression: dataset items containing datetime values must not break JSON
+# serialisation. The Apify client's clean=True deserialiser returns datetime
+# objects for certain timestamp fields (notably Google Maps reviews and
+# YouTube publishedAt), which previously raised
+# ``TypeError: Object of type datetime is not JSON serializable`` inside
+# ``_serialize_tool_response``.
+# ---------------------------------------------------------------------------
+
+
+# Tools that hand the client's items list straight to _serialize_tool_response,
+# i.e. those most exposed to raw datetime values from the Actor's dataset.
+_RETURN_LIST = 'list'
+_RETURN_ENVELOPE = 'envelope'
+
+# Each entry: (tool_cls, client_helper_attr, run_kwargs, client_return_shape).
+# Listed tools hand the client's items straight to _serialize_tool_response,
+# i.e. they are most exposed to raw datetime values from the Actor's dataset.
+_PASSTHROUGH_TOOL_INVOCATIONS: list[tuple[type[_ApifyGenericTool], str, dict, str]] = [
+    (ApifyGoogleSearchTool, 'google_search', {'query': 'q'}, _RETURN_LIST),
+    (ApifyGoogleMapsTool, 'google_maps_search', {'query': 'q'}, _RETURN_ENVELOPE),
+    (ApifyYouTubeScraperTool, 'youtube_scrape', {'search_query': 'q'}, _RETURN_ENVELOPE),
+    (ApifyEcommerceScraperTool, 'ecommerce_scrape', {'url': 'https://example.com'}, _RETURN_ENVELOPE),
+]
+
+
+@pytest.mark.parametrize(
+    ('tool_cls', 'helper_attr', 'run_kwargs', 'client_return_shape'),
+    _PASSTHROUGH_TOOL_INVOCATIONS,
+)
+def test_search_tool_serialises_datetime_in_items(
+    mock_tools_client: MagicMock,
+    tool_cls: type,
+    helper_attr: str,
+    run_kwargs: dict,
+    client_return_shape: str,
+) -> None:
+    from datetime import datetime, timezone
+
+    timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    item_with_datetime = {'id': 'item-1', 'published_at': timestamp, 'text': 'hi'}
+    items = [item_with_datetime]
+
+    if client_return_shape == _RETURN_ENVELOPE:
+        getattr(mock_tools_client, helper_attr).return_value = (SUCCEEDED_RUN, items)
+    else:
+        getattr(mock_tools_client, helper_attr).return_value = items
+    tool = make_tool(tool_cls, mock_tools_client)
+
+    result = tool._run(**run_kwargs)
+    parsed = json.loads(result)
+
+    assert isinstance(parsed['items'], list)
+    assert len(parsed['items']) == 1
+    assert parsed['items'][0]['id'] == 'item-1'
+    assert isinstance(parsed['items'][0]['published_at'], str)
+    assert '2026-01-02' in parsed['items'][0]['published_at']

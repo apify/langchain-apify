@@ -83,15 +83,36 @@ def _extract_content(item: dict) -> str:
     return item.get('markdown') or item.get('text') or ''
 
 
+def _item_metadata(item: dict) -> dict:
+    """Return an item's ``metadata`` block, or ``{}`` if missing/non-dict.
+
+    Some Actors surface a ``null`` (or otherwise non-dict) ``metadata`` value,
+    so a plain ``item.get('metadata', {})`` would raise ``AttributeError`` on
+    the chained ``.get(...)``.
+    """
+    meta = item.get('metadata')
+    return meta if isinstance(meta, dict) else {}
+
+
 def _safe_title(item: dict) -> str:
     """Return an Actor item's title from its nested ``metadata`` object.
 
     Both ``apify/website-content-crawler`` and ``apify/rag-web-browser`` nest
-    the page title under ``metadata.title``. The ``isinstance`` guard tolerates
-    Actor responses where ``metadata`` is missing or not a dict.
+    the page title under ``metadata.title``. The guard tolerates Actor
+    responses where ``metadata`` is missing or not a dict.
     """
-    metadata = item.get('metadata')
-    return metadata.get('title', '') if isinstance(metadata, dict) else ''
+    return _item_metadata(item).get('title', '')
+
+
+def _extract_source(item: dict) -> str:
+    """Return an Actor item's source URL via one canonical fallback order.
+
+    ``apify/rag-web-browser`` items expose the page URL in several places. To
+    keep every consumer (RAG tool, retriever, loaders) in agreement, the order
+    is fixed here: nested ``metadata.url`` first, then ``crawledUrl``, then the
+    top-level ``url``.
+    """
+    return _item_metadata(item).get('url') or item.get('crawledUrl') or item.get('url', '')
 
 
 def _prune_actor_input_schema(

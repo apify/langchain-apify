@@ -58,6 +58,15 @@ def test_init_custom_params() -> None:
         assert retriever.timeout_secs == 60
 
 
+def test_deprecated_apify_api_token_alias_warns() -> None:
+    # ``apify_api_token`` is a runtime alias handled by a model validator, not a
+    # declared field, hence the call-arg ignore.
+    with patch.object(ApifyToolsClient, '__init__', return_value=None):
+        with pytest.warns(DeprecationWarning, match='apify_api_token'):
+            retriever = ApifySearchRetriever(apify_api_token=SecretStr('legacy-token'))  # type: ignore[call-arg]
+        assert retriever.apify_token == SecretStr('legacy-token')
+
+
 # ---------------------------------------------------------------------------
 # Sync retrieval
 # ---------------------------------------------------------------------------
@@ -65,7 +74,7 @@ def test_init_custom_params() -> None:
 
 def test_sync_returns_documents() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_search.return_value = RAG_ITEMS
+    mock_client.rag_web_search.return_value = ({}, RAG_ITEMS)
     retriever = _make_retriever(mock_client, max_results=5)
 
     docs = retriever._get_relevant_documents('test query')
@@ -81,7 +90,7 @@ def test_sync_returns_documents() -> None:
 
 def test_sync_calls_helper_with_correct_args() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_search.return_value = []
+    mock_client.rag_web_search.return_value = ({}, [])
     retriever = _make_retriever(mock_client, max_results=3, timeout_secs=60)
 
     retriever._get_relevant_documents('my search')
@@ -95,7 +104,7 @@ def test_sync_calls_helper_with_correct_args() -> None:
 
 def test_sync_empty_results() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_search.return_value = []
+    mock_client.rag_web_search.return_value = ({}, [])
     retriever = _make_retriever(mock_client)
 
     docs = retriever._get_relevant_documents('test')
@@ -123,7 +132,7 @@ def test_sync_helper_failure_propagates() -> None:
 async def test_async_returns_documents() -> None:
     """Async path wraps the sync helper via asyncio.to_thread."""
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_search.return_value = RAG_ITEMS
+    mock_client.rag_web_search.return_value = ({}, RAG_ITEMS)
     retriever = _make_retriever(mock_client, max_results=5)
 
     docs = await retriever._aget_relevant_documents('test query')
@@ -137,7 +146,7 @@ async def test_async_returns_documents() -> None:
 @pytest.mark.asyncio
 async def test_async_calls_helper_with_correct_args() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_search.return_value = []
+    mock_client.rag_web_search.return_value = ({}, [])
     retriever = _make_retriever(mock_client, max_results=3, timeout_secs=60)
 
     await retriever._aget_relevant_documents('my search')
@@ -152,7 +161,7 @@ async def test_async_calls_helper_with_correct_args() -> None:
 @pytest.mark.asyncio
 async def test_async_empty_results() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.rag_web_search.return_value = []
+    mock_client.rag_web_search.return_value = ({}, [])
     retriever = _make_retriever(mock_client)
 
     docs = await retriever._aget_relevant_documents('test')

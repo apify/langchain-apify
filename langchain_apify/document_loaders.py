@@ -35,7 +35,8 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
 
     To use, you should have the environment variable ``APIFY_TOKEN`` set
     with your API key, or pass ``apify_token`` as a named parameter to the
-    constructor.
+    constructor. ``APIFY_API_TOKEN`` is still accepted for backwards
+    compatibility.
 
     For details, see https://docs.apify.com/platform/integrations/langchain
 
@@ -102,6 +103,9 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
     def _init_client(self) -> ApifyDatasetLoader:
         """Validate the resolved Apify token and initialise the client.
 
+        The token default factory resolves ``APIFY_TOKEN`` first and
+        ``APIFY_API_TOKEN`` as a legacy fallback.
+
         Returns:
             ApifyDatasetLoader: The validated loader instance.
 
@@ -147,6 +151,7 @@ class ApifyCrawlLoader(BaseLoader):
         url: Seed URL to start crawling from.
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
+        apify_api_token: Deprecated alias for ``apify_token``.
         max_crawl_pages: Maximum number of pages to crawl.
         max_crawl_depth: Maximum link-follow depth from the seed URL.
         crawler_type: Crawler engine (e.g. ``"cheerio"``, ``"playwright:firefox"``).

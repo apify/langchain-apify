@@ -3,7 +3,14 @@ from __future__ import annotations
 from importlib import metadata
 from typing import TYPE_CHECKING
 
-from langchain_apify._actor_tools import ApifyGoogleSearchTool, ApifyWebCrawlerTool
+from langchain_apify._actor_tools import (
+    ApifyEcommerceScraperTool,
+    ApifyGoogleMapsTool,
+    ApifyGoogleSearchTool,
+    ApifyRAGWebBrowserTool,
+    ApifyWebCrawlerTool,
+    ApifyYouTubeScraperTool,
+)
 from langchain_apify.document_loaders import ApifyCrawlLoader, ApifyDatasetLoader
 from langchain_apify.retrievers import ApifySearchRetriever
 from langchain_apify.tools import (
@@ -42,12 +49,18 @@ APIFY_CORE_TOOLS: list[type[BaseTool]] = [
 APIFY_SEARCH_TOOLS: list[type[BaseTool]] = [
     ApifyGoogleSearchTool,
     ApifyWebCrawlerTool,
+    ApifyRAGWebBrowserTool,
+    ApifyGoogleMapsTool,
+    ApifyYouTubeScraperTool,
+    ApifyEcommerceScraperTool,
 ]
 
 __all__ = [
     # Existing components (backward-compatible)
     'ApifyActorsTool',
+    'ApifyCrawlLoader',
     'ApifyDatasetLoader',
+    'ApifySearchRetriever',
     'ApifyWrapper',
     # Core generic tools
     'ApifyGetDatasetItemsTool',
@@ -56,16 +69,16 @@ __all__ = [
     'ApifyRunTaskAndGetDatasetTool',
     'ApifyRunTaskTool',
     'ApifyScrapeUrlTool',
-    # Actor-specific tools
+    # Search & crawling tools
     'ApifyGoogleSearchTool',
     'ApifyWebCrawlerTool',
-    # Retriever
-    'ApifySearchRetriever',
-    # Loaders
-    'ApifyCrawlLoader',
+    'ApifyRAGWebBrowserTool',
+    'ApifyGoogleMapsTool',
+    'ApifyYouTubeScraperTool',
+    'ApifyEcommerceScraperTool',
     # Tool group lists
-    'APIFY_SEARCH_TOOLS',
     'APIFY_CORE_TOOLS',
+    'APIFY_SEARCH_TOOLS',
     # Meta
     '__version__',
 ]

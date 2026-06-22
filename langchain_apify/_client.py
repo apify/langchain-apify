@@ -24,6 +24,12 @@ _TRANSPORT_EXCEPTIONS = (ApifyClientError, httpx.HTTPError)
 _WEBSITE_CONTENT_CRAWLER_ACTOR_ID = 'apify/website-content-crawler'
 _GOOGLE_SEARCH_ACTOR_ID = 'apify/google-search-scraper'
 _RAG_WEB_BROWSER_ACTOR_ID = 'apify/rag-web-browser'
+_GOOGLE_MAPS_ACTOR_ID = 'compass/crawler-google-places'
+_YOUTUBE_SCRAPER_ACTOR_ID = 'streamers/youtube-scraper'
+_ECOMMERCE_SCRAPER_ACTOR_ID = 'apify/e-commerce-scraping-tool'
+
+_YOUTUBE_SEARCH_TYPES = ('search', 'video', 'channel')
+_ECOMMERCE_URL_TYPES = ('product', 'category')
 _DEFAULT_RUN_TIMEOUT_SECS = 300
 _DEFAULT_SCRAPE_TIMEOUT_SECS = 120
 _DEFAULT_DATASET_ITEMS_LIMIT = 100
@@ -223,8 +229,10 @@ class ApifyToolsClient:
         items = self._list_items_or_raise(dataset_id, dataset_items_limit)
         return run, items
 
-    def scrape_url(self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS) -> str:
-        """Scrape a single URL and return its content as markdown.
+    def _scrape_url(
+        self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS
+    ) -> tuple[dict, list[dict], str, str]:
+        """Scrape a single URL and return run/items/content metadata.
 
         Uses ``apify/website-content-crawler`` with ``maxCrawlPages=1``.
 
@@ -233,7 +241,8 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the crawl to finish.
 
         Returns:
-            Markdown (or plain-text fallback) content of the page.
+            Tuple: ``(run, items, content, content_source)`` where
+            ``content_source`` is ``"markdown"`` or ``"text"``.
 
         Raises:
             RuntimeError: If the Actor run fails or no content is extracted.
@@ -242,7 +251,7 @@ class ApifyToolsClient:
             'startUrls': [{'url': url}],
             'maxCrawlPages': 1,
         }
-        _, items = self.run_actor_and_get_items(
+        run, items = self.run_actor_and_get_items(
             _WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
@@ -252,10 +261,20 @@ class ApifyToolsClient:
             msg = _ERROR_SCRAPE_EMPTY.format(url=url)
             raise RuntimeError(msg)
 
+        markdown = items[0].get('markdown') or ''
         content = _extract_content(items[0])
         if not content:
             msg = _ERROR_SCRAPE_EMPTY.format(url=url)
             raise RuntimeError(msg)
+        return run, items, content, 'markdown' if markdown else 'text'
+
+    def scrape_url(self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS) -> str:
+        """Scrape a single URL and return only the page content.
+
+        Thin public wrapper over :meth:`_scrape_url` for callers that don't need
+        the run/items metadata.
+        """
+        _, _, content, _ = self._scrape_url(url=url, timeout_secs=timeout_secs)
         return content
 
     def google_search(
@@ -284,10 +303,12 @@ class ApifyToolsClient:
         Raises:
             RuntimeError: If the Actor run fails.
         """
+        # apify/google-search-scraper has no resultsPerPage input; result count
+        # is driven by maxPagesPerQuery (~10 results/page). Request enough pages
+        # to cover max_results, then slice the flattened results below.
         run_input: dict = {
             'queries': query,
-            'maxPagesPerQuery': 1,
-            'resultsPerPage': max_results,
+            'maxPagesPerQuery': max(1, (max_results + 9) // 10),
         }
         if country_code is not None:
             run_input['countryCode'] = country_code
@@ -316,7 +337,7 @@ class ApifyToolsClient:
         query: str,
         max_results: int = _DEFAULT_RAG_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> list[dict]:
+    ) -> tuple[dict, list[dict]]:
         """Search the web and return crawled page content for RAG.
 
         Uses ``apify/rag-web-browser``.
@@ -327,8 +348,9 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            List of result dicts with ``crawledUrl``, ``title``, and
-            ``text`` keys (among others from the Actor).
+            A ``(run_details, items)`` tuple. Each item dict has at least
+            ``crawledUrl``, ``text``, and a nested ``metadata`` block (among
+            other keys returned by the Actor).
 
         Raises:
             RuntimeError: If the Actor run fails.
@@ -337,13 +359,135 @@ class ApifyToolsClient:
             'query': query,
             'maxResults': max_results,
         }
-        _, items = self.run_actor_and_get_items(
+        return self.run_actor_and_get_items(
             _RAG_WEB_BROWSER_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_results,
         )
-        return items
+
+    def google_maps_search(
+        self,
+        query: str,
+        max_results: int = 10,
+        language: str | None = None,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[dict, list[dict]]:
+        """Search Google Maps places, reviews, and business details.
+
+        Uses ``compass/crawler-google-places``.
+
+        Args:
+            query: Search query string (e.g. ``"coffee shops in Berlin"``).
+            max_results: Maximum number of places to return.
+            language: Optional ISO language code for results (e.g. ``"en"``).
+            timeout_secs: Maximum time to wait for the run to finish.
+
+        Returns:
+            A ``(run_details, items)`` tuple where each item is a place dict.
+
+        Raises:
+            RuntimeError: If the Actor run fails.
+        """
+        run_input: dict = {
+            'searchStringsArray': [query],
+            'maxCrawledPlacesPerSearch': max_results,
+        }
+        if language is not None:
+            run_input['language'] = language
+
+        return self.run_actor_and_get_items(
+            _GOOGLE_MAPS_ACTOR_ID,
+            run_input=run_input,
+            timeout_secs=timeout_secs,
+            dataset_items_limit=max_results,
+        )
+
+    def youtube_scrape(
+        self,
+        search_query: str,
+        search_type: str = 'search',
+        max_results: int = 10,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[dict, list[dict]]:
+        """Scrape YouTube videos, channels, or search results.
+
+        Uses ``streamers/youtube-scraper``.
+
+        Args:
+            search_query: Keyword for ``search`` mode, or a video/channel URL
+                for ``video``/``channel`` modes.
+            search_type: One of ``"search"``, ``"video"``, ``"channel"``.
+            max_results: Maximum number of items to return.
+            timeout_secs: Maximum time to wait for the run to finish.
+
+        Returns:
+            A ``(run_details, items)`` tuple.
+
+        Raises:
+            ValueError: If ``search_type`` is not a supported value.
+            RuntimeError: If the Actor run fails.
+        """
+        if search_type not in _YOUTUBE_SEARCH_TYPES:
+            msg = f'Invalid search_type {search_type!r}; expected one of {_YOUTUBE_SEARCH_TYPES}.'
+            raise ValueError(msg)
+
+        run_input: dict = {'maxResults': max_results}
+        if search_type == 'search':
+            run_input['searchQueries'] = [search_query]
+        else:
+            run_input['startUrls'] = [{'url': search_query}]
+
+        return self.run_actor_and_get_items(
+            _YOUTUBE_SCRAPER_ACTOR_ID,
+            run_input=run_input,
+            timeout_secs=timeout_secs,
+            dataset_items_limit=max_results,
+        )
+
+    def ecommerce_scrape(
+        self,
+        url: str,
+        url_type: str = 'product',
+        max_results: int = 20,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[dict, list[dict]]:
+        """Extract product data from an e-commerce URL.
+
+        Uses ``apify/e-commerce-scraping-tool``. ``url_type`` selects which
+        Actor input field the URL is sent as: ``"product"`` -> ``detailsUrls``
+        (a single product-detail page), ``"category"`` -> ``listingUrls``
+        (a category / listing page that the Actor will expand into product
+        results).
+
+        Args:
+            url: Product-detail or category / listing URL to scrape.
+            url_type: One of ``"product"`` or ``"category"``.
+            max_results: Maximum number of products to return.
+            timeout_secs: Maximum time to wait for the run to finish.
+
+        Returns:
+            A ``(run_details, items)`` tuple.
+
+        Raises:
+            ValueError: If ``url_type`` is not a supported value.
+            RuntimeError: If the Actor run fails.
+        """
+        if url_type not in _ECOMMERCE_URL_TYPES:
+            msg = f'Invalid url_type {url_type!r}; expected one of {_ECOMMERCE_URL_TYPES}.'
+            raise ValueError(msg)
+
+        input_key = 'detailsUrls' if url_type == 'product' else 'listingUrls'
+        run_input: dict = {
+            input_key: [{'url': url}],
+            'maxProductResults': max_results,
+        }
+        return self.run_actor_and_get_items(
+            _ECOMMERCE_SCRAPER_ACTOR_ID,
+            run_input=run_input,
+            timeout_secs=timeout_secs,
+            dataset_items_limit=max_results,
+        )
 
     def crawl_website(
         self,

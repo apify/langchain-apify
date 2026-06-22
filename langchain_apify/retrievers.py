@@ -13,6 +13,7 @@ from langchain_apify._client import _DEFAULT_RAG_MAX_RESULTS, _DEFAULT_RUN_TIMEO
 from langchain_apify._utils import (
     _apify_token_secret_factory,
     _extract_content,
+    _extract_source,
     _resolve_deprecated_token_values,
     _safe_title,
 )
@@ -85,7 +86,7 @@ class ApifySearchRetriever(BaseRetriever):
         *,
         run_manager: CallbackManagerForRetrieverRun | None = None,  # noqa: ARG002
     ) -> list[Document]:
-        items = self._client.rag_web_search(
+        _, items = self._client.rag_web_search(
             query,
             max_results=self.max_results,
             timeout_secs=self.timeout_secs,
@@ -99,7 +100,7 @@ class ApifySearchRetriever(BaseRetriever):
         run_manager: AsyncCallbackManagerForRetrieverRun | None = None,  # noqa: ARG002
     ) -> list[Document]:
         # ApifyToolsClient is sync-only.
-        items = await asyncio.to_thread(
+        _, items = await asyncio.to_thread(
             self._client.rag_web_search,
             query,
             max_results=self.max_results,
@@ -113,12 +114,8 @@ class ApifySearchRetriever(BaseRetriever):
         docs: list[Document] = []
         for item in items:
             page_content = _extract_content(item)
-            raw_meta = item.get('metadata')
-            item_metadata: dict = raw_meta if isinstance(raw_meta, dict) else {}
             metadata: dict[str, Any] = {
-                # apify/rag-web-browser nests url/title under "metadata"; older
-                # Actors and tests use top-level keys. Both are supported.
-                'source': item.get('crawledUrl') or item.get('url') or item_metadata.get('url', ''),
+                'source': _extract_source(item),
                 'title': _safe_title(item),
             }
             docs.append(Document(page_content=page_content, metadata=metadata))

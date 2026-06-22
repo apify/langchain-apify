@@ -8,28 +8,36 @@ LLM-friendly interface. They inherit from
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from langchain_core.tools import ToolException
-from pydantic import BaseModel  # noqa: TCH002
+from pydantic import BaseModel, Field
 
 from langchain_apify._client import (
     _DEFAULT_CRAWLER_TYPE,
     _DEFAULT_GOOGLE_MAX_RESULTS,
     _DEFAULT_MAX_CRAWL_DEPTH,
     _DEFAULT_MAX_CRAWL_PAGES,
+    _DEFAULT_RAG_MAX_RESULTS,
     _DEFAULT_RUN_TIMEOUT_SECS,
 )
 from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: shared Literal alias
-from langchain_apify._utils import _extract_content, _safe_title
+from langchain_apify._utils import _extract_content, _extract_source, _safe_title
 from langchain_apify.tools import (
     ApifyGoogleSearchInput,
     ApifyWebCrawlerInput,
     _ApifyGenericTool,
+    _run_meta,
 )
 
 if TYPE_CHECKING:
     from langchain_core.callbacks import CallbackManagerForToolRun
+
+# Per-tool result limits not shared via ``_client`` (Maps/YouTube/Ecommerce).
+_DEFAULT_GOOGLE_MAPS_MAX_RESULTS = 10
+_DEFAULT_YOUTUBE_MAX_RESULTS = 10
+_DEFAULT_ECOMMERCE_MAX_RESULTS = 20
+
 
 # ---------------------------------------------------------------------------
 # Search & Crawling tools
@@ -173,3 +181,298 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
             if isinstance(item, dict)
         ]
         return json.dumps({'run': None, 'items': pages}, default=str)
+
+
+# ---------------------------------------------------------------------------
+# Input schemas (US-4 Search & Crawling Actor tools)
+# ---------------------------------------------------------------------------
+
+
+class ApifyRAGWebBrowserInput(BaseModel):
+    """Input schema for :class:`ApifyRAGWebBrowserTool`."""
+
+    query: str = Field(description='Search query string.')
+    max_results: int = Field(default=_DEFAULT_RAG_MAX_RESULTS, description='Maximum number of results to return.')
+
+
+class ApifyGoogleMapsInput(BaseModel):
+    """Input schema for :class:`ApifyGoogleMapsTool`."""
+
+    query: str = Field(description='Search query (e.g. "coffee shops in Berlin").')
+    max_results: int = Field(
+        default=_DEFAULT_GOOGLE_MAPS_MAX_RESULTS, description='Maximum number of places to return.'
+    )
+    language: str | None = Field(
+        default=None,
+        description='Optional ISO language code for results (e.g. "en", "de").',
+    )
+
+
+class ApifyYouTubeScraperInput(BaseModel):
+    """Input schema for :class:`ApifyYouTubeScraperTool`."""
+
+    search_query: str = Field(
+        description=('Keyword for "search" mode, or a video/channel URL for "video"/"channel" modes.'),
+    )
+    search_type: Literal['search', 'video', 'channel'] = Field(
+        default='search',
+        description='Scrape mode: search keyword, single video URL, or channel URL.',
+    )
+    max_results: int = Field(default=_DEFAULT_YOUTUBE_MAX_RESULTS, description='Maximum number of items to return.')
+
+
+class ApifyEcommerceScraperInput(BaseModel):
+    """Input schema for :class:`ApifyEcommerceScraperTool`."""
+
+    url: str = Field(description='Product-detail URL or category / listing page URL to scrape.')
+    url_type: Literal['product', 'category'] = Field(
+        default='product',
+        description=(
+            'Type of page the URL points to: "product" for a product-detail page, '
+            '"category" for a category / listing page.'
+        ),
+    )
+    max_results: int = Field(
+        default=_DEFAULT_ECOMMERCE_MAX_RESULTS, description='Maximum number of products to return.'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tools (US-4 Search & Crawling Actor tools)
+# ---------------------------------------------------------------------------
+
+
+class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
+    """Search the web and return content from top results.
+
+    Wraps the ``apify/rag-web-browser`` Actor.  Unlike
+    :class:`ApifySearchRetriever` (which returns LangChain ``Document``
+    objects for RAG pipelines), this tool returns a JSON envelope
+    suitable for agent tool-calling.
+
+    Args:
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON object ``{"run": {...}, "items": [{"url", "title", "content"}]}``.
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
+
+            from langchain_apify import ApifyRAGWebBrowserTool
+
+            tool = ApifyRAGWebBrowserTool()
+            result = tool.invoke({"query": "what is LangChain?", "max_results": 3})
+    """
+
+    name: str = 'apify_rag_web_browser'
+    description: str = (
+        'Search the web and return a JSON envelope with crawled results.'
+        ' Each item has keys: url, title, content.'
+        ' Required: query (str) - the search query.'
+        f' Optional: max_results (int, default {_DEFAULT_RAG_MAX_RESULTS}).'
+        ' Returns keys: run, items.'
+    )
+    args_schema: type[BaseModel] = ApifyRAGWebBrowserInput
+
+    def _run(
+        self,
+        query: str,
+        max_results: int = _DEFAULT_RAG_MAX_RESULTS,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.rag_web_search(
+                query,
+                max_results=self._clamp_items(max_results),
+                timeout_secs=self.max_timeout_secs,
+            )
+        except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc
+        results = [
+            {
+                'url': _extract_source(item),
+                'title': _safe_title(item),
+                'content': _extract_content(item),
+            }
+            for item in items
+            if isinstance(item, dict)
+        ]
+        return json.dumps({'run': _run_meta(run), 'items': results}, default=str)
+
+
+class ApifyGoogleMapsTool(_ApifyGenericTool):  # type: ignore[override]
+    """Search Google Maps for places, reviews, and business details.
+
+    Wraps the ``compass/crawler-google-places`` Actor.
+
+    Args:
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON object ``{"run": {...}, "items": [...]}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``
+        and ``items`` are place dicts.
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
+
+            from langchain_apify import ApifyGoogleMapsTool
+
+            tool = ApifyGoogleMapsTool()
+            result = tool.invoke({"query": "coffee shops in Berlin", "max_results": 5})
+    """
+
+    name: str = 'apify_google_maps'
+    description: str = (
+        'Search Google Maps places, reviews, and business details and return a JSON envelope.'
+        ' Required: query (str) - the search query.'
+        f' Optional: max_results (int, default {_DEFAULT_GOOGLE_MAPS_MAX_RESULTS}),'
+        ' language (str|null - ISO code, e.g. "en").'
+        ' Returns keys: run, items.'
+    )
+    args_schema: type[BaseModel] = ApifyGoogleMapsInput
+
+    def _run(
+        self,
+        query: str,
+        max_results: int = _DEFAULT_GOOGLE_MAPS_MAX_RESULTS,
+        language: str | None = None,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.google_maps_search(
+                query,
+                max_results=self._clamp_items(max_results),
+                language=language,
+                timeout_secs=self.max_timeout_secs,
+            )
+        except RuntimeError as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+
+
+class ApifyYouTubeScraperTool(_ApifyGenericTool):  # type: ignore[override]
+    """Scrape YouTube videos, channels, or search results.
+
+    Wraps the ``streamers/youtube-scraper`` Actor.
+
+    Args:
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON object ``{"run": {...}, "items": [...]}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``
+        and ``items`` are video / channel dicts.
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
+
+            from langchain_apify import ApifyYouTubeScraperTool
+
+            tool = ApifyYouTubeScraperTool()
+            result = tool.invoke({
+                "search_query": "langchain tutorial",
+                "search_type": "search",
+                "max_results": 5,
+            })
+    """
+
+    name: str = 'apify_youtube_scraper'
+    description: str = (
+        'Scrape YouTube by keyword, video URL, or channel URL and return a JSON envelope.'
+        ' Required: search_query (str - keyword for "search" mode, or a video/channel URL).'
+        ' Optional: search_type (one of "search", "video", "channel"; default "search"),'
+        f' max_results (int, default {_DEFAULT_YOUTUBE_MAX_RESULTS}).'
+        ' Returns keys: run, items.'
+    )
+    args_schema: type[BaseModel] = ApifyYouTubeScraperInput
+
+    def _run(
+        self,
+        search_query: str,
+        search_type: Literal['search', 'video', 'channel'] = 'search',
+        max_results: int = _DEFAULT_YOUTUBE_MAX_RESULTS,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.youtube_scrape(
+                search_query=search_query,
+                search_type=search_type,
+                max_results=self._clamp_items(max_results),
+                timeout_secs=self.max_timeout_secs,
+            )
+        except (RuntimeError, ValueError) as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)
+
+
+class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
+    """Extract product or listing data from an e-commerce URL.
+
+    Wraps the ``apify/e-commerce-scraping-tool`` Actor.
+
+    Args:
+        apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
+            environment variable when *None*.
+
+    Returns:
+        JSON object ``{"run": {...}, "items": [...]}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``
+        and ``items`` are product / listing dicts.
+
+    Example:
+        .. code-block:: python
+
+            import os
+            os.environ["APIFY_TOKEN"] = "your-apify-token"
+
+            from langchain_apify import ApifyEcommerceScraperTool
+
+            tool = ApifyEcommerceScraperTool()
+            result = tool.invoke({
+                "url": "https://shop.example.com/category/123",
+                "url_type": "category",
+                "max_results": 20,
+            })
+    """
+
+    name: str = 'apify_ecommerce_scraper'
+    description: str = (
+        'Extract product data from an e-commerce URL and return a JSON envelope.'
+        ' Required: url (str) - product-detail or category / listing URL.'
+        ' Optional: url_type (one of "product", "category"; default "product"),'
+        f' max_results (int, default {_DEFAULT_ECOMMERCE_MAX_RESULTS}).'
+        ' Returns keys: run, items.'
+    )
+    args_schema: type[BaseModel] = ApifyEcommerceScraperInput
+
+    def _run(
+        self,
+        url: str,
+        url_type: Literal['product', 'category'] = 'product',
+        max_results: int = _DEFAULT_ECOMMERCE_MAX_RESULTS,
+        _run_manager: CallbackManagerForToolRun | None = None,
+    ) -> str:
+        try:
+            run, items = self._client.ecommerce_scrape(
+                url,
+                url_type=url_type,
+                max_results=self._clamp_items(max_results),
+                timeout_secs=self.max_timeout_secs,
+            )
+        except (RuntimeError, ValueError) as exc:
+            raise ToolException(str(exc)) from exc
+        return json.dumps({'run': _run_meta(run), 'items': items}, default=str)

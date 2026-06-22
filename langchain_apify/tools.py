@@ -476,7 +476,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_run_actor'
     description: str = (
-        'Run an Apify Actor synchronously and return run metadata as a JSON string.'
+        'Run an Apify Actor synchronously and return a JSON envelope.'
         ' Required: actor_id (str) — Actor ID or name (e.g. "apify/python-example").'
         f' Optional: run_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
         ' memory_mbytes (int|null).'
@@ -555,17 +555,16 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
     """Run any Apify Actor and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunActorTool` and :class:`ApifyGetDatasetItemsTool`
-    into a single call.  Returns a JSON string with ``run`` (metadata) and
-    ``items`` (list of dicts) keys.
+    into a single call.  Returns a JSON envelope.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
-        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (list
-        of dataset item dicts).
+        JSON object ``{"run": {...}, "items": [...]}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``
+        and ``items`` are the dataset item dicts.
 
     Example:
         .. code-block:: python
@@ -584,7 +583,7 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
 
     name: str = 'apify_run_actor_and_get_dataset'
     description: str = (
-        'Run an Apify Actor synchronously and return both run metadata and dataset items.'
+        'Run an Apify Actor synchronously and return a JSON envelope.'
         ' Required: actor_id (str) — Actor ID or name (e.g. "apify/python-example").'
         f' Optional: run_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
         f' memory_mbytes (int|null), dataset_items_limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}).'
@@ -627,7 +626,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
             environment variable when *None*.
 
     Returns:
-        JSON object ``{"run": null, "items": [{"url": ..., "content": ...}]}``.
+        JSON object ``{"run": {...}, "items": [{"url": ..., "content": ...}]}``.
 
     Example:
         .. code-block:: python
@@ -646,7 +645,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
         'Scrape a single URL using Apify and return a JSON envelope.'
         ' Required: url (str) — the URL to scrape.'
         f' Optional: timeout_secs (int, default {_DEFAULT_SCRAPE_TIMEOUT_SECS}).'
-        ' Returns JSON with keys: run (null), items ([{url, content}];'
+        ' Returns JSON with keys: run, items ([{url, content}];'
         ' content is markdown, or plain text when markdown is unavailable).'
     )
     args_schema: type[BaseModel] = ApifyScrapeUrlInput
@@ -658,10 +657,12 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            content = self._client.scrape_url(url, self._clamp_timeout(timeout_secs))
+            # _scrape_url is the rich primitive; scrape_url() drops the metadata
+            # this tool needs (run + content source), so access it directly.
+            run, _, content, _ = self._client._scrape_url(url, self._clamp_timeout(timeout_secs))  # noqa: SLF001
         except RuntimeError as exc:
             raise ToolException(str(exc)) from exc
-        return json.dumps({'run': None, 'items': [{'url': url, 'content': content}]}, default=str)
+        return json.dumps({'run': _run_meta(run), 'items': [{'url': url, 'content': content}]}, default=str)
 
 
 class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
@@ -697,7 +698,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
 
     name: str = 'apify_run_task'
     description: str = (
-        'Run a saved Apify Actor task synchronously and return run metadata as a JSON string.'
+        'Run a saved Apify Actor task synchronously and return a JSON envelope.'
         ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
         f' Optional: task_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
         ' memory_mbytes (int|null).'
@@ -727,17 +728,16 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
     """Run a saved Apify Actor task and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunTaskTool` and :class:`ApifyGetDatasetItemsTool`
-    into a single call.  Returns a JSON string with ``run`` (metadata) and
-    ``items`` (list of dicts) keys.
+    into a single call.  Returns a JSON envelope.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable when *None*.
 
     Returns:
-        JSON string with two keys: ``run`` (dict with ``run_id``, ``status``,
-        ``dataset_id``, ``started_at``, ``finished_at``) and ``items`` (list
-        of dataset item dicts).
+        JSON object ``{"run": {...}, "items": [...]}`` where ``run`` holds
+        ``run_id``, ``status``, ``dataset_id``, ``started_at``, ``finished_at``
+        and ``items`` are the dataset item dicts.
 
     Example:
         .. code-block:: python
@@ -756,7 +756,7 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
 
     name: str = 'apify_run_task_and_get_dataset'
     description: str = (
-        'Run a saved Apify Actor task synchronously and return both run metadata and dataset items.'
+        'Run a saved Apify Actor task synchronously and return a JSON envelope.'
         ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
         f' Optional: task_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
         f' memory_mbytes (int|null), dataset_items_limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}).'

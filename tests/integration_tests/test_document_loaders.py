@@ -1,10 +1,16 @@
 from collections.abc import Iterator
 
+import pytest
 from apify_client import ApifyClient
 from langchain_core.documents import Document
 
 from langchain_apify import ApifyDatasetLoader
 from langchain_apify._utils import _resolve_apify_token
+
+pytestmark = pytest.mark.skipif(
+    not _resolve_apify_token(),
+    reason='APIFY_TOKEN not set',
+)
 
 
 def test_apify_dataset_loader_load() -> None:
