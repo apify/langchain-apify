@@ -21,6 +21,7 @@ from langchain_apify._constants import (
     _DEFAULT_RAG_MAX_RESULTS,
     _DEFAULT_RUN_TIMEOUT_SECS,
     _DEFAULT_YOUTUBE_MAX_RESULTS,
+    _MAX_CRAWL_DEPTH_CAP,
 )
 from langchain_apify._types import (  # noqa: TCH001  # runtime-needed: pydantic Field annotations
     CrawlerType,
@@ -72,7 +73,8 @@ class ApifyWebCrawlerInput(BaseModel):
     url: str = Field(description='Seed URL to start crawling from.')
     max_crawl_pages: int = Field(default=_DEFAULT_MAX_CRAWL_PAGES, description='Maximum number of pages to crawl.')
     max_crawl_depth: int = Field(
-        default=_DEFAULT_MAX_CRAWL_DEPTH, description='Maximum link-follow depth from the seed URL.'
+        default=_DEFAULT_MAX_CRAWL_DEPTH,
+        description=f'Maximum link-follow depth from the seed URL (clamped to {_MAX_CRAWL_DEPTH_CAP} max).',
     )
     crawler_type: CrawlerType = Field(
         default=_DEFAULT_CRAWLER_TYPE,

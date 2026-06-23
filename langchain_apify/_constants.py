@@ -28,5 +28,14 @@ _DEFAULT_GOOGLE_MAPS_MAX_RESULTS = 10
 _DEFAULT_YOUTUBE_MAX_RESULTS = 10
 _DEFAULT_ECOMMERCE_MAX_RESULTS = 20
 
+# Upper-bound clamp ceilings applied by _ApifyGenericTool to LLM-supplied
+# values. The Pydantic Field defaults on the base class reference these so
+# the schema descriptions can interpolate the same numbers, keeping the
+# clamp documentation truthful even if the cap moves.
+_MAX_TIMEOUT_SECS_CAP = 600
+_MAX_MEMORY_MBYTES_CAP = 32768
+_MAX_ITEMS_CAP = 1000
+_MAX_CRAWL_DEPTH_CAP = 5
+
 # Default crawler engine for the website-content-crawler Actor.
 _DEFAULT_CRAWLER_TYPE: CrawlerType = 'cheerio'

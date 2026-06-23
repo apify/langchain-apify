@@ -15,6 +15,9 @@ from langchain_apify._constants import (
     _DEFAULT_DATASET_ITEMS_LIMIT,
     _DEFAULT_RUN_TIMEOUT_SECS,
     _DEFAULT_SCRAPE_TIMEOUT_SECS,
+    _MAX_ITEMS_CAP,
+    _MAX_MEMORY_MBYTES_CAP,
+    _MAX_TIMEOUT_SECS_CAP,
 )
 from langchain_apify.tools.base import _ApifyGenericTool
 
@@ -27,9 +30,13 @@ if TYPE_CHECKING:
 # Input schemas for the generic tools
 # ---------------------------------------------------------------------------
 
-_DESC_RUN_TIMEOUT_SECS = 'Maximum time in seconds to wait for the run to finish.'
-_DESC_MEMORY_MBYTES = 'Memory per run in MB. Power of 2 from 128 to 32768, or null for default.'
-_DESC_DATASET_ITEMS_LIMIT = 'Maximum number of dataset items to return.'
+_DESC_RUN_TIMEOUT_SECS = (
+    f'Maximum time in seconds to wait for the run to finish (clamped to {_MAX_TIMEOUT_SECS_CAP} max).'
+)
+_DESC_MEMORY_MBYTES = (
+    f'Memory per run in MB. Power of 2 from 128, or null for default (clamped to {_MAX_MEMORY_MBYTES_CAP} max).'
+)
+_DESC_DATASET_ITEMS_LIMIT = f'Maximum number of dataset items to return (clamped to {_MAX_ITEMS_CAP} max).'
 
 
 class ApifyRunActorInput(BaseModel):
@@ -45,7 +52,10 @@ class ApifyGetDatasetItemsInput(BaseModel):
     """Input schema for :class:`ApifyGetDatasetItemsTool`."""
 
     dataset_id: str = Field(description='Apify dataset ID.')
-    limit: int = Field(default=_DEFAULT_DATASET_ITEMS_LIMIT, description='Maximum number of items to return.')
+    limit: int = Field(
+        default=_DEFAULT_DATASET_ITEMS_LIMIT,
+        description=f'Maximum number of items to return (clamped to {_MAX_ITEMS_CAP} max).',
+    )
     offset: int = Field(default=0, description='Number of items to skip from the start.')
 
 
@@ -64,7 +74,10 @@ class ApifyScrapeUrlInput(BaseModel):
 
     url: str = Field(description='The URL to scrape.')
     timeout_secs: int = Field(
-        default=_DEFAULT_SCRAPE_TIMEOUT_SECS, description='Maximum time in seconds to wait for the crawl to finish.'
+        default=_DEFAULT_SCRAPE_TIMEOUT_SECS,
+        description=(
+            f'Maximum time in seconds to wait for the crawl to finish (clamped to {_MAX_TIMEOUT_SECS_CAP} max).'
+        ),
     )
 
 

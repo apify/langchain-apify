@@ -1,0 +1,84 @@
+"""Tests for the clamp-ceiling text in tool input-schema descriptions.
+
+``_ApifyGenericTool`` silently clamps ``timeout_secs`` / ``memory_mbytes``
+/ ``limit`` / ``dataset_items_limit`` / ``max_crawl_depth`` to the per-tool
+``max_*`` ceilings. The Pydantic input schemas advertise those ceilings in
+their ``Field(description=...)`` strings so an LLM agent doesn't promise
+results above the cap. These tests pin:
+
+  1. every clamp-relevant Field carries a ``"clamped to N max"`` phrase;
+  2. ``N`` matches the live default cap on ``_ApifyGenericTool`` (no
+     drift between the description text and the actual clamp).
+"""
+
+from __future__ import annotations
+
+import re
+from typing import TYPE_CHECKING
+
+import pytest
+
+from langchain_apify.tools.base import _ApifyGenericTool
+
+if TYPE_CHECKING:
+    from pydantic import BaseModel
+from langchain_apify.tools.core import (
+    ApifyGetDatasetItemsInput,
+    ApifyRunActorAndGetDatasetInput,
+    ApifyRunActorInput,
+    ApifyRunTaskAndGetDatasetInput,
+    ApifyRunTaskInput,
+    ApifyScrapeUrlInput,
+)
+from langchain_apify.tools.search import ApifyGoogleSearchInput, ApifyWebCrawlerInput
+
+# (schema, field_name, base-class cap-field name)
+_CLAMP_FIELDS: list[tuple[type[BaseModel], str, str]] = [
+    (ApifyRunActorInput, 'timeout_secs', 'max_timeout_secs'),
+    (ApifyRunActorInput, 'memory_mbytes', 'max_memory_mbytes'),
+    (ApifyGetDatasetItemsInput, 'limit', 'max_items'),
+    (ApifyRunActorAndGetDatasetInput, 'timeout_secs', 'max_timeout_secs'),
+    (ApifyRunActorAndGetDatasetInput, 'memory_mbytes', 'max_memory_mbytes'),
+    (ApifyRunActorAndGetDatasetInput, 'dataset_items_limit', 'max_items'),
+    (ApifyScrapeUrlInput, 'timeout_secs', 'max_timeout_secs'),
+    (ApifyGoogleSearchInput, 'timeout_secs', 'max_timeout_secs'),
+    (ApifyWebCrawlerInput, 'timeout_secs', 'max_timeout_secs'),
+    (ApifyWebCrawlerInput, 'max_crawl_depth', 'max_crawl_depth'),
+    (ApifyRunTaskInput, 'timeout_secs', 'max_timeout_secs'),
+    (ApifyRunTaskInput, 'memory_mbytes', 'max_memory_mbytes'),
+    (ApifyRunTaskAndGetDatasetInput, 'timeout_secs', 'max_timeout_secs'),
+    (ApifyRunTaskAndGetDatasetInput, 'memory_mbytes', 'max_memory_mbytes'),
+    (ApifyRunTaskAndGetDatasetInput, 'dataset_items_limit', 'max_items'),
+]
+
+_CAP_PATTERN = re.compile(r'clamped to (\d+) max')
+
+
+@pytest.mark.parametrize(('schema', 'field', 'cap_field'), _CLAMP_FIELDS)
+def test_field_description_carries_cap_text(schema: type[BaseModel], field: str, cap_field: str) -> None:
+    """Every clamp-relevant Field description ends with ``(clamped to N max)``."""
+    description = schema.model_fields[field].description or ''
+    expected_cap = _ApifyGenericTool.model_fields[cap_field].default
+    assert f'clamped to {expected_cap} max' in description, (
+        f'{schema.__name__}.{field} description does not mention the cap '
+        f'(expected "clamped to {expected_cap} max"): {description!r}'
+    )
+
+
+@pytest.mark.parametrize(('schema', 'field', 'cap_field'), _CLAMP_FIELDS)
+def test_field_description_cap_matches_base_class_default(schema: type[BaseModel], field: str, cap_field: str) -> None:
+    """The number in the description text equals the live ``_ApifyGenericTool`` cap.
+
+    Catches drift where a cap default moves but the description string is
+    forgotten, or vice versa.
+    """
+    description = schema.model_fields[field].description or ''
+    match = _CAP_PATTERN.search(description)
+    assert match is not None, f'no "clamped to N max" phrase in {schema.__name__}.{field}: {description!r}'
+
+    advertised_cap = int(match.group(1))
+    actual_cap = _ApifyGenericTool.model_fields[cap_field].default
+    assert advertised_cap == actual_cap, (
+        f'{schema.__name__}.{field} advertises cap={advertised_cap} but '
+        f'_ApifyGenericTool.{cap_field} default is {actual_cap}'
+    )

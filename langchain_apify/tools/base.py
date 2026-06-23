@@ -17,6 +17,12 @@ from langchain_core.tools import BaseTool, ToolException
 from pydantic import Field, PrivateAttr, SecretStr, model_validator
 
 from langchain_apify._client import ApifyToolsClient
+from langchain_apify._constants import (
+    _MAX_CRAWL_DEPTH_CAP,
+    _MAX_ITEMS_CAP,
+    _MAX_MEMORY_MBYTES_CAP,
+    _MAX_TIMEOUT_SECS_CAP,
+)
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import (
     _apify_token_secret_factory,
@@ -74,10 +80,18 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
         exclude=True,
         repr=False,
     )
-    max_timeout_secs: int = Field(default=600, description='Upper bound for timeout_secs the LLM may request.')
-    max_memory_mbytes: int = Field(default=32768, description='Upper bound for memory_mbytes the LLM may request.')
-    max_items: int = Field(default=1000, description='Upper bound for limit / dataset_items_limit the LLM may request.')
-    max_crawl_depth: int = Field(default=5, description='Upper bound for max_crawl_depth the LLM may request.')
+    max_timeout_secs: int = Field(
+        default=_MAX_TIMEOUT_SECS_CAP, description='Upper bound for timeout_secs the LLM may request.'
+    )
+    max_memory_mbytes: int = Field(
+        default=_MAX_MEMORY_MBYTES_CAP, description='Upper bound for memory_mbytes the LLM may request.'
+    )
+    max_items: int = Field(
+        default=_MAX_ITEMS_CAP, description='Upper bound for limit / dataset_items_limit the LLM may request.'
+    )
+    max_crawl_depth: int = Field(
+        default=_MAX_CRAWL_DEPTH_CAP, description='Upper bound for max_crawl_depth the LLM may request.'
+    )
 
     _client: ApifyToolsClient = PrivateAttr()
 
