@@ -38,7 +38,7 @@ def _assert_envelope_shape(payload: dict) -> None:
         (ApifyRunActorTool, 'run_actor', {'actor_id': 'apify/test'}),
         (ApifyGetDatasetItemsTool, 'get_dataset_items', {'dataset_id': 'dataset-xyz'}),
         (ApifyRunActorAndGetDatasetTool, 'run_actor_and_get_items', {'actor_id': 'apify/test'}),
-        (ApifyScrapeUrlTool, '_scrape_url', {'url': 'https://example.com'}),
+        (ApifyScrapeUrlTool, 'scrape_url_with_metadata', {'url': 'https://example.com'}),
         (ApifyRunTaskTool, 'run_task', {'task_id': 'user/my-task'}),
         (ApifyRunTaskAndGetDatasetTool, 'run_task_and_get_items', {'task_id': 'user/my-task'}),
         (ApifyGoogleSearchTool, 'google_search', {'query': 'apify'}),
@@ -56,8 +56,8 @@ def test_all_tools_return_normalized_envelope(
         getattr(mock_tools_client, setup_method).return_value = SUCCEEDED_RUN
     elif setup_method == 'get_dataset_items':
         getattr(mock_tools_client, setup_method).return_value = SAMPLE_ITEMS
-    elif setup_method == '_scrape_url':
-        mock_tools_client._scrape_url.return_value = (
+    elif setup_method == 'scrape_url_with_metadata':
+        mock_tools_client.scrape_url_with_metadata.return_value = (
             SUCCEEDED_RUN,
             [{'url': 'https://example.com', 'markdown': '# content'}],
             '# content',

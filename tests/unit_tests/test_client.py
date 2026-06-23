@@ -640,30 +640,30 @@ def test_build_instagram_url_post_from_id() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _scrape_url
+# scrape_url_with_metadata
 # ---------------------------------------------------------------------------
 
 
-def test__scrape_url_returns_markdown_and_metadata(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+def test_scrape_url_with_metadata_returns_markdown(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = [
         {'markdown': '# Hello', 'text': 'Hello', 'url': 'https://example.com'},
     ]
 
-    run, items, content, source = client._scrape_url('https://example.com')
+    run, items, content, source = client.scrape_url_with_metadata('https://example.com')
     assert run == SUCCEEDED_RUN
     assert items
     assert content == '# Hello'
     assert source == 'markdown'
 
 
-def test__scrape_url_falls_back_to_text(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
+def test_scrape_url_with_metadata_falls_back_to_text(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = [
         {'text': 'Plain text content', 'url': 'https://example.com'},
     ]
 
-    _, _, content, source = client._scrape_url('https://example.com')
+    _, _, content, source = client.scrape_url_with_metadata('https://example.com')
     assert content == 'Plain text content'
     assert source == 'text'
 

@@ -8,6 +8,8 @@ from pydantic import SecretStr
 from langchain_apify._constants import (
     _DEFAULT_CRAWLER_TYPE,
     _DEFAULT_DATASET_ITEMS_LIMIT,
+    _DEFAULT_ECOMMERCE_MAX_RESULTS,
+    _DEFAULT_GOOGLE_MAPS_MAX_RESULTS,
     _DEFAULT_GOOGLE_MAX_RESULTS,
     _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
     _DEFAULT_MAX_CRAWL_DEPTH,
@@ -17,6 +19,7 @@ from langchain_apify._constants import (
     _DEFAULT_SCRAPE_TIMEOUT_SECS,
     _DEFAULT_SOCIAL_RESULTS_LIMIT,
     _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    _DEFAULT_YOUTUBE_MAX_RESULTS,
 )
 from langchain_apify._error_messages import (
     _ERROR_ACTOR_RUN_FAILED,
@@ -183,7 +186,7 @@ class ApifyToolsClient:
         if not dataset_id:
             msg = f'Actor {actor_id} run succeeded but returned no default dataset ID.'
             raise RuntimeError(msg)
-        items = self._list_items_or_raise(dataset_id, dataset_items_limit)
+        items = self.get_dataset_items(dataset_id, dataset_items_limit)
         return run, items
 
     def run_task(
@@ -252,10 +255,10 @@ class ApifyToolsClient:
         if not dataset_id:
             msg = f'Task {task_id} run succeeded but returned no default dataset ID.'
             raise RuntimeError(msg)
-        items = self._list_items_or_raise(dataset_id, dataset_items_limit)
+        items = self.get_dataset_items(dataset_id, dataset_items_limit)
         return run, items
 
-    def _scrape_url(
+    def scrape_url_with_metadata(
         self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS
     ) -> tuple[dict, list[dict], str, str]:
         """Scrape a single URL and return run/items/content metadata.
@@ -297,10 +300,10 @@ class ApifyToolsClient:
     def scrape_url(self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS) -> str:
         """Scrape a single URL and return only the page content.
 
-        Thin public wrapper over :meth:`_scrape_url` for callers that don't need
-        the run/items metadata.
+        Thin public wrapper over :meth:`scrape_url_with_metadata` for callers
+        that don't need the run/items metadata.
         """
-        _, _, content, _ = self._scrape_url(url=url, timeout_secs=timeout_secs)
+        _, _, content, _ = self.scrape_url_with_metadata(url=url, timeout_secs=timeout_secs)
         return content
 
     def instagram_scrape(
@@ -504,7 +507,7 @@ class ApifyToolsClient:
     def google_maps_search(
         self,
         query: str,
-        max_results: int = 10,
+        max_results: int = _DEFAULT_GOOGLE_MAPS_MAX_RESULTS,
         language: str | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
     ) -> tuple[dict, list[dict]]:
@@ -726,7 +729,7 @@ class ApifyToolsClient:
         self,
         search_query: str,
         search_type: str = 'search',
-        max_results: int = 10,
+        max_results: int = _DEFAULT_YOUTUBE_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
     ) -> tuple[dict, list[dict]]:
         """Scrape YouTube videos, channels, or search results.
@@ -768,7 +771,7 @@ class ApifyToolsClient:
         self,
         url: str,
         url_type: str = 'product',
-        max_results: int = 20,
+        max_results: int = _DEFAULT_ECOMMERCE_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
     ) -> tuple[dict, list[dict]]:
         """Extract product data from an e-commerce URL.
@@ -847,14 +850,6 @@ class ApifyToolsClient:
             dataset_items_limit=max_crawl_pages,
         )
         return items
-
-    def _list_items_or_raise(self, dataset_id: str, limit: int) -> list[dict]:
-        """Fetch dataset items, wrapping any network error in a RuntimeError."""
-        try:
-            return self._client.dataset(dataset_id).list_items(limit=limit, clean=True).items
-        except _TRANSPORT_EXCEPTIONS as exc:
-            msg = f'Apify dataset fetch failed for {dataset_id}: {exc}'
-            raise RuntimeError(msg) from exc
 
     @staticmethod
     def _check_run_status(run: dict) -> None:
