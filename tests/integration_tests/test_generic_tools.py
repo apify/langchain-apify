@@ -37,15 +37,15 @@ def test_run_actor_tool_smoke() -> None:
     result = tool.invoke({'actor_id': _ACTOR_ID, 'run_input': _RUN_INPUT})
 
     parsed = json.loads(result)
-    assert parsed['status'] == 'SUCCEEDED'
-    assert parsed['run_id']
-    assert parsed['dataset_id']
+    assert parsed['run']['status'] == 'SUCCEEDED'
+    assert parsed['run']['run_id']
+    assert parsed['run']['dataset_id']
 
 
 def test_get_dataset_items_tool_smoke() -> None:
     run_tool = ApifyRunActorTool()
     run_result = json.loads(run_tool.invoke({'actor_id': _ACTOR_ID, 'run_input': _RUN_INPUT}))
-    dataset_id = run_result['dataset_id']
+    dataset_id = run_result['run']['dataset_id']
 
     items_tool = ApifyGetDatasetItemsTool()
     result = items_tool.invoke({'dataset_id': dataset_id, 'limit': 10})
@@ -69,8 +69,8 @@ def test_scrape_url_tool_smoke() -> None:
     result = tool.invoke({'url': 'https://crawlee.dev'})
 
     parsed = json.loads(result)
-    assert parsed['content']
-    assert parsed['meta']['content_length'] > 0
+    assert parsed['run']['status'] == 'SUCCEEDED'
+    assert parsed['items'][0]['content']
 
 
 _TASK_ID = os.getenv('APIFY_TASK_ID', '')
@@ -82,9 +82,9 @@ def test_run_task_tool_smoke() -> None:
     result = tool.invoke({'task_id': _TASK_ID})
 
     parsed = json.loads(result)
-    assert parsed['status'] == 'SUCCEEDED'
-    assert parsed['run_id']
-    assert parsed['dataset_id']
+    assert parsed['run']['status'] == 'SUCCEEDED'
+    assert parsed['run']['run_id']
+    assert parsed['run']['dataset_id']
 
 
 @pytest.mark.skipif(not _TASK_ID, reason='APIFY_TASK_ID not set')

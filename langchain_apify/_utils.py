@@ -142,7 +142,7 @@ def _prune_actor_input_schema(
                 desc[:max_description_len] + '...' if len(desc) > max_description_len else desc
             )
         for key_name in ('type', 'default', 'prefill', 'enum'):
-            if value := meta.get(key_name):
+            if (value := meta.get(key_name)) is not None:
                 properties_out[item][key_name] = value
 
     return properties_out, required

@@ -151,6 +151,7 @@ class ApifyWrapper(BaseModel):
         return ApifyDatasetLoader(
             dataset_id=actor_call['defaultDatasetId'],
             dataset_mapping_function=dataset_mapping_function,
+            apify_token=self.apify_token,
         )
 
     async def acall_actor(  # noqa: PLR0913
@@ -198,6 +199,7 @@ class ApifyWrapper(BaseModel):
         return ApifyDatasetLoader(
             dataset_id=actor_call['defaultDatasetId'],
             dataset_mapping_function=dataset_mapping_function,
+            apify_token=self.apify_token,
         )
 
     def call_actor_task(  # noqa: PLR0913
@@ -246,6 +248,7 @@ class ApifyWrapper(BaseModel):
         return ApifyDatasetLoader(
             dataset_id=task_call['defaultDatasetId'],
             dataset_mapping_function=dataset_mapping_function,
+            apify_token=self.apify_token,
         )
 
     async def acall_actor_task(  # noqa: PLR0913
@@ -294,4 +297,5 @@ class ApifyWrapper(BaseModel):
         return ApifyDatasetLoader(
             dataset_id=task_call['defaultDatasetId'],
             dataset_mapping_function=dataset_mapping_function,
+            apify_token=self.apify_token,
         )
