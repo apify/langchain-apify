@@ -167,7 +167,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
     description: str = (
         'Search Google using Apify and return a JSON envelope.'
         ' Each item has keys: title, url, description.'
-        ' Required: query (str) — the search query.'
+        ' Required: query (str); the search query.'
         f' Optional: max_results (int, default {_DEFAULT_GOOGLE_MAX_RESULTS}),'
         ' country_code (str|null), language_code (str|null),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
@@ -233,7 +233,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
     description: str = (
         'Crawl a website using Apify and return a JSON envelope.'
         ' Each item has keys: url, title, content (markdown).'
-        ' Required: url (str) — seed URL to crawl.'
+        ' Required: url (str); seed URL to crawl.'
         f' Optional: max_crawl_pages (int, default {_DEFAULT_MAX_CRAWL_PAGES}),'
         f' max_crawl_depth (int, default {_DEFAULT_MAX_CRAWL_DEPTH}),'
         f' crawler_type (str, default "{_DEFAULT_CRAWLER_TYPE}"),'

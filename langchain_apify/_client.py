@@ -587,9 +587,9 @@ class ApifyToolsClient:
             search_query: Search term, username, or tweet URL.
             search_mode: One of ``"search"``, ``"user"``, ``"replies"``.
             max_results: Maximum number of tweets to return.
-            start: Optional ISO-8601 start date — only return tweets newer
+            start: Optional ISO-8601 start date; only return tweets newer
                 than this date.
-            end: Optional ISO-8601 end date — only return tweets older than
+            end: Optional ISO-8601 end date; only return tweets older than
                 this date.
             sort: Optional sort order. One of ``"Latest"`` or ``"Top"``.
             timeout_secs: Maximum time to wait for the run to finish.

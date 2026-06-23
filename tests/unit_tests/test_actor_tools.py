@@ -230,7 +230,7 @@ def test_web_crawler_tool_missing_token(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 # ---------------------------------------------------------------------------
-# Search & Crawling tools — happy paths
+# Search & Crawling tools - happy paths
 # ---------------------------------------------------------------------------
 
 
@@ -347,7 +347,7 @@ def test_ecommerce_tool_invalid_url_type_raises_tool_exception(mock_tools_client
 
 
 # ---------------------------------------------------------------------------
-# US-4 Search & Crawling tools — parametrized error / empty / handle_tool_error
+# US-4 Search & Crawling tools - parametrized error / empty / handle_tool_error
 # ---------------------------------------------------------------------------
 
 # Each entry: (tool_class, helper_attribute_name, kwargs_for_run)

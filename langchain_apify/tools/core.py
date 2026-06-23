@@ -142,7 +142,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
     name: str = 'apify_run_actor'
     description: str = (
         'Run an Apify Actor synchronously and return a JSON envelope.'
-        ' Required: actor_id (str) — Actor ID or name (e.g. "apify/python-example").'
+        ' Required: actor_id (str); Actor ID or name (e.g. "apify/python-example").'
         f' Optional: run_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
         ' memory_mbytes (int|null).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at), items.'
@@ -196,7 +196,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
     name: str = 'apify_get_dataset_items'
     description: str = (
         'Fetch items from an Apify dataset by ID and return a JSON envelope.'
-        ' Required: dataset_id (str) — Apify dataset ID.'
+        ' Required: dataset_id (str); Apify dataset ID.'
         f' Optional: limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}), offset (int, default 0).'
         ' Returns JSON with keys: run (null), items (empty array when the dataset has no items).'
     )
@@ -249,7 +249,7 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
     name: str = 'apify_run_actor_and_get_dataset'
     description: str = (
         'Run an Apify Actor synchronously and return a JSON envelope.'
-        ' Required: actor_id (str) — Actor ID or name (e.g. "apify/python-example").'
+        ' Required: actor_id (str); Actor ID or name (e.g. "apify/python-example").'
         f' Optional: run_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
         f' memory_mbytes (int|null), dataset_items_limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at)'
@@ -308,7 +308,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
     name: str = 'apify_scrape_url'
     description: str = (
         'Scrape a single URL using Apify and return a JSON envelope.'
-        ' Required: url (str) — the URL to scrape.'
+        ' Required: url (str); the URL to scrape.'
         f' Optional: timeout_secs (int, default {_DEFAULT_SCRAPE_TIMEOUT_SECS}).'
         ' Returns JSON with keys: run, items ([{url, content}];'
         ' content is markdown, or plain text when markdown is unavailable).'
@@ -364,7 +364,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
     name: str = 'apify_run_task'
     description: str = (
         'Run a saved Apify Actor task synchronously and return a JSON envelope.'
-        ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
+        ' Required: task_id (str); task ID or name (e.g. "user/my-task").'
         f' Optional: task_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
         ' memory_mbytes (int|null).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at), items.'
@@ -422,7 +422,7 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
     name: str = 'apify_run_task_and_get_dataset'
     description: str = (
         'Run a saved Apify Actor task synchronously and return a JSON envelope.'
-        ' Required: task_id (str) — task ID or name (e.g. "user/my-task").'
+        ' Required: task_id (str); task ID or name (e.g. "user/my-task").'
         f' Optional: task_input (dict), timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}),'
         f' memory_mbytes (int|null), dataset_items_limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at)'
