@@ -172,6 +172,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         ' country_code (str|null), language_code (str|null),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
         ' Returns JSON with keys: run (null), items.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyGoogleSearchInput
 
@@ -239,6 +240,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
         f' crawler_type (str, default "{_DEFAULT_CRAWLER_TYPE}"),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
         ' Returns JSON with keys: run (null), items.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyWebCrawlerInput
 
@@ -309,7 +311,8 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
         ' Each item has keys: url, title, content.'
         ' Required: query (str) - the search query.'
         f' Optional: max_results (int, default {_DEFAULT_RAG_MAX_RESULTS}).'
-        ' Returns keys: run, items.'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at), items.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyRAGWebBrowserInput
 
@@ -371,7 +374,8 @@ class ApifyGoogleMapsTool(_ApifyGenericTool):  # type: ignore[override]
         ' Required: query (str) - the search query.'
         f' Optional: max_results (int, default {_DEFAULT_GOOGLE_MAPS_MAX_RESULTS}),'
         ' language (str|null - ISO code, e.g. "en").'
-        ' Returns keys: run, items.'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at), items.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyGoogleMapsInput
 
@@ -430,7 +434,8 @@ class ApifyYouTubeScraperTool(_ApifyGenericTool):  # type: ignore[override]
         ' Required: search_query (str - keyword for "search" mode, or a video/channel URL).'
         ' Optional: search_type (one of "search", "video", "channel"; default "search"),'
         f' max_results (int, default {_DEFAULT_YOUTUBE_MAX_RESULTS}).'
-        ' Returns keys: run, items.'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at), items.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyYouTubeScraperInput
 
@@ -489,7 +494,8 @@ class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
         ' Required: url (str) - product-detail or category / listing URL.'
         ' Optional: url_type (one of "product", "category"; default "product"),'
         f' max_results (int, default {_DEFAULT_ECOMMERCE_MAX_RESULTS}).'
-        ' Returns keys: run, items.'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at), items.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyEcommerceScraperInput
 

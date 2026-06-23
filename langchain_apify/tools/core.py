@@ -147,6 +147,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
         ' memory_mbytes (int|null).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at), items.'
         ' Use apify_get_dataset_items with run.dataset_id to fetch results.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyRunActorInput
 
@@ -199,6 +200,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
         ' Required: dataset_id (str); Apify dataset ID.'
         f' Optional: limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}), offset (int, default 0).'
         ' Returns JSON with keys: run (null), items (empty array when the dataset has no items).'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyGetDatasetItemsInput
 
@@ -254,6 +256,7 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
         f' memory_mbytes (int|null), dataset_items_limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at)'
         ' and items (list of dataset item dicts).'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyRunActorAndGetDatasetInput
 
@@ -312,6 +315,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
         f' Optional: timeout_secs (int, default {_DEFAULT_SCRAPE_TIMEOUT_SECS}).'
         ' Returns JSON with keys: run, items ([{url, content}];'
         ' content is markdown, or plain text when markdown is unavailable).'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyScrapeUrlInput
 
@@ -369,6 +373,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
         ' memory_mbytes (int|null).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at), items.'
         ' Use apify_get_dataset_items with run.dataset_id to fetch results.'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyRunTaskInput
 
@@ -427,6 +432,7 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
         f' memory_mbytes (int|null), dataset_items_limit (int, default {_DEFAULT_DATASET_ITEMS_LIMIT}).'
         ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at)'
         ' and items (list of dataset item dicts).'
+        ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyRunTaskAndGetDatasetInput
 
