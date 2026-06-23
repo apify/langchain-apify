@@ -5,12 +5,25 @@ from apify_client import ApifyClient
 from apify_client.errors import ApifyClientError
 from pydantic import SecretStr
 
+from langchain_apify._constants import (
+    _DEFAULT_CRAWLER_TYPE,
+    _DEFAULT_DATASET_ITEMS_LIMIT,
+    _DEFAULT_GOOGLE_MAX_RESULTS,
+    _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
+    _DEFAULT_MAX_CRAWL_DEPTH,
+    _DEFAULT_MAX_CRAWL_PAGES,
+    _DEFAULT_RAG_MAX_RESULTS,
+    _DEFAULT_RUN_TIMEOUT_SECS,
+    _DEFAULT_SCRAPE_TIMEOUT_SECS,
+    _DEFAULT_SOCIAL_RESULTS_LIMIT,
+    _DEFAULT_SOCIAL_TIMEOUT_SECS,
+)
 from langchain_apify._error_messages import (
     _ERROR_ACTOR_RUN_FAILED,
     _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET,
     _ERROR_SCRAPE_EMPTY,
 )
-from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: shared Literal alias
+from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: pydantic-free annotation
 from langchain_apify._utils import (
     _create_apify_client,
     _extract_content,
@@ -18,9 +31,13 @@ from langchain_apify._utils import (
     _resolve_deprecated_token,
 )
 
-# Only catches ApifyClientError and httpx.HTTPError. Other errors propagate.
+# Transport errors caught when calling Apify; anything else propagates.
 _TRANSPORT_EXCEPTIONS = (ApifyClientError, httpx.HTTPError)
 
+# Apify run status indicating a successful finish.
+_RUN_STATUS_SUCCEEDED = 'SUCCEEDED'
+
+# Actor IDs - search & crawling.
 _WEBSITE_CONTENT_CRAWLER_ACTOR_ID = 'apify/website-content-crawler'
 _GOOGLE_SEARCH_ACTOR_ID = 'apify/google-search-scraper'
 _RAG_WEB_BROWSER_ACTOR_ID = 'apify/rag-web-browser'
@@ -28,9 +45,7 @@ _GOOGLE_MAPS_ACTOR_ID = 'compass/crawler-google-places'
 _YOUTUBE_SCRAPER_ACTOR_ID = 'streamers/youtube-scraper'
 _ECOMMERCE_SCRAPER_ACTOR_ID = 'apify/e-commerce-scraping-tool'
 
-_YOUTUBE_SEARCH_TYPES = ('search', 'video', 'channel')
-_ECOMMERCE_URL_TYPES = ('product', 'category')
-
+# Actor IDs - social media.
 _INSTAGRAM_ACTOR_ID = 'apify/instagram-scraper'
 _LINKEDIN_POSTS_ACTOR_ID = 'apimaestro/linkedin-profile-posts'
 _LINKEDIN_SEARCH_ACTOR_ID = 'harvestapi/linkedin-profile-search'
@@ -39,20 +54,11 @@ _TWITTER_ACTOR_ID = 'apidojo/twitter-scraper-lite'
 _TIKTOK_ACTOR_ID = 'clockworks/tiktok-scraper'
 _FACEBOOK_ACTOR_ID = 'apify/facebook-posts-scraper'
 
-_DEFAULT_RUN_TIMEOUT_SECS = 300
-_DEFAULT_SCRAPE_TIMEOUT_SECS = 120
-_DEFAULT_SOCIAL_TIMEOUT_SECS = 600
-_DEFAULT_DATASET_ITEMS_LIMIT = 100
-_DEFAULT_MAX_CRAWL_PAGES = 10
-_DEFAULT_MAX_CRAWL_DEPTH = 1
-_DEFAULT_CRAWLER_TYPE: CrawlerType = 'cheerio'
-_DEFAULT_GOOGLE_MAX_RESULTS = 10
-_DEFAULT_RAG_MAX_RESULTS = 5
-_DEFAULT_SOCIAL_RESULTS_LIMIT = 20
-_DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS = 10
-_RUN_STATUS_SUCCEEDED = 'SUCCEEDED'
+# Accepted parameter values validated client-side before a run.
+_YOUTUBE_SEARCH_TYPES = ('search', 'video', 'channel')
+_ECOMMERCE_URL_TYPES = ('product', 'category')
 
-# Instagram-specific mappings
+# Instagram search_type -> Actor resultsType mapping.
 _INSTAGRAM_RESULTS_TYPE_MAP = {
     'user': 'posts',
     'hashtag': 'posts',

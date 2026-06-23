@@ -15,7 +15,7 @@ from langchain_apify import (
     ApifyRunTaskTool,
     ApifyScrapeUrlTool,
 )
-from langchain_apify._actor_tools import (
+from langchain_apify.tools import (
     ApifyEcommerceScraperTool,
     ApifyGoogleMapsTool,
     ApifyGoogleSearchTool,

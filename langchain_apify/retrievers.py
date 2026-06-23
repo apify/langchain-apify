@@ -9,7 +9,8 @@ from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from pydantic import Field, PrivateAttr, SecretStr, model_validator
 
-from langchain_apify._client import _DEFAULT_RAG_MAX_RESULTS, _DEFAULT_RUN_TIMEOUT_SECS, ApifyToolsClient
+from langchain_apify._client import ApifyToolsClient
+from langchain_apify._constants import _DEFAULT_RAG_MAX_RESULTS, _DEFAULT_RUN_TIMEOUT_SECS
 from langchain_apify._utils import (
     _apify_token_secret_factory,
     _extract_content,

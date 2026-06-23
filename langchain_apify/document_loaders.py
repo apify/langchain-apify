@@ -8,12 +8,12 @@ from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
-from langchain_apify._client import (
+from langchain_apify._client import ApifyToolsClient
+from langchain_apify._constants import (
     _DEFAULT_CRAWLER_TYPE,
     _DEFAULT_MAX_CRAWL_DEPTH,
     _DEFAULT_MAX_CRAWL_PAGES,
     _DEFAULT_RUN_TIMEOUT_SECS,
-    ApifyToolsClient,
 )
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import (
@@ -193,7 +193,7 @@ class ApifyCrawlLoader(BaseLoader):
         self.url = url
         self.max_crawl_pages = max_crawl_pages
         self.max_crawl_depth = max_crawl_depth
-        self.crawler_type = crawler_type
+        self.crawler_type: CrawlerType = crawler_type
         self.timeout_secs = timeout_secs
         self._client = ApifyToolsClient(apify_token=apify_token)
 

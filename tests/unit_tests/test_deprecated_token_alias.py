@@ -213,7 +213,7 @@ class TestApifyActorsToolTokenAlias:
         with ExitStack() as stack:
             for p in self._patches():
                 stack.enter_context(p)
-            with patch('langchain_apify.tools._create_apify_client') as mock_create:
+            with patch('langchain_apify.tools.actors._create_apify_client') as mock_create:
                 mock_create.return_value = MagicMock()
                 with warnings.catch_warnings(record=True) as w:
                     warnings.simplefilter('always')
