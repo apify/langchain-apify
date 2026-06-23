@@ -5,9 +5,16 @@ from typing import TYPE_CHECKING
 
 from langchain_apify._actor_tools import (
     ApifyEcommerceScraperTool,
+    ApifyFacebookPostsScraperTool,
     ApifyGoogleMapsTool,
     ApifyGoogleSearchTool,
+    ApifyInstagramScraperTool,
+    ApifyLinkedInProfileDetailTool,
+    ApifyLinkedInProfilePostsTool,
+    ApifyLinkedInProfileSearchTool,
     ApifyRAGWebBrowserTool,
+    ApifyTikTokScraperTool,
+    ApifyTwitterScraperTool,
     ApifyWebCrawlerTool,
     ApifyYouTubeScraperTool,
 )
@@ -46,6 +53,16 @@ APIFY_CORE_TOOLS: list[type[BaseTool]] = [
     ApifyRunTaskAndGetDatasetTool,
 ]
 
+APIFY_SOCIAL_TOOLS: list[type[BaseTool]] = [
+    ApifyInstagramScraperTool,
+    ApifyLinkedInProfilePostsTool,
+    ApifyLinkedInProfileSearchTool,
+    ApifyLinkedInProfileDetailTool,
+    ApifyTwitterScraperTool,
+    ApifyTikTokScraperTool,
+    ApifyFacebookPostsScraperTool,
+]
+
 APIFY_SEARCH_TOOLS: list[type[BaseTool]] = [
     ApifyGoogleSearchTool,
     ApifyWebCrawlerTool,
@@ -69,6 +86,14 @@ __all__ = [
     'ApifyRunTaskAndGetDatasetTool',
     'ApifyRunTaskTool',
     'ApifyScrapeUrlTool',
+    # Social media Actor tools
+    'ApifyFacebookPostsScraperTool',
+    'ApifyInstagramScraperTool',
+    'ApifyLinkedInProfileDetailTool',
+    'ApifyLinkedInProfilePostsTool',
+    'ApifyLinkedInProfileSearchTool',
+    'ApifyTikTokScraperTool',
+    'ApifyTwitterScraperTool',
     # Search & crawling tools
     'ApifyGoogleSearchTool',
     'ApifyWebCrawlerTool',
@@ -78,6 +103,7 @@ __all__ = [
     'ApifyEcommerceScraperTool',
     # Tool group lists
     'APIFY_CORE_TOOLS',
+    'APIFY_SOCIAL_TOOLS',
     'APIFY_SEARCH_TOOLS',
     # Meta
     '__version__',

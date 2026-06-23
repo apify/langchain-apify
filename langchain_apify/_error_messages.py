@@ -4,6 +4,7 @@ _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET = (
     ' in your code or pass it as environment variable.'
     ' To pass it as environment variable, you can use the following command:'
     ' `APIFY_TOKEN="YOUR_APIFY_TOKEN" python your_script.py`'
+    ' (`APIFY_API_TOKEN` is also accepted for backwards compatibility).'
 )
 
 _ERROR_ACTOR_RUN_FAILED = 'Actor run {run_id} ended with status {status}.'
