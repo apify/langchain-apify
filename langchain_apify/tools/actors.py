@@ -97,15 +97,13 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
             raise ValueError(msg)
 
         apify_client = _create_apify_client(ApifyClient, _raw_token)
+        build = _get_actor_latest_build(apify_client, actor_id)
 
         kwargs.update(
             {
                 'name': _actor_id_to_tool_name(actor_id),
-                'description': self._create_description(apify_client, actor_id),
-                'args_schema': self._build_tool_args_schema_model(
-                    apify_client,
-                    actor_id,
-                ),
+                'description': self._create_description(build),
+                'args_schema': self._build_tool_args_schema_model(build, actor_id),
             },
         )
 
@@ -133,32 +131,27 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         return self._run_actor(input_dict)
 
     @staticmethod
-    def _create_description(apify_client: ApifyClient, actor_id: str) -> str:
-        """Create a description for the tool.
+    def _create_description(build: dict) -> str:
+        """Create a description for the tool from an Actor build.
 
         Args:
-            apify_client (ApifyClient): Apify client instance.
-            actor_id (str): Actor name from Apify store to run.
+            build (dict): The Actor build, as returned by ``_get_actor_latest_build``.
 
         Returns:
             str: The description.
         """
-        build = _get_actor_latest_build(apify_client, actor_id)
         actor_description = build.get('actorDefinition', {}).get('description', '')
         if len(actor_description) > _MAX_DESCRIPTION_LEN:
             actor_description = actor_description[:_MAX_DESCRIPTION_LEN] + '...(TRUNCATED, TOO LONG)'
         return actor_description
 
     @staticmethod
-    def _build_tool_args_schema_model(
-        apify_client: ApifyClient,
-        actor_id: str,
-    ) -> type[BaseModel]:
+    def _build_tool_args_schema_model(build: dict, actor_id: str) -> type[BaseModel]:
         """Build a tool class for an agent that runs the Apify Actor.
 
         Args:
-            apify_client (ApifyClient): Apify client instance.
-            actor_id (str): Actor name from Apify store to run.
+            build (dict): The Actor build, as returned by ``_get_actor_latest_build``.
+            actor_id (str): Actor name from Apify store to run (used for error messages).
 
         Returns:
             type[BaseModel]: The tool input model class for the Apify Actor.
@@ -166,7 +159,6 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Raises:
             ValueError: If the input schema is not found in the Actor build.
         """
-        build = _get_actor_latest_build(apify_client, actor_id)
         if not (actor_input := build.get('actorDefinition', {}).get('input')):
             msg = f'Input schema not found in the Actor build for Actor: {actor_id}'
             raise ValueError(msg)

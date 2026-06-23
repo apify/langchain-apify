@@ -37,6 +37,7 @@ def test_apify_actors_tool_instance() -> None:
         checks if the instance is created correctly.
     """
     with (
+        patch('langchain_apify.tools.actors._get_actor_latest_build', return_value={}),
         patch.object(
             ApifyActorsTool,
             '_create_description',
@@ -84,6 +85,7 @@ def apify_actors_tool_fixture() -> Generator[ApifyActorsTool, None, None]:
         ApifyActorsTool: An instance of the ApifyActorsTool.
     """
     with (
+        patch('langchain_apify.tools.actors._get_actor_latest_build', return_value={}),
         patch.object(
             ApifyActorsTool,
             '_create_description',

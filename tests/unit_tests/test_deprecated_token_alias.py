@@ -183,6 +183,7 @@ class TestApifyActorsToolTokenAlias:
     def _patches() -> tuple:
         """Return patch context managers that stub the network calls ApifyActorsTool makes at init."""
         return (
+            patch('langchain_apify.tools.actors._get_actor_latest_build', return_value={}),
             patch.object(ApifyActorsTool, '_create_description', return_value='stub'),
             patch.object(ApifyActorsTool, '_build_tool_args_schema_model', return_value=_DummySchema),
         )

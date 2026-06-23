@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from apify_client import ApifyClient
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, SecretStr, model_validator
 
 from langchain_apify._client import ApifyToolsClient
 from langchain_apify._constants import (
@@ -63,7 +63,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         exclude=True,
         repr=False,
     )
-    apify_client: ApifyClient = Field(default=None, exclude=True)  # type: ignore[assignment]
+    _apify_client: ApifyClient = PrivateAttr()
     dataset_id: str
     """The ID of the dataset on the Apify platform."""
     dataset_mapping_function: Callable[[dict], Document]
@@ -115,7 +115,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         if self.apify_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self.apify_client = _create_apify_client(ApifyClient, self.apify_token.get_secret_value())
+        self._apify_client = _create_apify_client(ApifyClient, self.apify_token.get_secret_value())
         return self
 
     def load(self) -> list[Document]:
@@ -124,7 +124,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         Returns:
             list[Document]: A list of mapped Document objects.
         """
-        dataset_items = self.apify_client.dataset(self.dataset_id).list_items(clean=True).items
+        dataset_items = self._apify_client.dataset(self.dataset_id).list_items(clean=True).items
         return list(map(self.dataset_mapping_function, dataset_items))
 
     def lazy_load(self) -> Iterator[Document]:
@@ -133,7 +133,7 @@ class ApifyDatasetLoader(BaseLoader, BaseModel):
         Yields:
             Document: A mapped Document object.
         """
-        dataset_items = self.apify_client.dataset(self.dataset_id).iterate_items(
+        dataset_items = self._apify_client.dataset(self.dataset_id).iterate_items(
             clean=True,
         )
         for item in dataset_items:
