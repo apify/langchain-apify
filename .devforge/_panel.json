@@ -1,0 +1,15 @@
+{
+  "tier": "large",
+  "reason": "37 files, 8384 lines, breaking public API changes, new package structure, 19 new tool classes",
+  "reviewers": [
+    { "use": "staff-review",  "model": "sonnet" },
+    { "use": "thermonuclear", "model": "sonnet" },
+    { "use": "code-review",   "model": "sonnet" }
+  ],
+  "final_reviewers": [
+    { "use": "thermonuclear", "model": "sonnet" },
+    { "use": "code-review",   "model": "sonnet" }
+  ],
+  "inner_iterations": 3,
+  "final_review_rounds": 2
+}

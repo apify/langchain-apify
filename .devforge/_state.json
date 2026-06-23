@@ -1,11 +1,23 @@
 {
-  "phase": "triage",
-  "iteration": 0,
+  "phase": "review-run",
+  "iteration": 1,
   "head_sha": "75dc0cd85029aa8c1889fa4bec811541992a3ac9",
   "pr_number": 35,
   "pr_branch": "feat/modernize-langchain-integration",
   "base_branch": "origin/main",
   "base_sha": "636362f21fae9f0554cb2f3db06d9efdad128388",
   "repo": "apify/langchain-apify",
-  "review_only": true
+  "review_only": true,
+  "panel": {
+    "tier": "large",
+    "reviewers": [
+      { "use": "staff-review",  "model": "sonnet" },
+      { "use": "thermonuclear", "model": "sonnet" },
+      { "use": "code-review",   "model": "sonnet" }
+    ],
+    "final_reviewers": [
+      { "use": "thermonuclear", "model": "sonnet" },
+      { "use": "code-review",   "model": "sonnet" }
+    ]
+  }
 }
