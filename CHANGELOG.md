@@ -5,11 +5,6 @@ All notable changes to this project will be documented in this file.
 <!-- git-cliff-unreleased-start -->
 ## 0.1.5 - **not yet released**
 
-### ⚠️ Breaking Changes
-
-- `ApifyDatasetLoader.apify_client` is now the private attribute `_apify_client` (a Pydantic `PrivateAttr`). Code that accessed `loader.apify_client` directly will raise `AttributeError`; use the loader's public methods (`load()` / `lazy_load()`) instead of reaching into the client.
-- `APIFY_API_TOKEN` is demoted to a deprecated alias for `APIFY_TOKEN`. Both the `APIFY_API_TOKEN` env var and the `apify_api_token` kwarg still work but now emit a `DeprecationWarning`; migrate to `APIFY_TOKEN` / `apify_token`.
-
 ### 🐛 Bug Fixes
 
 - Update CHANGELOG.md ([#22](https://github.com/apify/langchain-apify/pull/22)) ([eadab67](https://github.com/apify/langchain-apify/commit/eadab67a1d864400d2f72c2fe1532cfa4bd96ddd)) by [@jirispilka](https://github.com/jirispilka)
