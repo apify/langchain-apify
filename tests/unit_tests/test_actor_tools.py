@@ -24,7 +24,7 @@ from langchain_apify import (
     ApifyYouTubeScraperTool,
 )
 from langchain_apify._client import ApifyToolsClient
-from langchain_apify.tools import _ApifyGenericTool
+from langchain_apify.tools.base import _ApifyGenericTool
 from tests.unit_tests.conftest import SAMPLE_ITEMS, SUCCEEDED_RUN, make_tool
 
 # ---------------------------------------------------------------------------

@@ -20,10 +20,8 @@ from langchain_apify.tools import (
     ApifyRunTaskAndGetDatasetTool,
     ApifyRunTaskTool,
     ApifyScrapeUrlTool,
-    _ApifyGenericTool,
-    _iso,
-    _run_meta,
 )
+from langchain_apify.tools.base import _ApifyGenericTool, _iso, _run_meta
 from tests.unit_tests.conftest import SAMPLE_ITEMS, SUCCEEDED_RUN, make_tool
 
 if TYPE_CHECKING:
@@ -319,7 +317,7 @@ def test_run_actor_and_get_items_tool_missing_token(monkeypatch: pytest.MonkeyPa
 
 
 def test_scrape_url_tool_returns_markdown(mock_tools_client: MagicMock) -> None:
-    mock_tools_client._scrape_url.return_value = (
+    mock_tools_client.scrape_url_with_metadata.return_value = (
         SUCCEEDED_RUN,
         [{'url': 'https://example.com', 'markdown': '# Hello World'}],
         '# Hello World',
@@ -332,11 +330,13 @@ def test_scrape_url_tool_returns_markdown(mock_tools_client: MagicMock) -> None:
     parsed = json.loads(result)
     assert parsed['run']['status'] == 'SUCCEEDED'
     assert parsed['items'] == [{'url': 'https://example.com', 'content': '# Hello World'}]
-    mock_tools_client._scrape_url.assert_called_once_with('https://example.com', 120)
+    mock_tools_client.scrape_url_with_metadata.assert_called_once_with('https://example.com', 120)
 
 
 def test_scrape_url_tool_empty_raises_tool_exception(mock_tools_client: MagicMock) -> None:
-    mock_tools_client._scrape_url.side_effect = RuntimeError('No content extracted from https://example.com.')
+    mock_tools_client.scrape_url_with_metadata.side_effect = RuntimeError(
+        'No content extracted from https://example.com.'
+    )
     tool = make_tool(ApifyScrapeUrlTool, mock_tools_client)
 
     with pytest.raises(ToolException, match='No content extracted'):
@@ -478,7 +478,7 @@ def test_run_actor_and_get_items_tool_clamps_all(mock_tools_client: MagicMock) -
 
 
 def test_scrape_url_tool_clamps_timeout(mock_tools_client: MagicMock) -> None:
-    mock_tools_client._scrape_url.return_value = (
+    mock_tools_client.scrape_url_with_metadata.return_value = (
         SUCCEEDED_RUN,
         [{'url': 'https://example.com', 'text': '# content'}],
         '# content',
@@ -488,7 +488,7 @@ def test_scrape_url_tool_clamps_timeout(mock_tools_client: MagicMock) -> None:
 
     tool._run(url='https://example.com', timeout_secs=9999)
 
-    mock_tools_client._scrape_url.assert_called_once_with('https://example.com', 30)
+    mock_tools_client.scrape_url_with_metadata.assert_called_once_with('https://example.com', 30)
 
 
 def test_run_task_tool_clamps_timeout_and_memory(mock_tools_client: MagicMock) -> None:

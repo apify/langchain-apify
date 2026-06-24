@@ -13,6 +13,9 @@ from pydantic import SecretStr
 _MAX_DESCRIPTION_LEN: int = 350
 
 _DEPRECATED_APIFY_API_TOKEN_MSG = "The 'apify_api_token' parameter is deprecated, use 'apify_token' instead."
+_DEPRECATED_APIFY_API_TOKEN_ENV_MSG = (
+    "The 'APIFY_API_TOKEN' environment variable is deprecated, use 'APIFY_TOKEN' instead."
+)
 _BOTH_TOKENS_MSG = (
     "Both 'apify_token' and 'apify_api_token' were specified; using 'apify_token' "
     "and ignoring the deprecated 'apify_api_token'."
@@ -61,10 +64,15 @@ def _resolve_apify_token() -> str | None:
     """Resolve the Apify API token from environment variables.
 
     ``APIFY_TOKEN`` (SDK-standard) takes precedence; ``APIFY_API_TOKEN`` is
-    kept as a fallback for backwards compatibility with this package's
-    historical naming.
+    kept as a deprecated fallback for backwards compatibility with this
+    package's historical naming, and emits a ``DeprecationWarning`` when used.
     """
-    return os.getenv('APIFY_TOKEN') or os.getenv('APIFY_API_TOKEN')
+    if token := os.getenv('APIFY_TOKEN'):
+        return token
+    if token := os.getenv('APIFY_API_TOKEN'):
+        warnings.warn(_DEPRECATED_APIFY_API_TOKEN_ENV_MSG, DeprecationWarning, stacklevel=2)
+        return token
+    return None
 
 
 def _apify_token_secret_factory() -> SecretStr | None:

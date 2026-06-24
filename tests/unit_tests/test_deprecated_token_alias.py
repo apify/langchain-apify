@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import warnings
 from contextlib import ExitStack
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 from apify_client._types import ListPage
@@ -27,7 +28,11 @@ from pydantic import BaseModel
 
 from langchain_apify import ApifyDatasetLoader, ApifyWrapper
 from langchain_apify._client import ApifyToolsClient
+from langchain_apify._utils import _resolve_apify_token
 from langchain_apify.tools import ApifyActorsTool, ApifyRunActorTool
+
+if TYPE_CHECKING:
+    import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -263,3 +268,55 @@ class TestGenericToolTokenAlias:
             assert 'ignoring' in str(w[0].message)
             assert tool.apify_token is not None
             assert tool.apify_token.get_secret_value() == 'primary'
+
+
+# ---------------------------------------------------------------------------
+# APIFY_API_TOKEN environment variable (deprecated alias for APIFY_TOKEN)
+# ---------------------------------------------------------------------------
+
+
+class TestApifyApiTokenEnvVarAlias:
+    """The ``APIFY_API_TOKEN`` env var is honoured but deprecated.
+
+    Mirrors the kwarg matrix: ``APIFY_TOKEN`` is preferred and silent,
+    ``APIFY_API_TOKEN`` works but emits a ``DeprecationWarning``.
+    """
+
+    def test_apify_token_env_no_warning(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv('APIFY_TOKEN', 'new-style')
+        monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            token = _resolve_apify_token()
+        assert token == 'new-style'
+        assert len(w) == 0
+
+    def test_apify_api_token_env_emits_warning(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv('APIFY_TOKEN', raising=False)
+        monkeypatch.setenv('APIFY_API_TOKEN', 'legacy-style')
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            token = _resolve_apify_token()
+        assert token == 'legacy-style'
+        assert len(w) == 1
+        assert issubclass(w[0].category, DeprecationWarning)
+        assert 'APIFY_API_TOKEN' in str(w[0].message)
+
+    def test_apify_token_env_takes_precedence_silently(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """When both env vars are set, ``APIFY_TOKEN`` wins with no warning."""
+        monkeypatch.setenv('APIFY_TOKEN', 'primary')
+        monkeypatch.setenv('APIFY_API_TOKEN', 'ignored')
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            token = _resolve_apify_token()
+        assert token == 'primary'
+        assert len(w) == 0
+
+    def test_no_token_env_returns_none_without_warning(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv('APIFY_TOKEN', raising=False)
+        monkeypatch.delenv('APIFY_API_TOKEN', raising=False)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            token = _resolve_apify_token()
+        assert token is None
+        assert len(w) == 0

@@ -19,7 +19,7 @@ from langchain_apify._constants import (
     _MAX_MEMORY_MBYTES_CAP,
     _MAX_TIMEOUT_SECS_CAP,
 )
-from langchain_apify.tools.base import _ApifyGenericTool
+from langchain_apify.tools.base import _TOOL_RUN_ERRORS, _ApifyGenericTool
 
 if TYPE_CHECKING:
     from langchain_core.callbacks import CallbackManagerForToolRun
@@ -163,7 +163,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
             run = self._client.run_actor(
                 actor_id, run_input, self._clamp_timeout(timeout_secs), self._clamp_memory(memory_mbytes)
             )
-        except RuntimeError as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, [])
 
@@ -213,7 +213,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
     ) -> str:
         try:
             items = self._client.get_dataset_items(dataset_id, self._clamp_items(limit), max(0, offset))
-        except RuntimeError as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(None, items)
 
@@ -277,7 +277,7 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
                 self._clamp_memory(memory_mbytes),
                 self._clamp_items(dataset_items_limit),
             )
-        except RuntimeError as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, items)
 
@@ -326,10 +326,10 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            # _scrape_url is the rich primitive; scrape_url() drops the metadata
-            # this tool needs (run + content source), so access it directly.
-            run, _, content, _ = self._client._scrape_url(url, self._clamp_timeout(timeout_secs))  # noqa: SLF001
-        except RuntimeError as exc:
+            # scrape_url_with_metadata is the rich primitive; the plain
+            # scrape_url() drops the run metadata + content source this tool needs.
+            run, _, content, _ = self._client.scrape_url_with_metadata(url, self._clamp_timeout(timeout_secs))
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, [{'url': url, 'content': content}])
 
@@ -389,7 +389,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
             run = self._client.run_task(
                 task_id, task_input, self._clamp_timeout(timeout_secs), self._clamp_memory(memory_mbytes)
             )
-        except RuntimeError as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, [])
 
@@ -453,7 +453,7 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override
                 self._clamp_memory(memory_mbytes),
                 self._clamp_items(dataset_items_limit),
             )
-        except RuntimeError as exc:
+        except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
         return self._envelope(run, items)
 

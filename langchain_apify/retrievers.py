@@ -11,6 +11,7 @@ from pydantic import Field, PrivateAttr, SecretStr, model_validator
 
 from langchain_apify._client import ApifyToolsClient
 from langchain_apify._constants import _DEFAULT_RAG_MAX_RESULTS, _DEFAULT_RUN_TIMEOUT_SECS
+from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import (
     _apify_token_secret_factory,
     _extract_content,
@@ -75,10 +76,14 @@ class ApifySearchRetriever(BaseRetriever):
     def model_post_init(self, context: Any) -> None:  # noqa: ANN401
         """Construct the underlying ``ApifyToolsClient``.
 
-        The helper handles ``None`` / ``SecretStr`` / env-fallback and raises
-        ``ValueError`` if no token is available.
+        Mirrors ``_ApifyGenericTool``: guard against a missing token locally
+        before constructing the client, so the failure mode is consistent
+        across tools and the retriever.
         """
-        self._client = ApifyToolsClient(apify_token=self.apify_token)
+        if self.apify_token is None:
+            msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+            raise ValueError(msg)
+        self._client = ApifyToolsClient(apify_token=self.apify_token.get_secret_value())
         super().model_post_init(context)
 
     def _get_relevant_documents(
