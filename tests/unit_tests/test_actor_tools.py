@@ -24,7 +24,9 @@ from langchain_apify import (
     ApifyYouTubeScraperTool,
 )
 from langchain_apify._client import ApifyToolsClient
+from langchain_apify._error_messages import _NOTICE_TWITTER_DEMO
 from langchain_apify.tools.base import _ApifyGenericTool
+from langchain_apify.tools.social import _has_demo_items
 from tests.unit_tests.conftest import SAMPLE_ITEMS, SUCCEEDED_RUN, make_tool
 
 # ---------------------------------------------------------------------------
@@ -749,6 +751,40 @@ def test_twitter_tool_value_error_raises_tool_exception(mock_tools_client: Magic
 
     with pytest.raises(ToolException, match='Unsupported Twitter search_mode'):
         tool._run(search_query='apify', search_mode='replies')  # type: ignore[arg-type]
+
+
+def test_twitter_tool_demo_items_add_notice(mock_tools_client: MagicMock) -> None:
+    # The Actor returns {"demo": true} placeholders on the Apify free plan.
+    mock_tools_client.twitter_scrape.return_value = (SUCCEEDED_RUN, [{'demo': True}])
+    tool = make_tool(ApifyTwitterScraperTool, mock_tools_client)
+
+    parsed = json.loads(tool._run(search_query='apify'))
+
+    assert parsed['notice'] == _NOTICE_TWITTER_DEMO
+    assert parsed['items'] == [{'demo': True}]
+
+
+def test_twitter_tool_real_items_have_no_notice(mock_tools_client: MagicMock) -> None:
+    mock_tools_client.twitter_scrape.return_value = (SUCCEEDED_RUN, SAMPLE_ITEMS)
+    tool = make_tool(ApifyTwitterScraperTool, mock_tools_client)
+
+    parsed = json.loads(tool._run(search_query='apify'))
+
+    assert 'notice' not in parsed
+
+
+@pytest.mark.parametrize(
+    ('items', 'expected'),
+    [
+        ([{'demo': True}], True),
+        ([{'text': 'real'}, {'demo': True}], True),
+        ([{'text': 'real'}], False),
+        ([{'demo': False}], False),
+        ([], False),
+    ],
+)
+def test_has_demo_items(items: list[dict], expected: bool) -> None:  # noqa: FBT001
+    assert _has_demo_items(items) is expected
 
 
 # ---------------------------------------------------------------------------

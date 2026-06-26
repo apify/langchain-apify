@@ -639,6 +639,15 @@ def test_build_instagram_url_post_from_id() -> None:
     assert ApifyToolsClient._build_instagram_url('post', 'ABC123') == 'https://www.instagram.com/p/ABC123/'
 
 
+def test_build_instagram_url_bare_user_handle() -> None:
+    assert ApifyToolsClient._build_instagram_url('user', 'apify') == 'https://www.instagram.com/apify/'
+
+
+def test_build_instagram_url_strips_only_one_leading_prefix() -> None:
+    # removeprefix drops a single leading '@'; lstrip would wrongly strip both.
+    assert ApifyToolsClient._build_instagram_url('user', '@@apify') == 'https://www.instagram.com/@apify/'
+
+
 # ---------------------------------------------------------------------------
 # scrape_url_with_metadata
 # ---------------------------------------------------------------------------
@@ -707,6 +716,27 @@ def test_google_search_scales_pages_to_max_results(client: ApifyToolsClient, moc
 
     run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
     assert run_input['maxPagesPerQuery'] == 3
+    assert 'resultsPerPage' not in run_input
+
+
+@pytest.mark.parametrize(
+    ('max_results', 'expected_pages'),
+    [(5, 1), (10, 1), (11, 2), (25, 3), (100, 10)],
+)
+def test_google_search_page_count_ceil_boundaries(
+    client: ApifyToolsClient,
+    mock_apify_client: MagicMock,
+    max_results: int,
+    expected_pages: int,
+) -> None:
+    # maxPagesPerQuery == ceil(max_results / 10); 10->1 and 11->2 pin the boundary.
+    mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+    mock_apify_client.dataset.return_value.list_items.return_value.items = []
+
+    client.google_search('langchain', max_results=max_results)
+
+    run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
+    assert run_input['maxPagesPerQuery'] == expected_pages
     assert 'resultsPerPage' not in run_input
 
 

@@ -129,15 +129,17 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
         return max(0, min(value, self.max_crawl_depth))
 
     @staticmethod
-    def _envelope(run: dict | None, items: list) -> str:
+    def _envelope(run: dict | None, items: list, notice: str | None = None) -> str:
         """Serialise the standard ``{"run": ..., "items": ...}`` tool envelope.
 
         ``run`` is a raw Apify run-details dict (passed through :func:`_run_meta`)
-        or ``None`` for dataset-only tools. ``default=str`` coerces non-JSON-native
-        values (e.g. ``datetime`` objects from the ``clean=True`` deserialiser) so
-        serialisation never raises ``TypeError``.
+        or ``None`` for dataset-only tools. When ``notice`` is provided it is added
+        under a ``notice`` key to surface an out-of-band hint to the caller (e.g.
+        the Actor returned demo placeholder data). ``default=str`` coerces
+        non-JSON-native values (e.g. ``datetime`` objects from the ``clean=True``
+        deserialiser) so serialisation never raises ``TypeError``.
         """
-        return json.dumps(
-            {'run': _run_meta(run) if run is not None else None, 'items': items},
-            default=str,
-        )
+        payload: dict = {'run': _run_meta(run) if run is not None else None, 'items': items}
+        if notice is not None:
+            payload['notice'] = notice
+        return json.dumps(payload, default=str)

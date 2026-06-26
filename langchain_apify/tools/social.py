@@ -15,6 +15,7 @@ from langchain_apify._constants import (
     _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
     _DEFAULT_SOCIAL_RESULTS_LIMIT,
 )
+from langchain_apify._error_messages import _NOTICE_TWITTER_DEMO
 from langchain_apify._types import (  # noqa: TCH001  # runtime-needed: pydantic Field annotations
     InstagramSearchType,
     TikTokSearchType,
@@ -26,6 +27,16 @@ from langchain_apify.tools.base import _TOOL_RUN_ERRORS, _ApifyGenericTool
 if TYPE_CHECKING:
     from langchain_core.callbacks import CallbackManagerForToolRun
     from langchain_core.tools import BaseTool
+
+
+def _has_demo_items(items: list[dict]) -> bool:
+    """Return True if the Twitter Actor returned demo placeholder items.
+
+    The ``apidojo/twitter-scraper-lite`` Actor emits ``{"demo": true}`` items
+    instead of real tweets when run on the Apify free plan. Real tweets never
+    carry a truthy ``demo`` field.
+    """
+    return any(isinstance(item, dict) and item.get('demo') is True for item in items)
 
 
 # ---------------------------------------------------------------------------
@@ -455,7 +466,8 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
             )
         except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
-        return self._envelope(run, items)
+        notice = _NOTICE_TWITTER_DEMO if _has_demo_items(items) else None
+        return self._envelope(run, items, notice=notice)
 
 
 class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]

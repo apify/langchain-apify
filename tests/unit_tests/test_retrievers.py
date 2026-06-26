@@ -209,6 +209,35 @@ def test_items_to_documents_uses_metadata_url_fallback() -> None:
     assert docs[0].metadata['title'] == 'Nested'
 
 
+def test_items_to_documents_metadata_url_wins_over_crawled_url() -> None:
+    """Regression: when both are present, metadata.url must win over crawledUrl."""
+    items = [
+        {
+            'metadata': {'url': 'https://meta.example.com', 'title': 'T'},
+            'crawledUrl': 'https://crawled.example.com',
+            'text': 'content',
+        },
+    ]
+
+    docs = ApifySearchRetriever._items_to_documents(items)
+
+    assert docs[0].metadata['source'] == 'https://meta.example.com'
+
+
+def test_items_to_documents_metadata_url_wins_over_top_level_url() -> None:
+    items = [
+        {
+            'metadata': {'url': 'https://meta.example.com'},
+            'url': 'https://top.example.com',
+            'text': 'content',
+        },
+    ]
+
+    docs = ApifySearchRetriever._items_to_documents(items)
+
+    assert docs[0].metadata['source'] == 'https://meta.example.com'
+
+
 def test_items_to_documents_uses_markdown_fallback() -> None:
     items = [{'crawledUrl': 'https://example.com', 'markdown': '# MD content', 'metadata': {'title': 'T'}}]
 
