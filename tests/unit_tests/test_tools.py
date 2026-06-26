@@ -607,6 +607,23 @@ def test_clamp_items_floor_is_one(mock_tools_client: MagicMock) -> None:
     mock_tools_client.get_dataset_items.assert_called_once_with('ds-1', 1, 0)
 
 
+@pytest.mark.parametrize(
+    ('depth', 'expected'),
+    [
+        (-999, 0),  # floored to 0
+        (-1, 0),
+        (0, 0),  # 0 means "only the seed URL"
+        (3, 3),  # within range, passes through
+        (5, 5),  # at the cap
+        (100, 5),  # above the cap, clamped down
+    ],
+)
+def test_clamp_depth_floors_at_zero_and_caps(mock_tools_client: MagicMock, depth: int, expected: int) -> None:
+    """_clamp_depth floors negatives at 0 and clamps above-cap values to max_crawl_depth."""
+    tool = make_tool(ApifyRunActorTool, mock_tools_client, max_crawl_depth=5)
+    assert tool._clamp_depth(depth) == expected
+
+
 def test_negative_offset_clamped_to_zero(mock_tools_client: MagicMock) -> None:
     """Negative offset values should be clamped to 0."""
     mock_tools_client.get_dataset_items.return_value = SAMPLE_ITEMS
