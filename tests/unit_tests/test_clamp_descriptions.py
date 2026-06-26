@@ -1,10 +1,11 @@
 """Tests for the clamp-ceiling text in tool input-schema descriptions.
 
 ``_ApifyGenericTool`` silently clamps ``timeout_secs`` / ``memory_mbytes``
-/ ``limit`` / ``dataset_items_limit`` / ``max_crawl_depth`` to the per-tool
-``max_*`` ceilings. The Pydantic input schemas advertise those ceilings in
-their ``Field(description=...)`` strings so an LLM agent doesn't promise
-results above the cap. These tests pin:
+/ ``limit`` / ``dataset_items_limit`` / ``max_crawl_depth`` / ``max_results``
+/ ``max_crawl_pages`` to the per-tool ``max_*`` ceilings. The Pydantic input
+schemas advertise those ceilings in their ``Field(description=...)`` strings
+so an LLM agent doesn't promise results above the cap. These tests pin
+every clamp-relevant field across the core, search, and social tools:
 
   1. every clamp-relevant Field carries a ``"clamped to N max"`` phrase;
   2. ``N`` matches the live default cap on ``_ApifyGenericTool`` (no
@@ -30,7 +31,22 @@ from langchain_apify.tools.core import (
     ApifyRunTaskInput,
     ApifyScrapeUrlInput,
 )
-from langchain_apify.tools.search import ApifyGoogleSearchInput, ApifyWebCrawlerInput
+from langchain_apify.tools.search import (
+    ApifyEcommerceScraperInput,
+    ApifyGoogleMapsInput,
+    ApifyGoogleSearchInput,
+    ApifyRAGWebBrowserInput,
+    ApifyWebCrawlerInput,
+    ApifyYouTubeScraperInput,
+)
+from langchain_apify.tools.social import (
+    ApifyFacebookPostsScraperInput,
+    ApifyInstagramScraperInput,
+    ApifyLinkedInProfilePostsInput,
+    ApifyLinkedInProfileSearchInput,
+    ApifyTikTokScraperInput,
+    ApifyTwitterScraperInput,
+)
 
 # (schema, field_name, base-class cap-field name)
 _CLAMP_FIELDS: list[tuple[type[BaseModel], str, str]] = [
@@ -49,6 +65,19 @@ _CLAMP_FIELDS: list[tuple[type[BaseModel], str, str]] = [
     (ApifyRunTaskAndGetDatasetInput, 'timeout_secs', 'max_timeout_secs'),
     (ApifyRunTaskAndGetDatasetInput, 'memory_mbytes', 'max_memory_mbytes'),
     (ApifyRunTaskAndGetDatasetInput, 'dataset_items_limit', 'max_items'),
+    # max_results / max_crawl_pages are clamped via _clamp_items (max_items cap).
+    (ApifyGoogleSearchInput, 'max_results', 'max_items'),
+    (ApifyWebCrawlerInput, 'max_crawl_pages', 'max_items'),
+    (ApifyRAGWebBrowserInput, 'max_results', 'max_items'),
+    (ApifyGoogleMapsInput, 'max_results', 'max_items'),
+    (ApifyYouTubeScraperInput, 'max_results', 'max_items'),
+    (ApifyEcommerceScraperInput, 'max_results', 'max_items'),
+    (ApifyInstagramScraperInput, 'max_results', 'max_items'),
+    (ApifyLinkedInProfilePostsInput, 'max_results', 'max_items'),
+    (ApifyLinkedInProfileSearchInput, 'max_results', 'max_items'),
+    (ApifyTwitterScraperInput, 'max_results', 'max_items'),
+    (ApifyTikTokScraperInput, 'max_results', 'max_items'),
+    (ApifyFacebookPostsScraperInput, 'max_results', 'max_items'),
 ]
 
 _CAP_PATTERN = re.compile(r'clamped to (\d+) max')

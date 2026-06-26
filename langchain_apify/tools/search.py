@@ -22,6 +22,7 @@ from langchain_apify._constants import (
     _DEFAULT_RUN_TIMEOUT_SECS,
     _DEFAULT_YOUTUBE_MAX_RESULTS,
     _MAX_CRAWL_DEPTH_CAP,
+    _MAX_ITEMS_CAP,
 )
 from langchain_apify._types import (  # noqa: TCH001  # runtime-needed: pydantic Field annotations
     CrawlerType,
@@ -47,7 +48,8 @@ class ApifyGoogleSearchInput(BaseModel):
 
     query: str = Field(description='Search query string.')
     max_results: int = Field(
-        default=_DEFAULT_GOOGLE_MAX_RESULTS, description='Maximum number of search results to return.'
+        default=_DEFAULT_GOOGLE_MAX_RESULTS,
+        description=f'Maximum number of search results to return (clamped to {_MAX_ITEMS_CAP} max).',
     )
     country_code: str | None = Field(
         default=None,
@@ -71,7 +73,10 @@ class ApifyWebCrawlerInput(BaseModel):
     """Input schema for :class:`ApifyWebCrawlerTool`."""
 
     url: str = Field(description='Seed URL to start crawling from.')
-    max_crawl_pages: int = Field(default=_DEFAULT_MAX_CRAWL_PAGES, description='Maximum number of pages to crawl.')
+    max_crawl_pages: int = Field(
+        default=_DEFAULT_MAX_CRAWL_PAGES,
+        description=f'Maximum number of pages to crawl (clamped to {_MAX_ITEMS_CAP} max).',
+    )
     max_crawl_depth: int = Field(
         default=_DEFAULT_MAX_CRAWL_DEPTH,
         description=f'Maximum link-follow depth from the seed URL (clamped to {_MAX_CRAWL_DEPTH_CAP} max).',
@@ -87,7 +92,10 @@ class ApifyRAGWebBrowserInput(BaseModel):
     """Input schema for :class:`ApifyRAGWebBrowserTool`."""
 
     query: str = Field(description='Search query string.')
-    max_results: int = Field(default=_DEFAULT_RAG_MAX_RESULTS, description='Maximum number of results to return.')
+    max_results: int = Field(
+        default=_DEFAULT_RAG_MAX_RESULTS,
+        description=f'Maximum number of results to return (clamped to {_MAX_ITEMS_CAP} max).',
+    )
 
 
 class ApifyGoogleMapsInput(BaseModel):
@@ -95,7 +103,8 @@ class ApifyGoogleMapsInput(BaseModel):
 
     query: str = Field(description='Search query (e.g. "coffee shops in Berlin").')
     max_results: int = Field(
-        default=_DEFAULT_GOOGLE_MAPS_MAX_RESULTS, description='Maximum number of places to return.'
+        default=_DEFAULT_GOOGLE_MAPS_MAX_RESULTS,
+        description=f'Maximum number of places to return (clamped to {_MAX_ITEMS_CAP} max).',
     )
     language: str | None = Field(
         default=None,
@@ -113,7 +122,10 @@ class ApifyYouTubeScraperInput(BaseModel):
         default='search',
         description='Scrape mode: search keyword, single video URL, or channel URL.',
     )
-    max_results: int = Field(default=_DEFAULT_YOUTUBE_MAX_RESULTS, description='Maximum number of items to return.')
+    max_results: int = Field(
+        default=_DEFAULT_YOUTUBE_MAX_RESULTS,
+        description=f'Maximum number of items to return (clamped to {_MAX_ITEMS_CAP} max).',
+    )
 
 
 class ApifyEcommerceScraperInput(BaseModel):
@@ -128,7 +140,8 @@ class ApifyEcommerceScraperInput(BaseModel):
         ),
     )
     max_results: int = Field(
-        default=_DEFAULT_ECOMMERCE_MAX_RESULTS, description='Maximum number of products to return.'
+        default=_DEFAULT_ECOMMERCE_MAX_RESULTS,
+        description=f'Maximum number of products to return (clamped to {_MAX_ITEMS_CAP} max).',
     )
 
 

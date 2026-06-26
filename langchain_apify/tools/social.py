@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from langchain_apify._constants import (
     _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
     _DEFAULT_SOCIAL_RESULTS_LIMIT,
+    _MAX_ITEMS_CAP,
 )
 from langchain_apify._error_messages import _NOTICE_TWITTER_DEMO
 from langchain_apify._types import (  # noqa: TCH001  # runtime-needed: pydantic Field annotations
@@ -61,7 +62,10 @@ class ApifyInstagramScraperInput(BaseModel):
             'pass a full post URL.'
         ),
     )
-    max_results: int = Field(default=_DEFAULT_SOCIAL_RESULTS_LIMIT, description='Maximum number of items to return.')
+    max_results: int = Field(
+        default=_DEFAULT_SOCIAL_RESULTS_LIMIT,
+        description=f'Maximum number of items to return (clamped to {_MAX_ITEMS_CAP} max).',
+    )
     only_posts_newer_than: str | None = Field(
         default=None,
         description=(
@@ -77,7 +81,10 @@ class ApifyLinkedInProfilePostsInput(BaseModel):
     profile_url: str = Field(
         description='LinkedIn profile URL or username (e.g. "satyanadella" or "linkedin.com/in/satyanadella").',
     )
-    max_results: int = Field(default=_DEFAULT_SOCIAL_RESULTS_LIMIT, description='Maximum number of posts to return.')
+    max_results: int = Field(
+        default=_DEFAULT_SOCIAL_RESULTS_LIMIT,
+        description=f'Maximum number of posts to return (clamped to {_MAX_ITEMS_CAP} max).',
+    )
 
 
 class ApifyLinkedInProfileSearchInput(BaseModel):
@@ -85,7 +92,8 @@ class ApifyLinkedInProfileSearchInput(BaseModel):
 
     query: str = Field(description='Search keywords (e.g. name, title, company).')
     max_results: int = Field(
-        default=_DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS, description='Maximum number of profiles to return.'
+        default=_DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
+        description=f'Maximum number of profiles to return (clamped to {_MAX_ITEMS_CAP} max).',
     )
 
 
@@ -112,7 +120,10 @@ class ApifyTwitterScraperInput(BaseModel):
             'tweets, "replies" for a tweet URL\'s replies.'
         ),
     )
-    max_results: int = Field(default=_DEFAULT_SOCIAL_RESULTS_LIMIT, description='Maximum number of tweets to return.')
+    max_results: int = Field(
+        default=_DEFAULT_SOCIAL_RESULTS_LIMIT,
+        description=f'Maximum number of tweets to return (clamped to {_MAX_ITEMS_CAP} max).',
+    )
     start: str | None = Field(
         default=None,
         description='Optional start date - only return tweets newer than this date.',
@@ -139,14 +150,20 @@ class ApifyTikTokScraperInput(BaseModel):
             'specific TikTok post URL.'
         ),
     )
-    max_results: int = Field(default=_DEFAULT_SOCIAL_RESULTS_LIMIT, description='Maximum number of items to return.')
+    max_results: int = Field(
+        default=_DEFAULT_SOCIAL_RESULTS_LIMIT,
+        description=f'Maximum number of items to return (clamped to {_MAX_ITEMS_CAP} max).',
+    )
 
 
 class ApifyFacebookPostsScraperInput(BaseModel):
     """Input schema for :class:`ApifyFacebookPostsScraperTool`."""
 
     page_url: str = Field(description='Facebook page URL to scrape (public pages only).')
-    max_results: int = Field(default=_DEFAULT_SOCIAL_RESULTS_LIMIT, description='Maximum number of posts to return.')
+    max_results: int = Field(
+        default=_DEFAULT_SOCIAL_RESULTS_LIMIT,
+        description=f'Maximum number of posts to return (clamped to {_MAX_ITEMS_CAP} max).',
+    )
     only_posts_newer_than: str | None = Field(
         default=None,
         description=(
