@@ -203,7 +203,7 @@ class ApifyCrawlLoader(BaseLoader):
         Yields:
             Document: One document per crawled page.
         """
-        items = self._client.crawl_website(
+        _, items = self._client.crawl_website(
             self.url,
             max_crawl_pages=self.max_crawl_pages,
             max_crawl_depth=self.max_crawl_depth,

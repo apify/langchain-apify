@@ -11,6 +11,7 @@ from pydantic import SecretStr
 
 from langchain_apify import ApifyCrawlLoader, ApifyDatasetLoader
 from langchain_apify._client import ApifyToolsClient
+from tests.unit_tests.conftest import SUCCEEDED_RUN
 
 
 def test_apify_dataset_loader_load() -> None:
@@ -97,7 +98,7 @@ def _make_crawl_loader(
 
 def test_crawl_loader_lazy_load() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.crawl_website.return_value = CRAWL_ITEMS
+    mock_client.crawl_website.return_value = (SUCCEEDED_RUN, CRAWL_ITEMS)
     loader = _make_crawl_loader(mock_client)
 
     docs = list(loader.lazy_load())
@@ -114,7 +115,7 @@ def test_crawl_loader_lazy_load() -> None:
 
 def test_crawl_loader_load_delegates_to_lazy_load() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.crawl_website.return_value = CRAWL_ITEMS
+    mock_client.crawl_website.return_value = (SUCCEEDED_RUN, CRAWL_ITEMS)
     loader = _make_crawl_loader(mock_client)
 
     docs = loader.load()
@@ -125,7 +126,7 @@ def test_crawl_loader_load_delegates_to_lazy_load() -> None:
 
 def test_crawl_loader_passes_params() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.crawl_website.return_value = []
+    mock_client.crawl_website.return_value = (SUCCEEDED_RUN, [])
     loader = _make_crawl_loader(
         mock_client,
         max_crawl_pages=5,
@@ -147,7 +148,7 @@ def test_crawl_loader_passes_params() -> None:
 
 def test_crawl_loader_empty_results() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.crawl_website.return_value = []
+    mock_client.crawl_website.return_value = (SUCCEEDED_RUN, [])
     loader = _make_crawl_loader(mock_client)
 
     docs = loader.load()
@@ -157,9 +158,10 @@ def test_crawl_loader_empty_results() -> None:
 
 def test_crawl_loader_text_fallback() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.crawl_website.return_value = [
-        {'url': 'https://example.com/', 'text': 'Plain text', 'metadata': {'title': 'T'}},
-    ]
+    mock_client.crawl_website.return_value = (
+        SUCCEEDED_RUN,
+        [{'url': 'https://example.com/', 'text': 'Plain text', 'metadata': {'title': 'T'}}],
+    )
     loader = _make_crawl_loader(mock_client)
 
     docs = list(loader.lazy_load())
@@ -169,9 +171,10 @@ def test_crawl_loader_text_fallback() -> None:
 
 def test_crawl_loader_missing_metadata() -> None:
     mock_client = MagicMock(spec=ApifyToolsClient)
-    mock_client.crawl_website.return_value = [
-        {'url': 'https://example.com/', 'markdown': '# Content'},
-    ]
+    mock_client.crawl_website.return_value = (
+        SUCCEEDED_RUN,
+        [{'url': 'https://example.com/', 'markdown': '# Content'}],
+    )
     loader = _make_crawl_loader(mock_client)
 
     docs = list(loader.lazy_load())

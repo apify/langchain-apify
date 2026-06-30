@@ -35,23 +35,26 @@ from tests.unit_tests.conftest import SAMPLE_ITEMS, SUCCEEDED_RUN, make_tool
 
 
 def test_google_search_tool_returns_json(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.google_search.return_value = [
-        {'title': 'Result 1', 'url': 'https://example.com/1', 'description': 'Desc 1'},
-        {'title': 'Result 2', 'url': 'https://example.com/2', 'description': 'Desc 2'},
-    ]
+    mock_tools_client.google_search.return_value = (
+        SUCCEEDED_RUN,
+        [
+            {'title': 'Result 1', 'url': 'https://example.com/1', 'description': 'Desc 1'},
+            {'title': 'Result 2', 'url': 'https://example.com/2', 'description': 'Desc 2'},
+        ],
+    )
     tool = make_tool(ApifyGoogleSearchTool, mock_tools_client)
 
     result = tool._run(query='test query')
 
     parsed = json.loads(result)
-    assert parsed['run'] is None
+    assert parsed['run']['status'] == 'SUCCEEDED'
     assert len(parsed['items']) == 2
     assert parsed['items'][0]['title'] == 'Result 1'
     assert parsed['items'][1]['url'] == 'https://example.com/2'
 
 
 def test_google_search_tool_passes_params(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.google_search.return_value = []
+    mock_tools_client.google_search.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyGoogleSearchTool, mock_tools_client)
 
     tool._run(query='test', max_results=5, country_code='us', language_code='en', timeout_secs=120)
@@ -66,7 +69,7 @@ def test_google_search_tool_passes_params(mock_tools_client: MagicMock) -> None:
 
 
 def test_google_search_tool_clamps_timeout(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.google_search.return_value = []
+    mock_tools_client.google_search.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyGoogleSearchTool, mock_tools_client, max_timeout_secs=60)
 
     tool._run(query='test', timeout_secs=9999)
@@ -75,7 +78,7 @@ def test_google_search_tool_clamps_timeout(mock_tools_client: MagicMock) -> None
 
 
 def test_google_search_tool_clamps_max_results(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.google_search.return_value = []
+    mock_tools_client.google_search.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyGoogleSearchTool, mock_tools_client, max_items=3)
 
     tool._run(query='test', max_results=100)
@@ -85,13 +88,14 @@ def test_google_search_tool_clamps_max_results(mock_tools_client: MagicMock) -> 
 
 
 def test_google_search_tool_empty_results(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.google_search.return_value = []
+    mock_tools_client.google_search.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyGoogleSearchTool, mock_tools_client)
 
     result = tool._run(query='nothing')
 
     parsed = json.loads(result)
-    assert parsed == {'run': None, 'items': []}
+    assert parsed['items'] == []
+    assert parsed['run']['status'] == 'SUCCEEDED'
 
 
 def test_google_search_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
@@ -123,7 +127,7 @@ def test_google_search_tool_rejects_malformed_locale(mock_tools_client: MagicMoc
 
 @pytest.mark.parametrize('raw_country', ['us', 'US', 'Us', 'uS'])
 def test_google_search_tool_normalises_country_code_to_lower(mock_tools_client: MagicMock, raw_country: str) -> None:
-    mock_tools_client.google_search.return_value = []
+    mock_tools_client.google_search.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyGoogleSearchTool, mock_tools_client)
 
     tool.invoke({'query': 'test', 'country_code': raw_country})
@@ -133,7 +137,7 @@ def test_google_search_tool_normalises_country_code_to_lower(mock_tools_client: 
 
 @pytest.mark.parametrize('raw_language', ['en', 'EN', 'En', 'eN'])
 def test_google_search_tool_normalises_language_code_to_lower(mock_tools_client: MagicMock, raw_language: str) -> None:
-    mock_tools_client.google_search.return_value = []
+    mock_tools_client.google_search.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyGoogleSearchTool, mock_tools_client)
 
     tool.invoke({'query': 'test', 'language_code': raw_language})
@@ -147,23 +151,26 @@ def test_google_search_tool_normalises_language_code_to_lower(mock_tools_client:
 
 
 def test_web_crawler_tool_returns_json(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.crawl_website.return_value = [
-        {'url': 'https://example.com/', 'markdown': '# Home', 'text': 'Home', 'metadata': {'title': 'Home'}},
-        {'url': 'https://example.com/about', 'markdown': '', 'text': 'About us', 'metadata': {'title': 'About'}},
-    ]
+    mock_tools_client.crawl_website.return_value = (
+        SUCCEEDED_RUN,
+        [
+            {'url': 'https://example.com/', 'markdown': '# Home', 'text': 'Home', 'metadata': {'title': 'Home'}},
+            {'url': 'https://example.com/about', 'markdown': '', 'text': 'About us', 'metadata': {'title': 'About'}},
+        ],
+    )
     tool = make_tool(ApifyWebCrawlerTool, mock_tools_client)
 
     result = tool._run(url='https://example.com')
 
     parsed = json.loads(result)
-    assert parsed['run'] is None
+    assert parsed['run']['status'] == 'SUCCEEDED'
     assert len(parsed['items']) == 2
     assert parsed['items'][0] == {'url': 'https://example.com/', 'title': 'Home', 'content': '# Home'}
     assert parsed['items'][1] == {'url': 'https://example.com/about', 'title': 'About', 'content': 'About us'}
 
 
 def test_web_crawler_tool_passes_params(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.crawl_website.return_value = []
+    mock_tools_client.crawl_website.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyWebCrawlerTool, mock_tools_client)
 
     tool._run(
@@ -184,7 +191,7 @@ def test_web_crawler_tool_passes_params(mock_tools_client: MagicMock) -> None:
 
 
 def test_web_crawler_tool_clamps_pages_and_timeout(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.crawl_website.return_value = []
+    mock_tools_client.crawl_website.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyWebCrawlerTool, mock_tools_client, max_items=3, max_timeout_secs=60)
 
     tool._run(url='https://example.com', max_crawl_pages=100, timeout_secs=9999)
@@ -195,7 +202,7 @@ def test_web_crawler_tool_clamps_pages_and_timeout(mock_tools_client: MagicMock)
 
 
 def test_web_crawler_tool_clamps_depth(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.crawl_website.return_value = []
+    mock_tools_client.crawl_website.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyWebCrawlerTool, mock_tools_client, max_crawl_depth=2)
 
     tool._run(url='https://example.com', max_crawl_depth=999)
@@ -207,13 +214,14 @@ def test_web_crawler_tool_clamps_depth(mock_tools_client: MagicMock) -> None:
 
 
 def test_web_crawler_tool_empty_results(mock_tools_client: MagicMock) -> None:
-    mock_tools_client.crawl_website.return_value = []
+    mock_tools_client.crawl_website.return_value = (SUCCEEDED_RUN, [])
     tool = make_tool(ApifyWebCrawlerTool, mock_tools_client)
 
     result = tool._run(url='https://example.com')
 
     parsed = json.loads(result)
-    assert parsed == {'run': None, 'items': []}
+    assert parsed['items'] == []
+    assert parsed['run']['status'] == 'SUCCEEDED'
 
 
 def test_web_crawler_tool_failure_raises_tool_exception(mock_tools_client: MagicMock) -> None:
@@ -364,6 +372,8 @@ _TOOL_INVOCATIONS: list[tuple[type[_ApifyGenericTool], str, dict]] = [
 
 # Tools that return the {run, items} envelope on success.
 _ENVELOPE_TOOL_INVOCATIONS: list[tuple[type[_ApifyGenericTool], str, dict]] = [
+    (ApifyGoogleSearchTool, 'google_search', {'query': 'q'}),
+    (ApifyWebCrawlerTool, 'crawl_website', {'url': 'https://example.com'}),
     (ApifyGoogleMapsTool, 'google_maps_search', {'query': 'q'}),
     (ApifyYouTubeScraperTool, 'youtube_scrape', {'search_query': 'q'}),
     (ApifyEcommerceScraperTool, 'ecommerce_scrape', {'url': 'https://example.com'}),
@@ -490,7 +500,7 @@ _RETURN_ENVELOPE = 'envelope'
 # Listed tools hand the client's items straight to _serialize_tool_response,
 # i.e. they are most exposed to raw datetime values from the Actor's dataset.
 _PASSTHROUGH_TOOL_INVOCATIONS: list[tuple[type[_ApifyGenericTool], str, dict, str]] = [
-    (ApifyGoogleSearchTool, 'google_search', {'query': 'q'}, _RETURN_LIST),
+    (ApifyGoogleSearchTool, 'google_search', {'query': 'q'}, _RETURN_ENVELOPE),
     (ApifyGoogleMapsTool, 'google_maps_search', {'query': 'q'}, _RETURN_ENVELOPE),
     (ApifyYouTubeScraperTool, 'youtube_scrape', {'search_query': 'q'}, _RETURN_ENVELOPE),
     (ApifyEcommerceScraperTool, 'ecommerce_scrape', {'url': 'https://example.com'}, _RETURN_ENVELOPE),

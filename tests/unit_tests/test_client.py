@@ -693,8 +693,9 @@ def test_google_search_input_mapping(client: ApifyToolsClient, mock_apify_client
         }
     ]
 
-    results = client.google_search('langchain', max_results=5, country_code='us', language_code='en')
+    run, results = client.google_search('langchain', max_results=5, country_code='us', language_code='en')
 
+    assert run == SUCCEEDED_RUN
     mock_apify_client.actor.assert_called_once_with('apify/google-search-scraper')
     run_input = mock_apify_client.actor.return_value.call.call_args.kwargs['run_input']
     assert run_input == {
@@ -768,8 +769,9 @@ def test_google_search_success(client: ApifyToolsClient, mock_apify_client: Magi
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = GOOGLE_SEARCH_ITEMS
 
-    results = client.google_search('test query', max_results=5)
+    run, results = client.google_search('test query', max_results=5)
 
+    assert run == SUCCEEDED_RUN
     assert len(results) == 2
     assert results[0] == {'title': 'Result 1', 'url': 'https://example.com/1', 'description': 'Desc 1'}
     assert results[1] == {'title': 'Result 2', 'url': 'https://example.com/2', 'description': 'Desc 2'}
@@ -792,7 +794,7 @@ def test_google_search_caps_results(client: ApifyToolsClient, mock_apify_client:
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = [{'organicResults': many_results}]
 
-    results = client.google_search('test', max_results=3)
+    _, results = client.google_search('test', max_results=3)
 
     assert len(results) == 3
 
@@ -801,7 +803,7 @@ def test_google_search_empty_results(client: ApifyToolsClient, mock_apify_client
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = [{'organicResults': []}]
 
-    results = client.google_search('test')
+    _, results = client.google_search('test')
 
     assert results == []
 
@@ -866,8 +868,9 @@ def test_crawl_website_success(client: ApifyToolsClient, mock_apify_client: Magi
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = CRAWL_ITEMS
 
-    items = client.crawl_website('https://example.com')
+    run, items = client.crawl_website('https://example.com')
 
+    assert run == SUCCEEDED_RUN
     assert len(items) == 2
     assert items[0]['url'] == 'https://example.com/'
     assert items[1]['markdown'] == '# About'
@@ -891,7 +894,7 @@ def test_crawl_website_empty(client: ApifyToolsClient, mock_apify_client: MagicM
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
     mock_apify_client.dataset.return_value.list_items.return_value.items = []
 
-    items = client.crawl_website('https://example.com')
+    _, items = client.crawl_website('https://example.com')
 
     assert items == []
 

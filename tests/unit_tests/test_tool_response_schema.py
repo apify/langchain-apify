@@ -66,11 +66,15 @@ def test_all_tools_return_normalized_envelope(
     elif setup_method in {'run_actor_and_get_items', 'run_task_and_get_items'}:
         getattr(mock_tools_client, setup_method).return_value = (SUCCEEDED_RUN, SAMPLE_ITEMS)
     elif setup_method == 'google_search':
-        mock_tools_client.google_search.return_value = [{'title': 'A', 'url': 'https://a', 'description': 'd'}]
+        mock_tools_client.google_search.return_value = (
+            SUCCEEDED_RUN,
+            [{'title': 'A', 'url': 'https://a', 'description': 'd'}],
+        )
     elif setup_method == 'crawl_website':
-        mock_tools_client.crawl_website.return_value = [
-            {'url': 'https://example.com', 'markdown': '# Home', 'metadata': {'title': 'Home'}}
-        ]
+        mock_tools_client.crawl_website.return_value = (
+            SUCCEEDED_RUN,
+            [{'url': 'https://example.com', 'markdown': '# Home', 'metadata': {'title': 'Home'}}],
+        )
     elif setup_method == 'rag_web_search':
         mock_tools_client.rag_web_search.return_value = (
             SUCCEEDED_RUN,

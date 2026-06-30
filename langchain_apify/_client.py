@@ -362,7 +362,7 @@ class ApifyToolsClient:
         country_code: str | None = None,
         language_code: str | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> list[dict]:
+    ) -> tuple[dict, list[dict]]:
         """Run a Google search and return structured results.
 
         Uses ``apify/google-search-scraper`` with a single query.
@@ -375,8 +375,8 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            List of result dicts, each with ``title``, ``url``, and
-            ``description`` keys.
+            A ``(run_details, results)`` tuple. Each result dict has
+            ``title``, ``url``, and ``description`` keys.
 
         Raises:
             RuntimeError: If the Actor run fails.
@@ -393,7 +393,7 @@ class ApifyToolsClient:
         if language_code is not None:
             run_input['languageCode'] = language_code
 
-        _, items = self.run_actor_and_get_items(
+        run, items = self.run_actor_and_get_items(
             _GOOGLE_SEARCH_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
@@ -408,7 +408,7 @@ class ApifyToolsClient:
             for item in items
             for organic in item.get('organicResults', [])
         ]
-        return results[:max_results]
+        return run, results[:max_results]
 
     def rag_web_search(
         self,
@@ -818,7 +818,7 @@ class ApifyToolsClient:
         max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
         crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> list[dict]:
+    ) -> tuple[dict, list[dict]]:
         """Crawl a website and return page content.
 
         Uses ``apify/website-content-crawler``.
@@ -831,8 +831,8 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            List of page dicts, each with at least ``url``, ``title``, and
-            ``markdown`` (or ``text``) keys.
+            A ``(run_details, items)`` tuple. Each page dict has at least
+            ``url``, ``title``, and ``markdown`` (or ``text``) keys.
 
         Raises:
             RuntimeError: If the Actor run fails.
@@ -843,13 +843,12 @@ class ApifyToolsClient:
             'maxCrawlDepth': max_crawl_depth,
             'crawlerType': crawler_type,
         }
-        _, items = self.run_actor_and_get_items(
+        return self.run_actor_and_get_items(
             _WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_crawl_pages,
         )
-        return items
 
     @staticmethod
     def _check_run_status(run: dict) -> None:

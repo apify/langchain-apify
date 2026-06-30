@@ -184,7 +184,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         f' Optional: max_results (int, default {_DEFAULT_GOOGLE_MAX_RESULTS}),'
         ' country_code (str|null), language_code (str|null),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
-        ' Returns JSON with keys: run (null), items.'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at), items.'
         ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyGoogleSearchInput
@@ -199,7 +199,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            results = self._client.google_search(
+            run, results = self._client.google_search(
                 query,
                 max_results=self._clamp_items(max_results),
                 country_code=country_code,
@@ -211,7 +211,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         # default=str coerces any non-JSON-native types (e.g. datetime from
         # the Apify client's clean=True deserialiser) to their string repr
         # so the LLM never sees a serialisation failure.
-        return self._envelope(None, results)
+        return self._envelope(run, results)
 
 
 class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
@@ -252,7 +252,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
         f' max_crawl_depth (int, default {_DEFAULT_MAX_CRAWL_DEPTH}),'
         f' crawler_type (str, default "{_DEFAULT_CRAWLER_TYPE}"),'
         f' timeout_secs (int, default {_DEFAULT_RUN_TIMEOUT_SECS}).'
-        ' Returns JSON with keys: run (null), items.'
+        ' Returns JSON with keys: run (run_id, status, dataset_id, started_at, finished_at), items.'
         ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyWebCrawlerInput
@@ -267,7 +267,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
         _run_manager: CallbackManagerForToolRun | None = None,
     ) -> str:
         try:
-            items = self._client.crawl_website(
+            run, items = self._client.crawl_website(
                 url,
                 max_crawl_pages=self._clamp_items(max_crawl_pages),
                 max_crawl_depth=self._clamp_depth(max_crawl_depth),
@@ -288,7 +288,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
             for item in items
             if isinstance(item, dict)
         ]
-        return self._envelope(None, pages)
+        return self._envelope(run, pages)
 
 
 class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
