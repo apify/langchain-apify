@@ -24,7 +24,7 @@ disallow_untyped_defs = true
 python = ">=3.10,<4.0"
 langchain-core = ">=0.3.15,<2.0.0"
 apify-client = "^2.3.0"
-eval-type-backport = "^0.2.2"
+eval-type-backport = ">=0.2.2"
 
 [tool.ruff]
 line-length = 120
