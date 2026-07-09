@@ -135,7 +135,7 @@ from langgraph.prebuilt import create_react_agent
 os.environ["OPENAI_API_KEY"] = "YOUR_OPENAI_API_KEY"
 os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
 
-model = ChatOpenAI(model="gpt-4o-mini")
+model = ChatOpenAI(model="gpt-5.4-mini")
 tools = [tool_cls() for tool_cls in APIFY_SEARCH_TOOLS]
 agent = create_react_agent(model, tools)
 

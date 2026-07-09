@@ -9,7 +9,7 @@ from langchain_apify import ApifyActorsTool
 os.environ['OPENAI_API_KEY'] = 'YOUR_OPENAI_API_KEY'
 os.environ['APIFY_TOKEN'] = 'YOUR_APIFY_TOKEN'
 
-model = ChatOpenAI(model='gpt-5-mini')
+model = ChatOpenAI(model='gpt-5.4-mini')
 
 tool = ApifyActorsTool(actor_id='apify/rag-web-browser')
 
