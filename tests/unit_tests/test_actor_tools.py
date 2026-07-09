@@ -24,6 +24,7 @@ from langchain_apify import (
     ApifyYouTubeScraperTool,
 )
 from langchain_apify._client import ApifyToolsClient
+from langchain_apify._constants import _RAG_MAX_RESULTS_CAP
 from langchain_apify._error_messages import _NOTICE_TWITTER_DEMO
 from langchain_apify.tools.base import _ApifyGenericTool
 from langchain_apify.tools.social import _has_demo_items
@@ -273,6 +274,17 @@ def test_rag_web_browser_tool_returns_json(mock_tools_client: MagicMock) -> None
         max_results=3,
         timeout_secs=tool.max_timeout_secs,
     )
+
+
+def test_rag_web_browser_tool_clamps_max_results(mock_tools_client: MagicMock) -> None:
+    # The rag-web-browser Actor rejects maxResults > 100, so the tool's max_items
+    # ceiling defaults to that cap and _clamp_items must clamp larger requests.
+    mock_tools_client.rag_web_search.return_value = (SUCCEEDED_RUN, [])
+    tool = make_tool(ApifyRAGWebBrowserTool, mock_tools_client)
+
+    tool._run(query='q', max_results=_RAG_MAX_RESULTS_CAP + 50)
+
+    assert mock_tools_client.rag_web_search.call_args.kwargs['max_results'] == _RAG_MAX_RESULTS_CAP
 
 
 def test_google_maps_tool_returns_json(mock_tools_client: MagicMock) -> None:

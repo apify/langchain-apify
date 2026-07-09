@@ -10,7 +10,11 @@ from langchain_core.retrievers import BaseRetriever
 from pydantic import Field, PrivateAttr, SecretStr, model_validator
 
 from langchain_apify._client import ApifyToolsClient
-from langchain_apify._constants import _DEFAULT_RAG_MAX_RESULTS, _DEFAULT_RUN_TIMEOUT_SECS
+from langchain_apify._constants import (
+    _DEFAULT_RAG_MAX_RESULTS,
+    _DEFAULT_RUN_TIMEOUT_SECS,
+    _RAG_MAX_RESULTS_CAP,
+)
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import (
     _apify_token_secret_factory,
@@ -86,6 +90,14 @@ class ApifySearchRetriever(BaseRetriever):
         self._client = ApifyToolsClient(apify_token=self.apify_token.get_secret_value())
         super().model_post_init(context)
 
+    def _clamped_max_results(self) -> int:
+        """Clamp ``max_results`` to the rag-web-browser Actor's ceiling.
+
+        The Actor rejects ``maxResults`` above :data:`_RAG_MAX_RESULTS_CAP` at
+        runtime, so clamp here rather than let the request fail outright.
+        """
+        return max(1, min(self.max_results, _RAG_MAX_RESULTS_CAP))
+
     def _get_relevant_documents(
         self,
         query: str,
@@ -94,7 +106,7 @@ class ApifySearchRetriever(BaseRetriever):
     ) -> list[Document]:
         _, items = self._client.rag_web_search(
             query,
-            max_results=self.max_results,
+            max_results=self._clamped_max_results(),
             timeout_secs=self.timeout_secs,
         )
         return self._items_to_documents(items)
@@ -109,7 +121,7 @@ class ApifySearchRetriever(BaseRetriever):
         _, items = await asyncio.to_thread(
             self._client.rag_web_search,
             query,
-            max_results=self.max_results,
+            max_results=self._clamped_max_results(),
             timeout_secs=self.timeout_secs,
         )
         return self._items_to_documents(items)

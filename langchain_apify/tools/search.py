@@ -23,6 +23,7 @@ from langchain_apify._constants import (
     _DEFAULT_YOUTUBE_MAX_RESULTS,
     _MAX_CRAWL_DEPTH_CAP,
     _MAX_ITEMS_CAP,
+    _RAG_MAX_RESULTS_CAP,
 )
 from langchain_apify._types import (  # noqa: TCH001  # runtime-needed: pydantic Field annotations
     CrawlerType,
@@ -94,7 +95,7 @@ class ApifyRAGWebBrowserInput(BaseModel):
     query: str = Field(description='Search query string.')
     max_results: int = Field(
         default=_DEFAULT_RAG_MAX_RESULTS,
-        description=f'Maximum number of results to return (clamped to {_MAX_ITEMS_CAP} max).',
+        description=f'Maximum number of results to return (clamped to {_RAG_MAX_RESULTS_CAP} max).',
     )
 
 
@@ -328,6 +329,9 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
         ' Use only the data returned; do not hallucinate missing fields.'
     )
     args_schema: ArgsSchema | None = ApifyRAGWebBrowserInput
+    # The rag-web-browser Actor caps maxResults at 100; override the generic
+    # 1000 ceiling so _clamp_items clamps to the value the Actor accepts.
+    max_items: int = _RAG_MAX_RESULTS_CAP
 
     def _run(
         self,

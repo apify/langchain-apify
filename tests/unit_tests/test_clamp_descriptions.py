@@ -36,6 +36,7 @@ from langchain_apify.tools.search import (
     ApifyGoogleMapsInput,
     ApifyGoogleSearchInput,
     ApifyRAGWebBrowserInput,
+    ApifyRAGWebBrowserTool,
     ApifyWebCrawlerInput,
     ApifyYouTubeScraperInput,
 )
@@ -80,6 +81,20 @@ _CLAMP_FIELDS: list[tuple[type[BaseModel], str, str]] = [
     (ApifyFacebookPostsScraperInput, 'max_results', 'max_items'),
 ]
 
+# Most caps live on the _ApifyGenericTool base class. Tools that override a
+# cap for their Actor advertise their own ceiling, so their description must be
+# validated against the override rather than the generic default.
+_CAP_SOURCE: dict[type[BaseModel], type[BaseModel]] = {
+    ApifyRAGWebBrowserInput: ApifyRAGWebBrowserTool,
+}
+
+
+def _cap_default(schema: type[BaseModel], cap_field: str) -> int:
+    """Return the live clamp ceiling that ``schema``'s description must match."""
+    source = _CAP_SOURCE.get(schema, _ApifyGenericTool)
+    return source.model_fields[cap_field].default
+
+
 _CAP_PATTERN = re.compile(r'clamped to (\d+) max')
 
 
@@ -87,7 +102,7 @@ _CAP_PATTERN = re.compile(r'clamped to (\d+) max')
 def test_field_description_carries_cap_text(schema: type[BaseModel], field: str, cap_field: str) -> None:
     """Every clamp-relevant Field description ends with ``(clamped to N max)``."""
     description = schema.model_fields[field].description or ''
-    expected_cap = _ApifyGenericTool.model_fields[cap_field].default
+    expected_cap = _cap_default(schema, cap_field)
     assert f'clamped to {expected_cap} max' in description, (
         f'{schema.__name__}.{field} description does not mention the cap '
         f'(expected "clamped to {expected_cap} max"): {description!r}'
@@ -106,7 +121,7 @@ def test_field_description_cap_matches_base_class_default(schema: type[BaseModel
     assert match is not None, f'no "clamped to N max" phrase in {schema.__name__}.{field}: {description!r}'
 
     advertised_cap = int(match.group(1))
-    actual_cap = _ApifyGenericTool.model_fields[cap_field].default
+    actual_cap = _cap_default(schema, cap_field)
     assert advertised_cap == actual_cap, (
         f'{schema.__name__}.{field} advertises cap={advertised_cap} but '
         f'_ApifyGenericTool.{cap_field} default is {actual_cap}'

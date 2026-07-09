@@ -8,6 +8,7 @@ from langchain_core.documents import Document
 from pydantic import SecretStr
 
 from langchain_apify._client import ApifyToolsClient
+from langchain_apify._constants import _RAG_MAX_RESULTS_CAP
 from langchain_apify.retrievers import ApifySearchRetriever
 
 RAG_ITEMS: list[dict] = [
@@ -100,6 +101,19 @@ def test_sync_calls_helper_with_correct_args() -> None:
         max_results=3,
         timeout_secs=60,
     )
+
+
+def test_max_results_clamped_to_actor_cap() -> None:
+    # The rag-web-browser Actor rejects maxResults > 100; a larger value must be
+    # clamped down rather than passed through and rejected at runtime.
+    mock_client = MagicMock(spec=ApifyToolsClient)
+    mock_client.rag_web_search.return_value = ({}, [])
+    retriever = _make_retriever(mock_client, max_results=_RAG_MAX_RESULTS_CAP + 50)
+
+    retriever._get_relevant_documents('big query')
+
+    _, kwargs = mock_client.rag_web_search.call_args
+    assert kwargs['max_results'] == _RAG_MAX_RESULTS_CAP
 
 
 def test_sync_empty_results() -> None:

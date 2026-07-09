@@ -37,5 +37,12 @@ _MAX_MEMORY_MBYTES_CAP = 32768
 _MAX_ITEMS_CAP = 1000
 _MAX_CRAWL_DEPTH_CAP = 5
 
+# The apify/rag-web-browser Actor rejects maxResults > 100 at runtime. This
+# limit is enforced by the Actor, not declared in its input schema (which only
+# carries a default), so it cannot be derived by schema introspection and must
+# be tracked here by hand. Applied by ApifyRAGWebBrowserTool and
+# ApifySearchRetriever, both of which wrap that Actor.
+_RAG_MAX_RESULTS_CAP = 100
+
 # Default crawler engine for the website-content-crawler Actor.
 _DEFAULT_CRAWLER_TYPE: CrawlerType = 'cheerio'
