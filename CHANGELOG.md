@@ -3,11 +3,15 @@
 All notable changes to this project will be documented in this file.
 
 <!-- git-cliff-unreleased-start -->
-## 0.1.5 - **not yet released**
+## 0.1.7 - **not yet released**
+
+### 🚀 Features
+
+- Modernize langchain integration connector ([#35](https://github.com/apify/langchain-apify/pull/35)) ([b7b50c6](https://github.com/apify/langchain-apify/commit/b7b50c6bdc06ea0dd505d27dcde524477830ad24)) by [@daveomri](https://github.com/daveomri)
 
 ### 🐛 Bug Fixes
 
-- Update CHANGELOG.md ([#22](https://github.com/apify/langchain-apify/pull/22)) ([eadab67](https://github.com/apify/langchain-apify/commit/eadab67a1d864400d2f72c2fe1532cfa4bd96ddd)) by [@jirispilka](https://github.com/jirispilka)
+- **release:** Migrate pyproject to PEP 621 so uv can set the version ([#40](https://github.com/apify/langchain-apify/pull/40)) ([b9c9f9e](https://github.com/apify/langchain-apify/commit/b9c9f9e121d7878e11f4210b6ab96c0992941264)) by [@daveomri](https://github.com/daveomri)
 
 
 <!-- git-cliff-unreleased-end -->

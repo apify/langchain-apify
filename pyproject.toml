@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "langchain-apify"
-version = "0.1.6"
+version = "0.1.7"
 description = "An integration package connecting Apify and LangChain"
 authors = [{ name = "Apify Technologies s.r.o.", email = "support@apify.com" }]
 readme = "README.md"
