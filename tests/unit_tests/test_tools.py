@@ -673,7 +673,7 @@ def test_generic_tools_have_correct_metadata() -> None:
         'apify_run_task_and_get_dataset',
     ]
 
-    for tool, expected_name in zip(tools, expected_names):
+    for tool, expected_name in zip(tools, expected_names, strict=True):
         assert tool.name == expected_name
         assert tool.description
         assert tool.args_schema is not None
