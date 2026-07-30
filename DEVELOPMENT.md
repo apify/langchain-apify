@@ -1,8 +1,8 @@
 # Development
 
-## Contributing
+This file covers everything you need to run the code locally: install, format, lint, and test.
 
-If you want to contribute, please ensure that you have your environment properly set up. Run the following commands to make sure that the code is properly formatted and is not breaking before submitting a pull request.
+> Planning a pull request? Read [CONTRIBUTING.md](CONTRIBUTING.md) for issue and PR conventions before opening one.
 
 ## Installation
 
@@ -42,12 +42,14 @@ make test
 To run integration tests, use the following command:
 
 ```bash
-APIFY_API_TOKEN="YOUR_TOKEN" make integration_test
+APIFY_TOKEN="YOUR_TOKEN" make integration_test
 ```
 
 To run single test file, use `TEST_FILE` argument:
 
 ```bash
 make test TEST_FILE=path_to/test_file.py
-APIFY_API_TOKEN="YOUR_TOKEN" make integration_test TEST_FILE=path_to/test_file.py
+APIFY_TOKEN="YOUR_TOKEN" make integration_test TEST_FILE=path_to/test_file.py
 ```
+
+> `APIFY_API_TOKEN` is also accepted as a deprecated alias for `APIFY_TOKEN` (emits a `DeprecationWarning`). New code and examples should use `APIFY_TOKEN`.

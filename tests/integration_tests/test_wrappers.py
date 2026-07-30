@@ -1,6 +1,13 @@
+import pytest
 from langchain_core.documents import Document
 
 from langchain_apify import ApifyWrapper
+from langchain_apify._utils import _resolve_apify_token
+
+pytestmark = pytest.mark.skipif(
+    not _resolve_apify_token(),
+    reason='APIFY_TOKEN not set',
+)
 
 
 def test_apify_wrapper_call_actor() -> None:

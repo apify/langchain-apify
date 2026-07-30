@@ -1,22 +1,28 @@
+"""Legacy dynamic-actor tool.
+
+:class:`ApifyActorsTool` builds its argument schema and description at
+construction time from a single Apify Actor's build, then runs that Actor.
+"""
+
 from __future__ import annotations
 
 import json
-import os
 from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient
 from langchain_core.tools import BaseTool
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel, Field, PrivateAttr, SecretStr, create_model
 
-from langchain_apify.error_messages import ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
-from langchain_apify.utils import (
-    actor_id_to_tool_name,
-    create_apify_client,
-    get_actor_latest_build,
-    prune_actor_input_schema,
+from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+from langchain_apify._utils import (
+    _MAX_DESCRIPTION_LEN,
+    _actor_id_to_tool_name,
+    _create_apify_client,
+    _get_actor_latest_build,
+    _prune_actor_input_schema,
+    _resolve_apify_token,
+    _resolve_deprecated_token,
 )
-
-from .const import MAX_DESCRIPTION_LEN
 
 if TYPE_CHECKING:
     from langchain_core.callbacks import (
@@ -27,9 +33,9 @@ if TYPE_CHECKING:
 class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
     """Tool that runs Apify Actors.
 
-    To use, you should have the environment variable `APIFY_API_TOKEN` set
-    with your API key, or pass `apify_api_token`
-    as a named parameter to the constructor.
+    To use, you should have the environment variable ``APIFY_TOKEN`` set
+    with your API key, or pass ``apify_token`` as a named parameter to the
+    constructor.
 
     For details, see https://docs.apify.com/platform/integrations/langchain
 
@@ -56,10 +62,13 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
                 chunk["messages"][-1].pretty_print()
     """
 
+    _apify_client: ApifyClient = PrivateAttr()
+    _actor_id: str = PrivateAttr()
+
     def __init__(
         self,
         actor_id: str,
-        apify_api_token: str | None = None,
+        apify_token: str | SecretStr | None = None,
         *args: Any,  # noqa: ANN401
         **kwargs: Any,  # noqa: ANN401
     ) -> None:
@@ -67,28 +76,34 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
 
         Args:
             actor_id (str): Actor name from Apify store to run.
-            apify_api_token (Optional[str]): Apify API token.
+            apify_token (Optional[str]): Apify API token.
+            apify_api_token: Deprecated alias for ``apify_token``.
             *args: Additional arguments.
             **kwargs: Additional keyword arguments.
 
         Raises:
-            ValueError: If the `APIFY_API_TOKEN` environment variable is not set
+            ValueError: If the ``APIFY_TOKEN`` environment variable is not set
         """
-        apify_api_token = apify_api_token or os.getenv('APIFY_API_TOKEN')
-        if not apify_api_token:
-            msg = ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
+        if 'apify_api_token' in kwargs:
+            apify_token = _resolve_deprecated_token(apify_token, kwargs.pop('apify_api_token'))
+
+        _raw_token: str | None = (
+            apify_token.get_secret_value()
+            if isinstance(apify_token, SecretStr)
+            else apify_token or _resolve_apify_token()
+        )
+        if not _raw_token:
+            msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
 
-        apify_client = create_apify_client(ApifyClient, apify_api_token)
+        apify_client = _create_apify_client(ApifyClient, _raw_token)
+        build = _get_actor_latest_build(apify_client, actor_id)
 
         kwargs.update(
             {
-                'name': actor_id_to_tool_name(actor_id),
-                'description': self._create_description(apify_client, actor_id),
-                'args_schema': self._build_tool_args_schema_model(
-                    apify_client,
-                    actor_id,
-                ),
+                'name': _actor_id_to_tool_name(actor_id),
+                'description': self._create_description(build),
+                'args_schema': self._build_tool_args_schema_model(build, actor_id),
             },
         )
 
@@ -116,32 +131,27 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         return self._run_actor(input_dict)
 
     @staticmethod
-    def _create_description(apify_client: ApifyClient, actor_id: str) -> str:
-        """Create a description for the tool.
+    def _create_description(build: dict) -> str:
+        """Create a description for the tool from an Actor build.
 
         Args:
-            apify_client (ApifyClient): Apify client instance.
-            actor_id (str): Actor name from Apify store to run.
+            build (dict): The Actor build, as returned by ``_get_actor_latest_build``.
 
         Returns:
             str: The description.
         """
-        build = get_actor_latest_build(apify_client, actor_id)
         actor_description = build.get('actorDefinition', {}).get('description', '')
-        if len(actor_description) > MAX_DESCRIPTION_LEN:
-            actor_description = actor_description[:MAX_DESCRIPTION_LEN] + '...(TRUNCATED, TOO LONG)'
+        if len(actor_description) > _MAX_DESCRIPTION_LEN:
+            actor_description = actor_description[:_MAX_DESCRIPTION_LEN] + '...(TRUNCATED, TOO LONG)'
         return actor_description
 
     @staticmethod
-    def _build_tool_args_schema_model(
-        apify_client: ApifyClient,
-        actor_id: str,
-    ) -> type[BaseModel]:
+    def _build_tool_args_schema_model(build: dict, actor_id: str) -> type[BaseModel]:
         """Build a tool class for an agent that runs the Apify Actor.
 
         Args:
-            apify_client (ApifyClient): Apify client instance.
-            actor_id (str): Actor name from Apify store to run.
+            build (dict): The Actor build, as returned by ``_get_actor_latest_build``.
+            actor_id (str): Actor name from Apify store to run (used for error messages).
 
         Returns:
             type[BaseModel]: The tool input model class for the Apify Actor.
@@ -149,12 +159,11 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Raises:
             ValueError: If the input schema is not found in the Actor build.
         """
-        build = get_actor_latest_build(apify_client, actor_id)
         if not (actor_input := build.get('actorDefinition', {}).get('input')):
             msg = f'Input schema not found in the Actor build for Actor: {actor_id}'
             raise ValueError(msg)
 
-        properties, required = prune_actor_input_schema(actor_input)
+        properties, required = _prune_actor_input_schema(actor_input)
         properties = {'run_input': properties}
 
         description = (
