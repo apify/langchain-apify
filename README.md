@@ -301,5 +301,5 @@ It is **NOT** designed for:
 
 ## Contributing
 
-For local setup (Poetry install, running tests and linting), see [DEVELOPMENT.md](DEVELOPMENT.md).
+For local setup (install, running tests and linting), see [DEVELOPMENT.md](DEVELOPMENT.md).
 For PR scope, commit message conventions, and review expectations, see [CONTRIBUTING.md](CONTRIBUTING.md).

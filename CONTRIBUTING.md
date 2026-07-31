@@ -16,7 +16,7 @@ Open a GitHub issue at <https://github.com/apify/langchain-apify/issues>. A few 
 
 - Branch from `main`.
 - Keep one logical change per PR. A PR that fixes a bug *and* adds a feature is harder to review and harder to revert if needed.
-- Before opening: run `make lint` and `make test` locally. CI will also run integration tests; you don't need an `APIFY_TOKEN` to open the PR (CI has its own).
+- Before opening: run `hatch run lint` and `hatch run test` locally. CI will also run integration tests; you don't need an `APIFY_TOKEN` to open the PR (CI has its own).
 - If your change affects the public API, update the README and any in-repo examples.
 - If your change adds a new tool family or generic primitive, add or extend the corresponding test file under `tests/unit_tests/`.
 
@@ -49,7 +49,7 @@ resolution and raised ValueError if neither was present.
 ## What review looks for
 
 - **Correctness on the public API surface.** Any new tool must follow the `_ApifyGenericTool` envelope contract (a JSON string of `{"run": {...}, "items": [...]}`) and route Actor calls through `ApifyToolsClient` (`_client.py`), not the SDK directly.
-- **`make lint` and `make test` pass locally.** Integration tests pass under CI's token; you don't need to run them yourself unless you're touching `_client.py`.
+- **`hatch run lint` and `hatch run test` pass locally.** Integration tests pass under CI's token; you don't need to run them yourself unless you're touching `_client.py`.
 - **No new `apify_api_token` field declarations.** The canonical token kwarg is `apify_token`; the legacy `apify_api_token` is honoured only via the existing deprecation plumbing in `_utils.py` and per-tool model validators. New code should not introduce fresh `apify_api_token` fields.
 - **No manually bumped `version =` in `pyproject.toml`.** Versions come from commit messages via `git-cliff`.
 - **Shared defaults stay in `_constants.py`.** Don't reintroduce magic literals (`300`, `100`, `120`, etc.); import the named constant instead.
