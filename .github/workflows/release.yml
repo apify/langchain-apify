@@ -29,6 +29,10 @@ jobs:
   release_metadata:
     name: Prepare release metadata
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read  # git-cliff enhances release notes with PR links via GITHUB_TOKEN.
+      issues: read         # git-cliff enhances release notes with issue links via GITHUB_TOKEN.
     outputs:
       version_number: ${{ steps.release_metadata.outputs.version_number }}
       tag_name: ${{ steps.release_metadata.outputs.tag_name }}
@@ -80,10 +84,22 @@ jobs:
       install_command: uv pip install --system -e ".[dev]"
       run_tests_command: pytest --disable-socket --allow-unix-socket tests/unit_tests/
 
+  update_changelog:
+    name: Update changelog
+    needs: [release_metadata, lint_check, type_check, unit_tests]
+    uses: apify/workflows/.github/workflows/python_bump_and_update_changelog.yaml@v0.45.0
+    with:
+      version_number: ${{ needs.release_metadata.outputs.version_number }}
+      changelog: ${{ needs.release_metadata.outputs.changelog }}
+    secrets:
+      APIFY_SERVICE_ACCOUNT_GITHUB_TOKEN: ${{ secrets.APIFY_SERVICE_ACCOUNT_GITHUB_TOKEN }}
+
   create_github_release:
     name: Create github release
-    needs: [release_metadata, lint_check, type_check, unit_tests]
+    needs: [release_metadata, update_changelog]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to create the tag and the GitHub release.
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -93,13 +109,15 @@ jobs:
           tag_name: ${{ needs.release_metadata.outputs.tag_name }}
           name: ${{ needs.release_metadata.outputs.version_number }}
           body: ${{ needs.release_metadata.outputs.release_notes }}
+          # Tag the exact post-bump commit so the release points at the committed version.
+          target_commitish: ${{ needs.update_changelog.outputs.changelog_commitish }}
 
   publish_to_pypi:
     name: Publish to PyPI
-    needs: [release_metadata, lint_check, type_check, unit_tests]
+    needs: [release_metadata, update_changelog, create_github_release]
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       id-token: write # Required for OIDC authentication.
     environment:
       name: pypi
@@ -108,7 +126,9 @@ jobs:
       - name: Prepare distribution
         uses: apify/actions/prepare-pypi-distribution@v1.1.2
         with:
-          ref: ${{ github.ref }}
+          # Build from the exact post-bump commit so the wheel's version metadata
+          # matches the tag created by create_github_release.
+          ref: ${{ needs.update_changelog.outputs.changelog_commitish }}
           package_name: langchain-apify
           is_prerelease: ""
           version_number: ${{ needs.release_metadata.outputs.version_number }}
