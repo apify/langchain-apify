@@ -132,7 +132,9 @@ jobs:
           package_name: langchain-apify
           is_prerelease: ""
           version_number: ${{ needs.release_metadata.outputs.version_number }}
-          install_command: uv pip install --system -e ".[dev]"
+          # The build only needs hatch (pure Python); avoid installing the heavy
+          # runtime/test deps on the action's Python (defaults to 3.14).
+          install_command: uv pip install --system hatch
           build_command: hatch build
       # Publishes the package to PyPI using PyPA official GitHub action with OIDC authentication.
       - name: Publish package to PyPI
