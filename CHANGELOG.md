@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 ### 🐛 Bug Fixes
 
 - **release:** Migrate pyproject to PEP 621 so uv can set the version ([#40](https://github.com/apify/langchain-apify/pull/40)) ([b9c9f9e](https://github.com/apify/langchain-apify/commit/b9c9f9e121d7878e11f4210b6ab96c0992941264)) by [@daveomri](https://github.com/daveomri)
+- **release:** 727 langchain apify toolchain migration ([#41](https://github.com/apify/langchain-apify/pull/41)) ([446ef94](https://github.com/apify/langchain-apify/commit/446ef9419da8538523b4cf7ec7d85266fe2fb197)) by [@daveomri](https://github.com/daveomri)
 
 
 <!-- git-cliff-unreleased-end -->
