@@ -8,31 +8,27 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  code_check:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
-        poetry-version: ["latest"]
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+  lint_check:
+    name: Lint check
+    uses: apify/workflows/.github/workflows/python_lint_check.yaml@v0.45.0
+    with:
+      python_versions: '["3.10", "3.11", "3.12", "3.13"]'
+      install_command: uv pip install --system -e ".[dev]"
+      lint_command: ruff check langchain_apify tests && ruff format --check langchain_apify tests
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+  type_check:
+    name: Type check
+    uses: apify/workflows/.github/workflows/python_type_check.yaml@v0.45.0
+    with:
+      python_versions: '["3.10", "3.11", "3.12", "3.13"]'
+      install_command: uv pip install --system -e ".[dev]"
+      type_check_command: mypy langchain_apify
 
-    - name: Run image
-      uses: abatilo/actions-poetry@v3
-      with:
-        poetry-version: ${{ matrix.poetry-version }}
-
-    - name: Install dependencies
-      run: poetry sync --no-interaction --no-ansi --with lint --with test --with dev
-
-    - name: Run lint
-      run: make lint
-
-    - name: Run tests
-      run: make test
+  unit_tests:
+    name: Unit tests
+    uses: apify/workflows/.github/workflows/python_unit_tests.yaml@v0.45.0
+    with:
+      python_versions: '["3.10", "3.11", "3.12", "3.13"]'
+      operating_systems: '["ubuntu-latest"]'
+      install_command: uv pip install --system -e ".[dev]"
+      run_tests_command: pytest --disable-socket --allow-unix-socket tests/unit_tests/

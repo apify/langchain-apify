@@ -29,12 +29,28 @@ jobs:
   release_metadata:
     name: Prepare release metadata
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read  # git-cliff enhances release notes with PR links via GITHUB_TOKEN.
+      issues: read         # git-cliff enhances release notes with issue links via GITHUB_TOKEN.
     outputs:
       version_number: ${{ steps.release_metadata.outputs.version_number }}
       tag_name: ${{ steps.release_metadata.outputs.tag_name }}
       changelog: ${{ steps.release_metadata.outputs.changelog }}
       release_notes: ${{ steps.release_metadata.outputs.release_notes }}
     steps:
+      - name: Verify running on main in the apify org
+        if: github.ref != 'refs/heads/main' || !startsWith(github.repository, 'apify/')
+        run: |
+          echo "::error title=Wrong branch or repository::Releases must run from main in an apify/ repository. ref=${{ github.ref }} repo=${{ github.repository }}"
+          exit 1
+
+      - name: Validate inputs
+        if: inputs.release_type == 'custom' && inputs.custom_version == ''
+        run: |
+          echo "::error title=Missing custom_version::release_type is 'custom' but custom_version is empty. Provide a custom version (e.g. 0.1.0) and re-run the workflow."
+          exit 1
+
       - uses: apify/actions/git-cliff-release@v1.1.2
         name: Prepare release metadata
         id: release_metadata
@@ -45,16 +61,45 @@ jobs:
 
   lint_check:
     name: Lint check
-    uses: apify/workflows/.github/workflows/python_lint_check.yaml@6cbb5232cc59d59047f1e8268da10747e729989e
+    uses: apify/workflows/.github/workflows/python_lint_check.yaml@v0.45.0
+    with:
+      python_versions: '["3.10", "3.11", "3.12", "3.13"]'
+      install_command: uv pip install --system -e ".[dev]"
+      lint_command: ruff check langchain_apify tests && ruff format --check langchain_apify tests
 
   type_check:
     name: Type check
-    uses: apify/workflows/.github/workflows/python_type_check.yaml@6cbb5232cc59d59047f1e8268da10747e729989e
+    uses: apify/workflows/.github/workflows/python_type_check.yaml@v0.45.0
+    with:
+      python_versions: '["3.10", "3.11", "3.12", "3.13"]'
+      install_command: uv pip install --system -e ".[dev]"
+      type_check_command: mypy langchain_apify
+
+  unit_tests:
+    name: Unit tests
+    uses: apify/workflows/.github/workflows/python_unit_tests.yaml@v0.45.0
+    with:
+      python_versions: '["3.10", "3.11", "3.12", "3.13"]'
+      operating_systems: '["ubuntu-latest"]'
+      install_command: uv pip install --system -e ".[dev]"
+      run_tests_command: pytest --disable-socket --allow-unix-socket tests/unit_tests/
+
+  update_changelog:
+    name: Update changelog
+    needs: [release_metadata, lint_check, type_check, unit_tests]
+    uses: apify/workflows/.github/workflows/python_bump_and_update_changelog.yaml@v0.45.0
+    with:
+      version_number: ${{ needs.release_metadata.outputs.version_number }}
+      changelog: ${{ needs.release_metadata.outputs.changelog }}
+    secrets:
+      APIFY_SERVICE_ACCOUNT_GITHUB_TOKEN: ${{ secrets.APIFY_SERVICE_ACCOUNT_GITHUB_TOKEN }}
 
   create_github_release:
     name: Create github release
-    needs: [release_metadata, lint_check, type_check]
+    needs: [release_metadata, update_changelog]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to create the tag and the GitHub release.
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -64,13 +109,15 @@ jobs:
           tag_name: ${{ needs.release_metadata.outputs.tag_name }}
           name: ${{ needs.release_metadata.outputs.version_number }}
           body: ${{ needs.release_metadata.outputs.release_notes }}
+          # Tag the exact post-bump commit so the release points at the committed version.
+          target_commitish: ${{ needs.update_changelog.outputs.changelog_commitish }}
 
   publish_to_pypi:
     name: Publish to PyPI
-    needs: [release_metadata, lint_check, type_check]
+    needs: [release_metadata, update_changelog, create_github_release]
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       id-token: write # Required for OIDC authentication.
     environment:
       name: pypi
@@ -79,10 +126,16 @@ jobs:
       - name: Prepare distribution
         uses: apify/actions/prepare-pypi-distribution@v1.1.2
         with:
-          ref: ${{ github.ref }}
+          # Build from the exact post-bump commit so the wheel's version metadata
+          # matches the tag created by create_github_release.
+          ref: ${{ needs.update_changelog.outputs.changelog_commitish }}
           package_name: langchain-apify
           is_prerelease: ""
           version_number: ${{ needs.release_metadata.outputs.version_number }}
+          # The build only needs hatch (pure Python); avoid installing the heavy
+          # runtime/test deps on the action's Python (defaults to 3.14).
+          install_command: uv pip install --system hatch
+          build_command: hatch build
       # Publishes the package to PyPI using PyPA official GitHub action with OIDC authentication.
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

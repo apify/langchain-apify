@@ -46,7 +46,7 @@ jobs:
   update_changelog:
     name: Update changelog
     needs: [release_metadata, wait_for_checks]
-    uses: apify/workflows/.github/workflows/python_bump_and_update_changelog.yaml@main
+    uses: apify/workflows/.github/workflows/python_bump_and_update_changelog.yaml@v0.45.0
     with:
       version_number: ${{ needs.release_metadata.outputs.version_number }}
       changelog: ${{ needs.release_metadata.outputs.changelog }}
@@ -71,6 +71,10 @@ jobs:
           is_prerelease: "yes"
           version_number: ${{ needs.release_metadata.outputs.version_number }}
           ref: ${{ needs.update_changelog.outputs.changelog_commitish }}
+          # The build only needs hatch (pure Python); avoid installing the heavy
+          # runtime/test deps on the action's Python (defaults to 3.14).
+          install_command: uv pip install --system hatch
+          build_command: hatch build
       # Publishes the package to PyPI using PyPA official GitHub action with OIDC authentication.
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

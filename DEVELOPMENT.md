@@ -6,29 +6,32 @@ This file covers everything you need to run the code locally: install, format, l
 
 ## Installation
 
-To work on this repo locally, you first need to clone the repository and install the dependencies. You can do this by running the following commands:
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management and [Hatch](https://hatch.pypa.io/) as the build backend and task runner.
+
+Clone the repository and install the project with its development dependencies:
 
 ```bash
 git clone https://github.com/apify/langchain-apify
 cd langchain-apify
 
-poetry sync --all-groups
-# for poetry version < 2.0
-poetry install --with dev,test,lint --no-root --sync
+uv sync --extra dev
 ```
+
+Development tasks are defined as Hatch scripts in `pyproject.toml` and run with `hatch run <task>`. Hatch manages an isolated environment with the dev dependencies, so install it once (e.g. `uv tool install hatch` or `pipx install hatch`).
 
 ## Formatting and linting
 
 To format the code, use the following command:
 
 ```bash
-make format
+hatch run format
 ```
 
-To lint the code, use the following command:
+To lint and type-check the code, use the following commands:
 
 ```bash
-make lint
+hatch run lint
+hatch run typecheck
 ```
 
 ## Testing
@@ -36,20 +39,20 @@ make lint
 To run unit tests, use the following command:
 
 ```bash
-make test
+hatch run test
 ```
 
 To run integration tests, use the following command:
 
 ```bash
-APIFY_TOKEN="YOUR_TOKEN" make integration_test
+APIFY_TOKEN="YOUR_TOKEN" hatch run integration-test
 ```
 
-To run single test file, use `TEST_FILE` argument:
+To run a single test file, pass it as an argument:
 
 ```bash
-make test TEST_FILE=path_to/test_file.py
-APIFY_TOKEN="YOUR_TOKEN" make integration_test TEST_FILE=path_to/test_file.py
+hatch run test tests/unit_tests/test_file.py
+APIFY_TOKEN="YOUR_TOKEN" hatch run integration-test tests/integration_tests/test_file.py
 ```
 
 > `APIFY_API_TOKEN` is also accepted as a deprecated alias for `APIFY_TOKEN` (emits a `DeprecationWarning`). New code and examples should use `APIFY_TOKEN`.

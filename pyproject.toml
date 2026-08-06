@@ -1,6 +1,6 @@
 [build-system]
-requires = ["poetry-core>=2.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "langchain-apify"
@@ -16,12 +16,59 @@ dependencies = [
     "eval-type-backport>=0.2.2",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "langchain-openai>=0.3.2,<0.4.0",
+    "langgraph>=1.0.0,<2.0.0",
+    "pytest>=7.4.3,<8.0.0",
+    "pytest-asyncio>=0.23.2,<0.24.0",
+    "pytest-socket>=0.7.0,<0.8.0",
+    "pytest-watcher>=0.3.4,<0.4.0",
+    "langchain-tests>=0.3.5,<0.4.0",
+    "ruff>=0.5,<0.6",
+    "types-requests>=2.32.0.20241016,<3.0.0",
+    "mypy>=1.10,<2.0.0",
+    "codespell>=2.2.6,<3.0.0",
+    "hatch",
+]
+
 [project.urls]
 "Apify Homepage" = "https://apify.com"
 "Repository" = "https://github.com/apify/langchain-apify"
 "Source Code" = "https://github.com/apify/langchain-apify/tree/main/"
 "Release Notes" = "https://github.com/apify/langchain-apify/releases?expanded=true"
 "Issue Tracker" = "https://github.com/apify/langchain-apify/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["langchain_apify"]
+
+# Source distribution - explicit allowlist so local-only paths (dist/, .venv/,
+# res_lc*.txt, docs/, etc.) never reach PyPI.
+[tool.hatch.build.targets.sdist]
+include = [
+    "/langchain_apify",
+    "/tests",
+    "/pyproject.toml",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/CONTRIBUTING.md",
+    "/LICENSE",
+    "/llms.txt",
+]
+
+[tool.hatch.envs.default]
+features = ["dev"]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest --disable-socket --allow-unix-socket tests/unit_tests/ {args}"
+integration-test = "pytest tests/integration_tests/ {args}"
+lint = "ruff check langchain_apify tests"
+format-check = "ruff format --check langchain_apify tests"
+format = ["ruff format langchain_apify tests", "ruff check --select I --fix langchain_apify tests"]
+typecheck = "mypy langchain_apify"
+spell-check = "codespell --toml pyproject.toml"
+check-imports = "python scripts/check_imports.py $(find langchain_apify -name '*.py')"
+prepare = ["format-check", "lint", "typecheck", "spell-check", "check-imports", "test"]
 
 [tool.mypy]
 disallow_untyped_defs = true
@@ -95,41 +142,3 @@ markers = [
     "compile: mark placeholder test used to compile integration tests without running them",
 ]
 asyncio_mode = "auto"
-
-[tool.poetry.group.test]
-optional = true
-
-[tool.poetry.group.codespell]
-optional = true
-
-[tool.poetry.group.test_integration]
-optional = true
-
-[tool.poetry.group.lint]
-optional = true
-
-[tool.poetry.group.dev]
-optional = true
-
-[tool.poetry.group.dev.dependencies]
-langchain-openai = "^0.3.2"
-langgraph = "^1.0.0"
-
-[tool.poetry.group.test.dependencies]
-pytest = "^7.4.3"
-pytest-asyncio = "^0.23.2"
-pytest-socket = "^0.7.0"
-pytest-watcher = "^0.3.4"
-langchain-tests = "^0.3.5"
-
-[tool.poetry.group.codespell.dependencies]
-codespell = "^2.2.6"
-
-[tool.poetry.group.test_integration.dependencies]
-
-[tool.poetry.group.lint.dependencies]
-ruff = "^0.5"
-types-requests = "^2.32.0.20241016"
-
-[tool.poetry.group.typing.dependencies]
-mypy = "^1.10"
