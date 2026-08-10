@@ -2,8 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-<!-- git-cliff-unreleased-start -->
-## 0.1.7 - **not yet released**
+## [0.1.7](https://github.com/apify/langchain-apify/releases/tag/v0.1.7) (2026-08-10)
 
 ### 🚀 Features
 
@@ -15,7 +14,6 @@ All notable changes to this project will be documented in this file.
 - **release:** 727 langchain apify toolchain migration ([#41](https://github.com/apify/langchain-apify/pull/41)) ([446ef94](https://github.com/apify/langchain-apify/commit/446ef9419da8538523b4cf7ec7d85266fe2fb197)) by [@daveomri](https://github.com/daveomri)
 
 
-<!-- git-cliff-unreleased-end -->
 
 ## [0.1.3](https://github.com/apify/langchain-apify/releases/tag/v0.1.3) (2025-07-25)
 
