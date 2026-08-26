@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+<!-- git-cliff-unreleased-start -->
+## 0.1.8 - **not yet released**
+
+
+<!-- git-cliff-unreleased-end -->
 ## [0.1.7](https://github.com/apify/langchain-apify/releases/tag/v0.1.7) (2026-08-10)
 
 ### 🚀 Features
