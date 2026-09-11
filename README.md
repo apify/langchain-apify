@@ -46,7 +46,7 @@ Get your API token from [Apify Console](https://console.apify.com/settings/integ
 
 ## Tools
 
-The package ships dedicated tools across three families plus a generic "wrap any Actor by ID" tool for everything else. All return a uniform `{"run": {...}, "items": [...]}` JSON envelope (parse with `json.loads`).
+The package ships dedicated tools across four families plus a generic "wrap any Actor by ID" tool for everything else. All return a uniform `{"run": {...}, "items": [...]}` JSON envelope (parse with `json.loads`).
 
 ### Core tools
 
@@ -118,6 +118,28 @@ result = ApifyInstagramScraperTool().invoke({
     "search_type": "user",
     "search_query": "apify",
     "max_results": 3,
+})
+print(json.loads(result))
+```
+
+### Transcription tools
+
+Spoken words out of video and audio, rather than what a page shows. Available as `APIFY_TRANSCRIPT_TOOLS`:
+
+- `ApifyFacebookAdsTranscriptTool`: transcripts, hooks and CTAs of the Facebook Ad Library ads running now
+- `ApifyYouTubeTranscriptTool`: transcripts of specific YouTube videos
+- `ApifyMediaTranscriberTool`: transcripts of audio/video file links and supported podcast or video pages
+
+These three wrap pay-per-event Actors published by `steadyfetch`; a run is charged to your Apify account at the price on each Actor's store page.
+
+```python
+import os, json
+from langchain_apify import ApifyYouTubeTranscriptTool
+
+os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
+
+result = ApifyYouTubeTranscriptTool().invoke({
+    "video_urls": ["https://www.youtube.com/watch?v=jNQXAC9IVRw"],
 })
 print(json.loads(result))
 ```

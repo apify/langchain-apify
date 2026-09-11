@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 _DEFAULT_RUN_TIMEOUT_SECS = 300
 _DEFAULT_SCRAPE_TIMEOUT_SECS = 120
 _DEFAULT_SOCIAL_TIMEOUT_SECS = 600
+_DEFAULT_TRANSCRIPT_TIMEOUT_SECS = 600
 
 # Default result / page limits, by operation.
 _DEFAULT_DATASET_ITEMS_LIMIT = 100
@@ -27,6 +28,9 @@ _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS = 10
 _DEFAULT_GOOGLE_MAPS_MAX_RESULTS = 10
 _DEFAULT_YOUTUBE_MAX_RESULTS = 10
 _DEFAULT_ECOMMERCE_MAX_RESULTS = 20
+# Transcription Actors charge per delivered item, so the family defaults to a
+# smaller batch than the scraping families.
+_DEFAULT_TRANSCRIPT_RESULTS_LIMIT = 10
 
 # Upper-bound clamp ceilings applied by _ApifyGenericTool to LLM-supplied
 # values. The Pydantic Field defaults on the base class reference these so
