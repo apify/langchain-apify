@@ -142,3 +142,6 @@ markers = [
     "compile: mark placeholder test used to compile integration tests without running them",
 ]
 asyncio_mode = "auto"
+
+[tool.uv]
+override-dependencies = ["vcrpy>=8.2.1,<9.0.0"]
