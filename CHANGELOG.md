@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 <!-- git-cliff-unreleased-start -->
-## 0.1.8 - **not yet released**
+## 0.1.9 - **not yet released**
 
 
 <!-- git-cliff-unreleased-end -->
