@@ -19,11 +19,14 @@ from langchain_apify._constants import (
     _DEFAULT_SCRAPE_TIMEOUT_SECS,
     _DEFAULT_SOCIAL_RESULTS_LIMIT,
     _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    _DEFAULT_TRANSCRIPT_RESULTS_LIMIT,
+    _DEFAULT_TRANSCRIPT_TIMEOUT_SECS,
     _DEFAULT_YOUTUBE_MAX_RESULTS,
 )
 from langchain_apify._error_messages import (
     _ERROR_ACTOR_RUN_FAILED,
     _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET,
+    _ERROR_EMPTY_INPUT_LIST,
     _ERROR_SCRAPE_EMPTY,
 )
 from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: pydantic-free annotation
@@ -56,6 +59,11 @@ _LINKEDIN_DETAIL_ACTOR_ID = 'apimaestro/linkedin-profile-detail'
 _TWITTER_ACTOR_ID = 'apidojo/twitter-scraper-lite'
 _TIKTOK_ACTOR_ID = 'clockworks/tiktok-scraper'
 _FACEBOOK_ACTOR_ID = 'apify/facebook-posts-scraper'
+
+# Actor IDs - transcripts.
+_FACEBOOK_ADS_TRANSCRIPT_ACTOR_ID = 'steadyfetch/facebook-ads-transcript-scraper'
+_YOUTUBE_TRANSCRIPT_ACTOR_ID = 'steadyfetch/youtube-transcript-scraper'
+_MEDIA_TRANSCRIBER_ACTOR_ID = 'steadyfetch/media-transcriber'
 
 # Accepted parameter values validated client-side before a run.
 _YOUTUBE_SEARCH_TYPES = ('search', 'video', 'channel')
@@ -849,6 +857,115 @@ class ApifyToolsClient:
             timeout_secs=timeout_secs,
             dataset_items_limit=max_crawl_pages,
         )
+
+    def facebook_ads_transcript_scrape(
+        self,
+        search_queries: list[str],
+        country: str = 'US',
+        max_results: int = _DEFAULT_TRANSCRIPT_RESULTS_LIMIT,
+        timeout_secs: int = _DEFAULT_TRANSCRIPT_TIMEOUT_SECS,
+    ) -> tuple[dict, list[dict]]:
+        """Transcribe Facebook Ad Library ads via ``steadyfetch/facebook-ads-transcript-scraper``.
+
+        Args:
+            search_queries: Keywords or advertiser page names to search the Ad Library for.
+            country: Two-letter country code the ads are served in.
+            max_results: Maximum number of ad creatives to return.
+            timeout_secs: Maximum time to wait for the run to finish.
+
+        Returns:
+            A ``(run_details, items)`` tuple.
+
+        Raises:
+            ValueError: If ``search_queries`` is empty.
+            RuntimeError: If the Actor run does not succeed.
+        """
+        self._require_non_empty(search_queries, 'search_queries')
+        run_input: dict = {
+            'searchQueries': list(search_queries),
+            'country': country,
+            'searchMaxAds': max_results,
+            'maxAds': max_results,
+        }
+        return self.run_actor_and_get_items(
+            _FACEBOOK_ADS_TRANSCRIPT_ACTOR_ID,
+            run_input=run_input,
+            timeout_secs=timeout_secs,
+            dataset_items_limit=max_results,
+        )
+
+    def youtube_transcript_scrape(
+        self,
+        video_urls: list[str],
+        max_results: int = _DEFAULT_TRANSCRIPT_RESULTS_LIMIT,
+        timeout_secs: int = _DEFAULT_TRANSCRIPT_TIMEOUT_SECS,
+    ) -> tuple[dict, list[dict]]:
+        """Transcribe YouTube videos via ``steadyfetch/youtube-transcript-scraper``.
+
+        Args:
+            video_urls: Watch, youtu.be, ``/shorts/`` or ``/live/`` links, or bare video IDs.
+            max_results: Maximum number of transcripts to return.
+            timeout_secs: Maximum time to wait for the run to finish.
+
+        Returns:
+            A ``(run_details, items)`` tuple.
+
+        Raises:
+            ValueError: If ``video_urls`` is empty.
+            RuntimeError: If the Actor run does not succeed.
+        """
+        self._require_non_empty(video_urls, 'video_urls')
+        run_input: dict = {'videoUrls': list(video_urls), 'maxItems': max_results}
+        return self.run_actor_and_get_items(
+            _YOUTUBE_TRANSCRIPT_ACTOR_ID,
+            run_input=run_input,
+            timeout_secs=timeout_secs,
+            dataset_items_limit=max_results,
+        )
+
+    def media_transcribe(
+        self,
+        urls: list[str],
+        max_results: int = _DEFAULT_TRANSCRIPT_RESULTS_LIMIT,
+        timeout_secs: int = _DEFAULT_TRANSCRIPT_TIMEOUT_SECS,
+    ) -> tuple[dict, list[dict]]:
+        """Transcribe audio or video files via ``steadyfetch/media-transcriber``.
+
+        Args:
+            urls: Direct audio/video file links, or page links on a supported host.
+            max_results: Maximum number of transcripts to return.
+            timeout_secs: Maximum time to wait for the run to finish.
+
+        Returns:
+            A ``(run_details, items)`` tuple.
+
+        Raises:
+            ValueError: If ``urls`` is empty.
+            RuntimeError: If the Actor run does not succeed.
+        """
+        self._require_non_empty(urls, 'urls')
+        run_input: dict = {'urls': list(urls)}
+        return self.run_actor_and_get_items(
+            _MEDIA_TRANSCRIBER_ACTOR_ID,
+            run_input=run_input,
+            timeout_secs=timeout_secs,
+            dataset_items_limit=max_results,
+        )
+
+    @staticmethod
+    def _require_non_empty(values: list[str], field: str) -> None:
+        """Raise if a required list input is empty.
+
+        Args:
+            values: The list supplied by the caller.
+            field: Name of the field, used in the error message.
+
+        Raises:
+            ValueError: If ``values`` is empty.
+        """
+        if not values:
+            msg = _ERROR_EMPTY_INPUT_LIST.format(field=field)
+            raise ValueError(msg)
 
     @staticmethod
     def _check_run_status(run: dict) -> None:
