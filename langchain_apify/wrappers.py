@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient, ApifyClientAsync
@@ -137,19 +138,20 @@ class ApifyWrapper(BaseModel):
         Raises:
             RuntimeError: If the Actor call fails.
         """
+        run_timeout = timedelta(seconds=timeout_secs) if timeout_secs is not None else None
         if (
             actor_call := self.apify_client.actor(actor_id).call(
                 run_input=run_input,
                 build=build,
                 memory_mbytes=memory_mbytes,
-                timeout_secs=timeout_secs,
+                run_timeout=run_timeout,
             )
         ) is None:
             msg = f'Failed to call Actor {actor_id}.'
             raise RuntimeError(msg)
 
         return ApifyDatasetLoader(
-            dataset_id=actor_call['defaultDatasetId'],
+            dataset_id=actor_call.default_dataset_id,
             dataset_mapping_function=dataset_mapping_function,
             apify_token=self.apify_token,
         )
@@ -185,19 +187,20 @@ class ApifyWrapper(BaseModel):
         Raises:
             RuntimeError: If the Actor call fails.
         """
+        run_timeout = timedelta(seconds=timeout_secs) if timeout_secs is not None else None
         if (
             actor_call := await self.apify_client_async.actor(actor_id).call(
                 run_input=run_input,
                 build=build,
                 memory_mbytes=memory_mbytes,
-                timeout_secs=timeout_secs,
+                run_timeout=run_timeout,
             )
         ) is None:
             msg = f'Failed to call Actor {actor_id}.'
             raise RuntimeError(msg)
 
         return ApifyDatasetLoader(
-            dataset_id=actor_call['defaultDatasetId'],
+            dataset_id=actor_call.default_dataset_id,
             dataset_mapping_function=dataset_mapping_function,
             apify_token=self.apify_token,
         )
@@ -234,19 +237,20 @@ class ApifyWrapper(BaseModel):
         Raises:
             RuntimeError: If the task call fails.
         """
+        run_timeout = timedelta(seconds=timeout_secs) if timeout_secs is not None else None
         if (
             task_call := self.apify_client.task(task_id).call(
                 task_input=task_input,
                 build=build,
                 memory_mbytes=memory_mbytes,
-                timeout_secs=timeout_secs,
+                run_timeout=run_timeout,
             )
         ) is None:
             msg = f'Failed to call task {task_id}.'
             raise RuntimeError(msg)
 
         return ApifyDatasetLoader(
-            dataset_id=task_call['defaultDatasetId'],
+            dataset_id=task_call.default_dataset_id,
             dataset_mapping_function=dataset_mapping_function,
             apify_token=self.apify_token,
         )
@@ -283,19 +287,20 @@ class ApifyWrapper(BaseModel):
         Raises:
             RuntimeError: If the task call fails.
         """
+        run_timeout = timedelta(seconds=timeout_secs) if timeout_secs is not None else None
         if (
             task_call := await self.apify_client_async.task(task_id).call(
                 task_input=task_input,
                 build=build,
                 memory_mbytes=memory_mbytes,
-                timeout_secs=timeout_secs,
+                run_timeout=run_timeout,
             )
         ) is None:
             msg = f'Failed to call task {task_id}.'
             raise RuntimeError(msg)
 
         return ApifyDatasetLoader(
-            dataset_id=task_call['defaultDatasetId'],
+            dataset_id=task_call.default_dataset_id,
             dataset_mapping_function=dataset_mapping_function,
             apify_token=self.apify_token,
         )
