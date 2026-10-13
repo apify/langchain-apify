@@ -220,15 +220,11 @@ def _get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
         ValueError: If the Actor is not found or the build data is not found.
         TypeError: If the build is not a dictionary.
     """
-    if not (actor := apify_client.actor(actor_id).get()):
+    if (actor := apify_client.actor(actor_id).get()) is None:
         msg = f'Actor {actor_id} not found.'
         raise ValueError(msg)
 
-    if not (actor_obj_id := actor.get('id')):
-        msg = f'Failed to get the Actor object ID for {actor_id}.'
-        raise ValueError(msg)
-
-    url = _APIFY_API_ENDPOINT_GET_DEFAULT_BUILD.format(actor_id=actor_obj_id)
+    url = _APIFY_API_ENDPOINT_GET_DEFAULT_BUILD.format(actor_id=actor.id)
     response = requests.request('GET', url, timeout=_REQUESTS_TIMEOUT_SECS)
 
     build = response.json()
