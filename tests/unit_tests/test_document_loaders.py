@@ -4,14 +4,13 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from apify_client._types import ListPage
-from apify_client.clients import DatasetClient
+from apify_client._resource_clients import DatasetClient
 from langchain_core.documents import Document
 from pydantic import SecretStr
 
 from langchain_apify import ApifyCrawlLoader, ApifyDatasetLoader
 from langchain_apify._client import ApifyToolsClient
-from tests.unit_tests.conftest import SUCCEEDED_RUN
+from tests.unit_tests.conftest import SUCCEEDED_RUN, make_items_page
 
 
 def test_apify_dataset_loader_load() -> None:
@@ -20,9 +19,7 @@ def test_apify_dataset_loader_load() -> None:
     Mocks the ApifyClient and DatasetClient to return a single item.
     """
     with patch.object(DatasetClient, 'list_items') as mock_list_items:
-        mock_list_items.return_value = ListPage(
-            data={'items': [{'text': 'Apify is great!', 'url': 'https://apify.com'}]},
-        )
+        mock_list_items.return_value = make_items_page([{'text': 'Apify is great!', 'url': 'https://apify.com'}])
 
         loader = ApifyDatasetLoader(
             apify_token='dummy-token',
@@ -211,7 +208,7 @@ def test_apify_dataset_loader_apify_token_fallback(monkeypatch: pytest.MonkeyPat
     monkeypatch.setenv('APIFY_TOKEN', 'platform-token')
 
     with patch.object(DatasetClient, 'list_items') as mock_list_items:
-        mock_list_items.return_value = ListPage(data={'items': []})
+        mock_list_items.return_value = make_items_page([])
         loader = ApifyDatasetLoader(
             dataset_id='d',
             dataset_mapping_function=lambda _item: Document(page_content='x'),

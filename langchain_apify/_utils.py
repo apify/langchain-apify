@@ -6,8 +6,7 @@ import warnings
 from typing import TypeVar
 
 import requests
-from apify_client import ApifyClientAsync
-from apify_client.client import ApifyClient
+from apify_client import ApifyClient, ApifyClientAsync
 from pydantic import SecretStr
 
 _MAX_DESCRIPTION_LEN: int = 350

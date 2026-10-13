@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from apify_client._models import Run
+from apify_client._resource_clients.dataset import DatasetItemsPage
 
 from langchain_apify._client import ApifyToolsClient
 
@@ -26,14 +27,27 @@ _RUN_PAYLOAD: dict = {
     'options': {'build': 'latest', 'timeoutSecs': 300, 'memoryMbytes': 1024, 'diskMbytes': 2048},
 }
 
-SUCCEEDED_RUN = Run.model_validate(_RUN_PAYLOAD)
 
-FAILED_RUN = Run.model_validate({**_RUN_PAYLOAD, 'id': 'run-fail', 'status': 'FAILED'})
+def make_run(**overrides: Any) -> Run:  # noqa: ANN401
+    """Build a ``Run`` from the shared payload, overriding camelCase API fields."""
+    return Run.model_validate({**_RUN_PAYLOAD, **overrides})
+
+
+SUCCEEDED_RUN = make_run()
+
+FAILED_RUN = make_run(id='run-fail', status='FAILED')
+
+RUNNING_RUN = make_run(id='run-running', status='RUNNING', finishedAt=None)
 
 SAMPLE_ITEMS: list[dict] = [
     {'text': 'item-1', 'url': 'https://example.com/1'},
     {'text': 'item-2', 'url': 'https://example.com/2'},
 ]
+
+
+def make_items_page(items: list[dict], *, limit: int = 1000) -> DatasetItemsPage:
+    """Build the page that ``DatasetClient.list_items`` returns."""
+    return DatasetItemsPage(items=items, total=len(items), offset=0, count=len(items), limit=limit, desc=False)
 
 
 @pytest.fixture

@@ -8,7 +8,7 @@ import pytest
 from apify_client import ApifyClient
 
 from langchain_apify._client import ApifyToolsClient
-from tests.unit_tests.conftest import FAILED_RUN, SAMPLE_ITEMS, SUCCEEDED_RUN
+from tests.unit_tests.conftest import FAILED_RUN, SAMPLE_ITEMS, SUCCEEDED_RUN, make_run
 
 # ---------------------------------------------------------------------------
 # __init__
@@ -216,18 +216,18 @@ def test_scrape_url_empty_content_raises(client: ApifyToolsClient, mock_apify_cl
 
 
 def test_check_run_status_succeeded() -> None:
-    ApifyToolsClient._check_run_status({'id': 'run-ok', 'status': 'SUCCEEDED'})
+    ApifyToolsClient._check_run_status(make_run(id='run-ok'))
 
 
 def test_check_run_status_failed() -> None:
     with pytest.raises(RuntimeError, match='run-bad'):
-        ApifyToolsClient._check_run_status({'id': 'run-bad', 'status': 'FAILED'})
+        ApifyToolsClient._check_run_status(make_run(id='run-bad', status='FAILED'))
 
 
 def test_check_run_status_failed_includes_status_message() -> None:
     with pytest.raises(RuntimeError, match='Actor exited out of memory'):
         ApifyToolsClient._check_run_status(
-            {'id': 'run-oom', 'status': 'FAILED', 'statusMessage': 'Actor exited out of memory'},
+            make_run(id='run-oom', status='FAILED', statusMessage='Actor exited out of memory'),
         )
 
 
