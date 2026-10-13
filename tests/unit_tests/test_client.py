@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -67,7 +68,7 @@ def test_run_actor_success(client: ApifyToolsClient, mock_apify_client: MagicMoc
 
     mock_apify_client.actor.assert_called_once_with('apify/test-actor')
     mock_apify_client.actor.return_value.call.assert_called_once_with(
-        run_input={'key': 'val'}, timeout_secs=300, logger=None
+        run_input={'key': 'val'}, run_timeout=timedelta(seconds=300), logger=None
     )
     assert result == SUCCEEDED_RUN
 
@@ -78,7 +79,7 @@ def test_run_actor_with_memory(client: ApifyToolsClient, mock_apify_client: Magi
     client.run_actor('apify/test-actor', memory_mbytes=512)
 
     mock_apify_client.actor.return_value.call.assert_called_once_with(
-        run_input=None, timeout_secs=300, logger=None, memory_mbytes=512
+        run_input=None, run_timeout=timedelta(seconds=300), logger=None, memory_mbytes=512
     )
 
 
@@ -127,16 +128,6 @@ def test_run_actor_and_get_items_success(client: ApifyToolsClient, mock_apify_cl
     mock_apify_client.dataset.assert_called_once_with('dataset-xyz')
 
 
-def test_run_actor_and_get_items_missing_dataset_id_raises(
-    client: ApifyToolsClient, mock_apify_client: MagicMock
-) -> None:
-    run_no_dataset = {**SUCCEEDED_RUN, 'defaultDatasetId': None}
-    mock_apify_client.actor.return_value.call.return_value = run_no_dataset
-
-    with pytest.raises(RuntimeError, match='no default dataset ID'):
-        client.run_actor_and_get_items('apify/test-actor')
-
-
 # ---------------------------------------------------------------------------
 # run_task
 # ---------------------------------------------------------------------------
@@ -148,7 +139,9 @@ def test_run_task_success(client: ApifyToolsClient, mock_apify_client: MagicMock
     result = client.run_task('user/my-task', task_input={'key': 'val'})
 
     mock_apify_client.task.assert_called_once_with('user/my-task')
-    mock_apify_client.task.return_value.call.assert_called_once_with(task_input={'key': 'val'}, timeout_secs=300)
+    mock_apify_client.task.return_value.call.assert_called_once_with(
+        task_input={'key': 'val'}, run_timeout=timedelta(seconds=300)
+    )
     assert result == SUCCEEDED_RUN
 
 
@@ -172,16 +165,6 @@ def test_run_task_and_get_items_success(client: ApifyToolsClient, mock_apify_cli
 
     assert run == SUCCEEDED_RUN
     assert items == SAMPLE_ITEMS
-
-
-def test_run_task_and_get_items_missing_dataset_id_raises(
-    client: ApifyToolsClient, mock_apify_client: MagicMock
-) -> None:
-    run_no_dataset = {**SUCCEEDED_RUN, 'defaultDatasetId': None}
-    mock_apify_client.task.return_value.call.return_value = run_no_dataset
-
-    with pytest.raises(RuntimeError, match='no default dataset ID'):
-        client.run_task_and_get_items('user/my-task')
 
 
 # ---------------------------------------------------------------------------

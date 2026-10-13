@@ -4,22 +4,31 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from apify_client._models import Run
 
 from langchain_apify._client import ApifyToolsClient
 
-SUCCEEDED_RUN: dict = {
+# Shaped like a real ``GET /v2/actor-runs/{id}`` response and validated into the
+# ``Run`` model that ``.call()`` returns, so any dict-style access fails the tests.
+_RUN_PAYLOAD: dict = {
     'id': 'run-abc',
+    'actId': 'actor-abc',
+    'userId': 'user-abc',
     'status': 'SUCCEEDED',
-    'defaultDatasetId': 'dataset-xyz',
     'startedAt': '2025-01-01T00:00:00.000Z',
     'finishedAt': '2025-01-01T00:01:00.000Z',
+    'buildId': 'build-xyz',
+    'defaultDatasetId': 'dataset-xyz',
+    'defaultKeyValueStoreId': 'kvs-xyz',
+    'defaultRequestQueueId': 'queue-xyz',
+    'meta': {'origin': 'API'},
+    'stats': {'computeUnits': 0.01, 'restartCount': 0, 'resurrectCount': 0},
+    'options': {'build': 'latest', 'timeoutSecs': 300, 'memoryMbytes': 1024, 'diskMbytes': 2048},
 }
 
-FAILED_RUN: dict = {
-    'id': 'run-fail',
-    'status': 'FAILED',
-    'defaultDatasetId': 'dataset-xyz',
-}
+SUCCEEDED_RUN = Run.model_validate(_RUN_PAYLOAD)
+
+FAILED_RUN = Run.model_validate({**_RUN_PAYLOAD, 'id': 'run-fail', 'status': 'FAILED'})
 
 SAMPLE_ITEMS: list[dict] = [
     {'text': 'item-1', 'url': 'https://example.com/1'},

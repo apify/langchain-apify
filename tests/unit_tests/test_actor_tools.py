@@ -294,7 +294,7 @@ def test_google_maps_tool_returns_json(mock_tools_client: MagicMock) -> None:
 
     parsed = json.loads(tool._run(query='cafe in Berlin', max_results=2, language='en'))
 
-    assert parsed['run']['dataset_id'] == SUCCEEDED_RUN['defaultDatasetId']
+    assert parsed['run']['dataset_id'] == SUCCEEDED_RUN.default_dataset_id
     assert parsed['items'] == items
     mock_tools_client.google_maps_search.assert_called_once_with(
         'cafe in Berlin',
