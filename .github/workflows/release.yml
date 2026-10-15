@@ -63,7 +63,7 @@ jobs:
     name: Lint check
     uses: apify/workflows/.github/workflows/python_lint_check.yaml@v0.45.0
     with:
-      python_versions: '["3.10", "3.11", "3.12", "3.13"]'
+      python_versions: '["3.11", "3.12", "3.13"]'
       install_command: uv pip install --system -e ".[dev]"
       lint_command: ruff check langchain_apify tests && ruff format --check langchain_apify tests
 
@@ -71,7 +71,7 @@ jobs:
     name: Type check
     uses: apify/workflows/.github/workflows/python_type_check.yaml@v0.45.0
     with:
-      python_versions: '["3.10", "3.11", "3.12", "3.13"]'
+      python_versions: '["3.11", "3.12", "3.13"]'
       install_command: uv pip install --system -e ".[dev]"
       type_check_command: mypy langchain_apify
 
@@ -79,7 +79,7 @@ jobs:
     name: Unit tests
     uses: apify/workflows/.github/workflows/python_unit_tests.yaml@v0.45.0
     with:
-      python_versions: '["3.10", "3.11", "3.12", "3.13"]'
+      python_versions: '["3.11", "3.12", "3.13"]'
       operating_systems: '["ubuntu-latest"]'
       install_command: uv pip install --system -e ".[dev]"
       run_tests_command: pytest --disable-socket --allow-unix-socket tests/unit_tests/
