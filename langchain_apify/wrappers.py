@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from apify_client import ApifyClient, ApifyClientAsync
@@ -12,6 +11,7 @@ from langchain_apify._utils import (
     _apify_token_secret_factory,
     _create_apify_client,
     _resolve_deprecated_token,
+    _run_timeout,
 )
 from langchain_apify.document_loaders import ApifyDatasetLoader
 
@@ -138,7 +138,7 @@ class ApifyWrapper(BaseModel):
         Raises:
             RuntimeError: If the Actor call fails.
         """
-        run_timeout = timedelta(seconds=timeout_secs) if timeout_secs is not None else None
+        run_timeout = _run_timeout(timeout_secs)
         if (
             actor_call := self.apify_client.actor(actor_id).call(
                 run_input=run_input,
@@ -187,7 +187,7 @@ class ApifyWrapper(BaseModel):
         Raises:
             RuntimeError: If the Actor call fails.
         """
-        run_timeout = timedelta(seconds=timeout_secs) if timeout_secs is not None else None
+        run_timeout = _run_timeout(timeout_secs)
         if (
             actor_call := await self.apify_client_async.actor(actor_id).call(
                 run_input=run_input,
@@ -237,7 +237,7 @@ class ApifyWrapper(BaseModel):
         Raises:
             RuntimeError: If the task call fails.
         """
-        run_timeout = timedelta(seconds=timeout_secs) if timeout_secs is not None else None
+        run_timeout = _run_timeout(timeout_secs)
         if (
             task_call := self.apify_client.task(task_id).call(
                 task_input=task_input,
@@ -287,7 +287,7 @@ class ApifyWrapper(BaseModel):
         Raises:
             RuntimeError: If the task call fails.
         """
-        run_timeout = timedelta(seconds=timeout_secs) if timeout_secs is not None else None
+        run_timeout = _run_timeout(timeout_secs)
         if (
             task_call := await self.apify_client_async.task(task_id).call(
                 task_input=task_input,

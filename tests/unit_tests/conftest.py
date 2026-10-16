@@ -45,9 +45,9 @@ SAMPLE_ITEMS: list[dict] = [
 ]
 
 
-def make_items_page(items: list[dict], *, limit: int = 1000) -> DatasetItemsPage:
+def make_items_page(items: list[dict]) -> DatasetItemsPage:
     """Build the page that ``DatasetClient.list_items`` returns."""
-    return DatasetItemsPage(items=items, total=len(items), offset=0, count=len(items), limit=limit, desc=False)
+    return DatasetItemsPage(items=items, total=len(items), offset=0, count=len(items), limit=len(items), desc=False)
 
 
 @pytest.fixture

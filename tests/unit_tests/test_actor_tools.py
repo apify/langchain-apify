@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -531,8 +531,6 @@ def test_search_tool_serialises_datetime_in_items(
     run_kwargs: dict,
     client_return_shape: str,
 ) -> None:
-    from datetime import datetime
-
     timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     item_with_datetime = {'id': 'item-1', 'published_at': timestamp, 'text': 'hi'}
     items = [item_with_datetime]
@@ -1006,8 +1004,6 @@ def test_social_tool_serialises_datetime_in_items(
     run_kwargs: dict,
     mock_tools_client: MagicMock,
 ) -> None:
-    from datetime import datetime
-
     timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     items_with_datetime = [{'id': 'post-1', 'timestamp': timestamp, 'text': 'hello'}]
     getattr(mock_tools_client, method_name).return_value = (SUCCEEDED_RUN, items_with_datetime)

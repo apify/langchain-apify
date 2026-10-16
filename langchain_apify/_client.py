@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import impit
@@ -35,6 +34,7 @@ from langchain_apify._utils import (
     _extract_content,
     _resolve_apify_token,
     _resolve_deprecated_token,
+    _run_timeout,
 )
 
 if TYPE_CHECKING:
@@ -131,7 +131,7 @@ class ApifyToolsClient:
         Raises:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
-        call_kwargs: dict = {'run_input': run_input, 'run_timeout': timedelta(seconds=timeout_secs), 'logger': None}
+        call_kwargs: dict = {'run_input': run_input, 'run_timeout': _run_timeout(timeout_secs), 'logger': None}
         if memory_mbytes is not None:
             call_kwargs['memory_mbytes'] = memory_mbytes
 
@@ -214,7 +214,7 @@ class ApifyToolsClient:
         Raises:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
-        call_kwargs: dict = {'task_input': task_input, 'run_timeout': timedelta(seconds=timeout_secs)}
+        call_kwargs: dict = {'task_input': task_input, 'run_timeout': _run_timeout(timeout_secs)}
         if memory_mbytes is not None:
             call_kwargs['memory_mbytes'] = memory_mbytes
 
