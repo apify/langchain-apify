@@ -1,5 +1,5 @@
 import pytest
-from apify_client.client import ApifyClient
+from apify_client import ApifyClient
 
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import _create_apify_client, _get_actor_latest_build, _resolve_apify_token

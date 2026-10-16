@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
-import httpx
+import impit
 import pytest
 from apify_client import ApifyClient
 
 from langchain_apify._client import ApifyToolsClient
-from tests.unit_tests.conftest import FAILED_RUN, SAMPLE_ITEMS, SUCCEEDED_RUN
+from tests.unit_tests.conftest import FAILED_RUN, SAMPLE_ITEMS, SUCCEEDED_RUN, make_run
 
 # ---------------------------------------------------------------------------
 # __init__
@@ -67,7 +68,7 @@ def test_run_actor_success(client: ApifyToolsClient, mock_apify_client: MagicMoc
 
     mock_apify_client.actor.assert_called_once_with('apify/test-actor')
     mock_apify_client.actor.return_value.call.assert_called_once_with(
-        run_input={'key': 'val'}, timeout_secs=300, logger=None
+        run_input={'key': 'val'}, run_timeout=timedelta(seconds=300), logger=None
     )
     assert result == SUCCEEDED_RUN
 
@@ -78,7 +79,7 @@ def test_run_actor_with_memory(client: ApifyToolsClient, mock_apify_client: Magi
     client.run_actor('apify/test-actor', memory_mbytes=512)
 
     mock_apify_client.actor.return_value.call.assert_called_once_with(
-        run_input=None, timeout_secs=300, logger=None, memory_mbytes=512
+        run_input=None, run_timeout=timedelta(seconds=300), logger=None, memory_mbytes=512
     )
 
 
@@ -127,16 +128,6 @@ def test_run_actor_and_get_items_success(client: ApifyToolsClient, mock_apify_cl
     mock_apify_client.dataset.assert_called_once_with('dataset-xyz')
 
 
-def test_run_actor_and_get_items_missing_dataset_id_raises(
-    client: ApifyToolsClient, mock_apify_client: MagicMock
-) -> None:
-    run_no_dataset = {**SUCCEEDED_RUN, 'defaultDatasetId': None}
-    mock_apify_client.actor.return_value.call.return_value = run_no_dataset
-
-    with pytest.raises(RuntimeError, match='no default dataset ID'):
-        client.run_actor_and_get_items('apify/test-actor')
-
-
 # ---------------------------------------------------------------------------
 # run_task
 # ---------------------------------------------------------------------------
@@ -148,7 +139,9 @@ def test_run_task_success(client: ApifyToolsClient, mock_apify_client: MagicMock
     result = client.run_task('user/my-task', task_input={'key': 'val'})
 
     mock_apify_client.task.assert_called_once_with('user/my-task')
-    mock_apify_client.task.return_value.call.assert_called_once_with(task_input={'key': 'val'}, timeout_secs=300)
+    mock_apify_client.task.return_value.call.assert_called_once_with(
+        task_input={'key': 'val'}, run_timeout=timedelta(seconds=300)
+    )
     assert result == SUCCEEDED_RUN
 
 
@@ -172,16 +165,6 @@ def test_run_task_and_get_items_success(client: ApifyToolsClient, mock_apify_cli
 
     assert run == SUCCEEDED_RUN
     assert items == SAMPLE_ITEMS
-
-
-def test_run_task_and_get_items_missing_dataset_id_raises(
-    client: ApifyToolsClient, mock_apify_client: MagicMock
-) -> None:
-    run_no_dataset = {**SUCCEEDED_RUN, 'defaultDatasetId': None}
-    mock_apify_client.task.return_value.call.return_value = run_no_dataset
-
-    with pytest.raises(RuntimeError, match='no default dataset ID'):
-        client.run_task_and_get_items('user/my-task')
 
 
 # ---------------------------------------------------------------------------
@@ -233,18 +216,18 @@ def test_scrape_url_empty_content_raises(client: ApifyToolsClient, mock_apify_cl
 
 
 def test_check_run_status_succeeded() -> None:
-    ApifyToolsClient._check_run_status({'id': 'run-ok', 'status': 'SUCCEEDED'})
+    ApifyToolsClient._check_run_status(make_run(id='run-ok'))
 
 
 def test_check_run_status_failed() -> None:
     with pytest.raises(RuntimeError, match='run-bad'):
-        ApifyToolsClient._check_run_status({'id': 'run-bad', 'status': 'FAILED'})
+        ApifyToolsClient._check_run_status(make_run(id='run-bad', status='FAILED'))
 
 
 def test_check_run_status_failed_includes_status_message() -> None:
     with pytest.raises(RuntimeError, match='Actor exited out of memory'):
         ApifyToolsClient._check_run_status(
-            {'id': 'run-oom', 'status': 'FAILED', 'statusMessage': 'Actor exited out of memory'},
+            make_run(id='run-oom', status='FAILED', statusMessage='Actor exited out of memory'),
         )
 
 
@@ -268,19 +251,19 @@ def test_run_task_none_return_raises(client: ApifyToolsClient, mock_apify_client
 
 
 # ---------------------------------------------------------------------------
-# Transport-error wrapping (httpx / ApifyClientError -> RuntimeError)
+# Transport-error wrapping (impit / ApifyClientError -> RuntimeError)
 # ---------------------------------------------------------------------------
 
 
 def test_run_actor_network_error_wraps(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.actor.return_value.call.side_effect = httpx.ConnectError('conn refused')
+    mock_apify_client.actor.return_value.call.side_effect = impit.ConnectError('conn refused')
 
     with pytest.raises(RuntimeError, match='Apify Actor call failed'):
         client.run_actor('apify/test-actor')
 
 
 def test_get_dataset_items_network_error_wraps(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.dataset.return_value.list_items.side_effect = httpx.ConnectError('timeout')
+    mock_apify_client.dataset.return_value.list_items.side_effect = impit.ConnectError('timeout')
 
     with pytest.raises(RuntimeError, match='Apify dataset fetch failed'):
         client.get_dataset_items('dataset-xyz')
@@ -290,14 +273,14 @@ def test_run_actor_and_get_items_dataset_fetch_network_error(
     client: ApifyToolsClient, mock_apify_client: MagicMock
 ) -> None:
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
-    mock_apify_client.dataset.return_value.list_items.side_effect = httpx.ConnectError('reset')
+    mock_apify_client.dataset.return_value.list_items.side_effect = impit.ConnectError('reset')
 
     with pytest.raises(RuntimeError, match='Apify dataset fetch failed'):
         client.run_actor_and_get_items('apify/test-actor')
 
 
 def test_run_task_network_error_wraps(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.task.return_value.call.side_effect = httpx.ConnectError('conn refused')
+    mock_apify_client.task.return_value.call.side_effect = impit.ConnectError('conn refused')
 
     with pytest.raises(RuntimeError, match='Apify task call failed'):
         client.run_task('user/my-task')
@@ -307,7 +290,7 @@ def test_run_task_and_get_items_dataset_fetch_network_error(
     client: ApifyToolsClient, mock_apify_client: MagicMock
 ) -> None:
     mock_apify_client.task.return_value.call.return_value = SUCCEEDED_RUN
-    mock_apify_client.dataset.return_value.list_items.side_effect = httpx.ConnectError('reset')
+    mock_apify_client.dataset.return_value.list_items.side_effect = impit.ConnectError('reset')
 
     with pytest.raises(RuntimeError, match='Apify dataset fetch failed'):
         client.run_task_and_get_items('user/my-task')

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-import httpx
+from typing import TYPE_CHECKING
+
+import impit
 from apify_client import ApifyClient
 from apify_client.errors import ApifyClientError
 from pydantic import SecretStr
@@ -32,10 +34,15 @@ from langchain_apify._utils import (
     _extract_content,
     _resolve_apify_token,
     _resolve_deprecated_token,
+    _run_timeout,
 )
 
+if TYPE_CHECKING:
+    # apify-client 3.x exports its response models only from this private module.
+    from apify_client._models import Run
+
 # Transport errors caught when calling Apify; anything else propagates.
-_TRANSPORT_EXCEPTIONS = (ApifyClientError, httpx.HTTPError)
+_TRANSPORT_EXCEPTIONS = (ApifyClientError, impit.HTTPError)
 
 # Apify run status indicating a successful finish.
 _RUN_STATUS_SUCCEEDED = 'SUCCEEDED'
@@ -109,7 +116,7 @@ class ApifyToolsClient:
         run_input: dict | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
-    ) -> dict:
+    ) -> Run:
         """Start an Actor and block until it finishes.
 
         Args:
@@ -119,12 +126,12 @@ class ApifyToolsClient:
             memory_mbytes: Memory limit for the run, or *None* for Actor default.
 
         Returns:
-            Full run-details dict returned by the Apify API.
+            The ``Run`` returned by the Apify API.
 
         Raises:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
-        call_kwargs: dict = {'run_input': run_input, 'timeout_secs': timeout_secs, 'logger': None}
+        call_kwargs: dict = {'run_input': run_input, 'run_timeout': _run_timeout(timeout_secs), 'logger': None}
         if memory_mbytes is not None:
             call_kwargs['memory_mbytes'] = memory_mbytes
 
@@ -165,7 +172,7 @@ class ApifyToolsClient:
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
         dataset_items_limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Run an Actor, then fetch items from its default dataset.
 
         Args:
@@ -182,11 +189,7 @@ class ApifyToolsClient:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
         run = self.run_actor(actor_id, run_input, timeout_secs, memory_mbytes)
-        dataset_id = run.get('defaultDatasetId')
-        if not dataset_id:
-            msg = f'Actor {actor_id} run succeeded but returned no default dataset ID.'
-            raise RuntimeError(msg)
-        items = self.get_dataset_items(dataset_id, dataset_items_limit)
+        items = self.get_dataset_items(run.default_dataset_id, dataset_items_limit)
         return run, items
 
     def run_task(
@@ -195,7 +198,7 @@ class ApifyToolsClient:
         task_input: dict | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
-    ) -> dict:
+    ) -> Run:
         """Start a saved Actor task and block until it finishes.
 
         Args:
@@ -206,12 +209,12 @@ class ApifyToolsClient:
             memory_mbytes: Memory limit for the run, or *None* for task default.
 
         Returns:
-            Full run-details dict returned by the Apify API.
+            The ``Run`` returned by the Apify API.
 
         Raises:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
-        call_kwargs: dict = {'task_input': task_input, 'timeout_secs': timeout_secs}
+        call_kwargs: dict = {'task_input': task_input, 'run_timeout': _run_timeout(timeout_secs)}
         if memory_mbytes is not None:
             call_kwargs['memory_mbytes'] = memory_mbytes
 
@@ -233,7 +236,7 @@ class ApifyToolsClient:
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
         dataset_items_limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Run a saved Actor task, then fetch items from its default dataset.
 
         Args:
@@ -251,16 +254,12 @@ class ApifyToolsClient:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
         run = self.run_task(task_id, task_input, timeout_secs, memory_mbytes)
-        dataset_id = run.get('defaultDatasetId')
-        if not dataset_id:
-            msg = f'Task {task_id} run succeeded but returned no default dataset ID.'
-            raise RuntimeError(msg)
-        items = self.get_dataset_items(dataset_id, dataset_items_limit)
+        items = self.get_dataset_items(run.default_dataset_id, dataset_items_limit)
         return run, items
 
     def scrape_url_with_metadata(
         self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS
-    ) -> tuple[dict, list[dict], str, str]:
+    ) -> tuple[Run, list[dict], str, str]:
         """Scrape a single URL and return run/items/content metadata.
 
         Uses ``apify/website-content-crawler`` with ``maxCrawlPages=1``.
@@ -313,7 +312,7 @@ class ApifyToolsClient:
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         only_posts_newer_than: str | None = None,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Scrape Instagram via ``apify/instagram-scraper``.
 
         Args:
@@ -362,7 +361,7 @@ class ApifyToolsClient:
         country_code: str | None = None,
         language_code: str | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Run a Google search and return structured results.
 
         Uses ``apify/google-search-scraper`` with a single query.
@@ -415,7 +414,7 @@ class ApifyToolsClient:
         query: str,
         max_results: int = _DEFAULT_RAG_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Search the web and return crawled page content for RAG.
 
         Uses ``apify/rag-web-browser``.
@@ -449,7 +448,7 @@ class ApifyToolsClient:
         profile_url: str,
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Scrape LinkedIn profile posts via ``apimaestro/linkedin-profile-posts``.
 
         Args:
@@ -479,7 +478,7 @@ class ApifyToolsClient:
         query: str,
         max_results: int = _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Search LinkedIn profiles via ``harvestapi/linkedin-profile-search``.
 
         Args:
@@ -510,7 +509,7 @@ class ApifyToolsClient:
         max_results: int = _DEFAULT_GOOGLE_MAPS_MAX_RESULTS,
         language: str | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Search Google Maps places, reviews, and business details.
 
         Uses ``compass/crawler-google-places``.
@@ -547,7 +546,7 @@ class ApifyToolsClient:
         *,
         include_email: bool = False,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Fetch a LinkedIn profile via ``apimaestro/linkedin-profile-detail``.
 
         Args:
@@ -583,7 +582,7 @@ class ApifyToolsClient:
         end: str | None = None,
         sort: str | None = None,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Scrape Twitter/X via ``apidojo/twitter-scraper-lite``.
 
         Args:
@@ -633,7 +632,7 @@ class ApifyToolsClient:
         search_type: str = 'search',
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Scrape TikTok via ``clockworks/tiktok-scraper``.
 
         Args:
@@ -678,7 +677,7 @@ class ApifyToolsClient:
         only_posts_newer_than: str | None = None,
         only_posts_older_than: str | None = None,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Scrape Facebook page posts via ``apify/facebook-posts-scraper``.
 
         Args:
@@ -731,7 +730,7 @@ class ApifyToolsClient:
         search_type: str = 'search',
         max_results: int = _DEFAULT_YOUTUBE_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Scrape YouTube videos, channels, or search results.
 
         Uses ``streamers/youtube-scraper``.
@@ -773,7 +772,7 @@ class ApifyToolsClient:
         url_type: str = 'product',
         max_results: int = _DEFAULT_ECOMMERCE_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Extract product data from an e-commerce URL.
 
         Uses ``apify/e-commerce-scraping-tool``. ``url_type`` selects which
@@ -818,7 +817,7 @@ class ApifyToolsClient:
         max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
         crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> tuple[dict, list[dict]]:
+    ) -> tuple[Run, list[dict]]:
         """Crawl a website and return page content.
 
         Uses ``apify/website-content-crawler``.
@@ -851,12 +850,11 @@ class ApifyToolsClient:
         )
 
     @staticmethod
-    def _check_run_status(run: dict) -> None:
+    def _check_run_status(run: Run) -> None:
         """Raise if the run did not succeed."""
-        status = run.get('status')
+        status = run.status
         if status != _RUN_STATUS_SUCCEEDED:
-            run_id = run.get('id', 'unknown')
-            msg = _ERROR_ACTOR_RUN_FAILED.format(run_id=run_id, status=status)
-            if status_message := run.get('statusMessage'):
+            msg = _ERROR_ACTOR_RUN_FAILED.format(run_id=run.id, status=status)
+            if status_message := run.status_message:
                 msg = f'{msg} {status_message}'
             raise RuntimeError(msg)

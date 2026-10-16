@@ -3,11 +3,11 @@ from __future__ import annotations
 import os
 import string
 import warnings
+from datetime import timedelta
 from typing import TypeVar
 
-import requests
-from apify_client import ApifyClientAsync
-from apify_client.client import ApifyClient
+from apify_client import ApifyClient, ApifyClientAsync
+from apify_client.errors import NotFoundError
 from pydantic import SecretStr
 
 _MAX_DESCRIPTION_LEN: int = 350
@@ -20,8 +20,7 @@ _BOTH_TOKENS_MSG = (
     "Both 'apify_token' and 'apify_api_token' were specified; using 'apify_token' "
     "and ignoring the deprecated 'apify_api_token'."
 )
-_REQUESTS_TIMEOUT_SECS: float = 10.0
-_APIFY_API_ENDPOINT_GET_DEFAULT_BUILD: str = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
+_USER_AGENT_ORIGIN_SUFFIX: str = '; Origin/langchain'
 
 
 def _resolve_deprecated_token(
@@ -156,6 +155,19 @@ def _prune_actor_input_schema(
     return properties_out, required
 
 
+def _run_timeout(timeout_secs: int | None) -> timedelta | None:
+    """Convert a run timeout in seconds to the ``timedelta`` apify-client expects.
+
+    Args:
+        timeout_secs (int, optional): Maximum time the Actor run may take, or ``None`` for no limit.
+
+    Returns:
+        timedelta | None: The value for the ``run_timeout`` argument of ``.call()``. Not to be confused with
+            apify-client's ``timeout`` argument, which bounds the HTTP request rather than the run.
+    """
+    return timedelta(seconds=timeout_secs) if timeout_secs is not None else None
+
+
 T = TypeVar('T', ApifyClient, ApifyClientAsync)
 
 
@@ -177,16 +189,9 @@ def _create_apify_client(client_cls: type[T], token: str) -> T:
         raise ValueError(msg)
     client = client_cls(token)
 
-    # Check for new attribute names first (without 'x'), then fall back to old names (with 'x')
-    if isinstance(client, ApifyClientAsync):
-        http_client_attr = (
-            'httpx_async_client' if hasattr(client.http_client, 'httpx_async_client') else 'http_async_client'
-        )
-    else:
-        http_client_attr = 'httpx_client' if hasattr(client.http_client, 'httpx_client') else 'http_client'
-
-    if http_client := getattr(client.http_client, http_client_attr, None):
-        http_client.headers['user-agent'] += '; Origin/langchain'
+    # Mark the integration in the user-agent. The public `headers` argument would replace apify-client's own
+    # user-agent rather than extend it (and warns when it does), so the header dict is appended to in place.
+    client.http_client._headers['User-Agent'] += _USER_AGENT_ORIGIN_SUFFIX  # noqa: SLF001
     return client
 
 
@@ -214,30 +219,21 @@ def _get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
         actor_id (str): Actor name from Apify store to run.
 
     Returns:
-        dict: The latest build of the Actor.
+        dict: The latest build of the Actor, keyed as the Apify API returns it.
 
     Raises:
         ValueError: If the Actor is not found or the build data is not found.
-        TypeError: If the build is not a dictionary.
     """
-    if not (actor := apify_client.actor(actor_id).get()):
+    try:
+        build = apify_client.actor(actor_id).default_build().get()
+    except NotFoundError as exc:
         msg = f'Actor {actor_id} not found.'
-        raise ValueError(msg)
+        raise ValueError(msg) from exc
 
-    if not (actor_obj_id := actor.get('id')):
-        msg = f'Failed to get the Actor object ID for {actor_id}.'
-        raise ValueError(msg)
-
-    url = _APIFY_API_ENDPOINT_GET_DEFAULT_BUILD.format(actor_id=actor_obj_id)
-    response = requests.request('GET', url, timeout=_REQUESTS_TIMEOUT_SECS)
-
-    build = response.json()
-    if not isinstance(build, dict):
-        msg = f'Failed to get the latest build of the Actor {actor_id}.'
-        raise TypeError(msg)
-
-    if (data := build.get('data')) is None:
+    if build is None:
         msg = f'Failed to get the latest build data of the Actor {actor_id}.'
         raise ValueError(msg)
 
-    return data
+    # Callers read the build as the raw API payload. `by_alias` keeps the API's camelCase keys, and fields
+    # apify-client does not model, `actorDefinition.description` among them, survive as extras.
+    return build.model_dump(by_alias=True, mode='json')

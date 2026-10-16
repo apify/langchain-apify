@@ -4,27 +4,50 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from apify_client._models import Run
+from apify_client._resource_clients.dataset import DatasetItemsPage
 
 from langchain_apify._client import ApifyToolsClient
 
-SUCCEEDED_RUN: dict = {
+# Shaped like a real ``GET /v2/actor-runs/{id}`` response and validated into the
+# ``Run`` model that ``.call()`` returns, so any dict-style access fails the tests.
+_RUN_PAYLOAD: dict = {
     'id': 'run-abc',
+    'actId': 'actor-abc',
+    'userId': 'user-abc',
     'status': 'SUCCEEDED',
-    'defaultDatasetId': 'dataset-xyz',
     'startedAt': '2025-01-01T00:00:00.000Z',
     'finishedAt': '2025-01-01T00:01:00.000Z',
+    'buildId': 'build-xyz',
+    'defaultDatasetId': 'dataset-xyz',
+    'defaultKeyValueStoreId': 'kvs-xyz',
+    'defaultRequestQueueId': 'queue-xyz',
+    'meta': {'origin': 'API'},
+    'stats': {'computeUnits': 0.01, 'restartCount': 0, 'resurrectCount': 0},
+    'options': {'build': 'latest', 'timeoutSecs': 300, 'memoryMbytes': 1024, 'diskMbytes': 2048},
 }
 
-FAILED_RUN: dict = {
-    'id': 'run-fail',
-    'status': 'FAILED',
-    'defaultDatasetId': 'dataset-xyz',
-}
+
+def make_run(**overrides: Any) -> Run:  # noqa: ANN401
+    """Build a ``Run`` from the shared payload, overriding camelCase API fields."""
+    return Run.model_validate({**_RUN_PAYLOAD, **overrides})
+
+
+SUCCEEDED_RUN = make_run()
+
+FAILED_RUN = make_run(id='run-fail', status='FAILED')
+
+RUNNING_RUN = make_run(id='run-running', status='RUNNING', finishedAt=None)
 
 SAMPLE_ITEMS: list[dict] = [
     {'text': 'item-1', 'url': 'https://example.com/1'},
     {'text': 'item-2', 'url': 'https://example.com/2'},
 ]
+
+
+def make_items_page(items: list[dict]) -> DatasetItemsPage:
+    """Build the page that ``DatasetClient.list_items`` returns."""
+    return DatasetItemsPage(items=items, total=len(items), offset=0, count=len(items), limit=len(items), desc=False)
 
 
 @pytest.fixture

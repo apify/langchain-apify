@@ -26,12 +26,12 @@ def test_apify_dataset_loader_load() -> None:
 
     existing_datasets = client.datasets().list().items
     for dataset in existing_datasets:
-        if dataset['name'] == dataset_name:
-            client.dataset(dataset['id']).delete()
+        if dataset.name == dataset_name:
+            client.dataset(dataset.id).delete()
 
     dataset = client.datasets().get_or_create(name=dataset_name)
 
-    dataset_client = client.dataset(dataset['id'])
+    dataset_client = client.dataset(dataset.id)
 
     dataset_client.push_items([{'text': 'Hello, world!', 'url': 'https://example.com'}])
     dataset_client.push_items(
@@ -39,7 +39,7 @@ def test_apify_dataset_loader_load() -> None:
     )
 
     loader = ApifyDatasetLoader(
-        dataset_id=dataset['id'],
+        dataset_id=dataset.id,
         dataset_mapping_function=lambda dataset_item: Document(
             page_content=dataset_item['text'],
             metadata={'source': dataset_item['url']},
@@ -66,12 +66,12 @@ def test_apify_dataset_loader_lazy_load() -> None:
 
     existing_datasets = client.datasets().list().items
     for dataset in existing_datasets:
-        if dataset['name'] == dataset_name:
-            client.dataset(dataset['id']).delete()
+        if dataset.name == dataset_name:
+            client.dataset(dataset.id).delete()
 
     dataset = client.datasets().get_or_create(name=dataset_name)
 
-    dataset_client = client.dataset(dataset['id'])
+    dataset_client = client.dataset(dataset.id)
 
     dataset_client.push_items(
         [{'text': 'Hello, lazy world!', 'url': 'https://example.com'}],
@@ -81,7 +81,7 @@ def test_apify_dataset_loader_lazy_load() -> None:
     )
 
     loader = ApifyDatasetLoader(
-        dataset_id=dataset['id'],
+        dataset_id=dataset.id,
         dataset_mapping_function=lambda dataset_item: Document(
             page_content=dataset_item['text'],
             metadata={'source': dataset_item['url']},

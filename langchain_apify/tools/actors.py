@@ -190,14 +190,11 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
             list[dict]: The output dataset
 
         Raises:
-            ValueError: If the Actor was not started properly or the Run ID was not found in the run details
+            ValueError: If the Actor was not started properly and no run details were returned
         """
         if (details := self._apify_client.actor(actor_id=self._actor_id).call(run_input=run_input)) is None:
             msg = f'Actor: {self._actor_id} was not started properly and details about the run were not returned'
             raise ValueError(msg)
-        if (run_id := details.get('id')) is None:
-            msg = f'Run ID not found in the run details for Actor: {self._actor_id}'
-            raise ValueError(msg)
-        run = self._apify_client.run(run_id=run_id)
+        run = self._apify_client.run(run_id=details.id)
 
         return run.dataset().list_items(clean=True).items
