@@ -20,6 +20,7 @@ _BOTH_TOKENS_MSG = (
     "and ignoring the deprecated 'apify_api_token'."
 )
 _REQUESTS_TIMEOUT_SECS: float = 10.0
+_USER_AGENT_ORIGIN_SUFFIX: str = '; Origin/langchain'
 _APIFY_API_ENDPOINT_GET_DEFAULT_BUILD: str = 'https://api.apify.com/v2/acts/{actor_id}/builds/default'
 
 
@@ -176,16 +177,9 @@ def _create_apify_client(client_cls: type[T], token: str) -> T:
         raise ValueError(msg)
     client = client_cls(token)
 
-    # Check for new attribute names first (without 'x'), then fall back to old names (with 'x')
-    if isinstance(client, ApifyClientAsync):
-        http_client_attr = (
-            'httpx_async_client' if hasattr(client.http_client, 'httpx_async_client') else 'http_async_client'
-        )
-    else:
-        http_client_attr = 'httpx_client' if hasattr(client.http_client, 'httpx_client') else 'http_client'
-
-    if http_client := getattr(client.http_client, http_client_attr, None):
-        http_client.headers['user-agent'] += '; Origin/langchain'
+    # Mark the integration in the user-agent. The public `headers` argument would replace apify-client's own
+    # user-agent rather than extend it (and warns when it does), so the header dict is appended to in place.
+    client.http_client._headers['User-Agent'] += _USER_AGENT_ORIGIN_SUFFIX  # noqa: SLF001
     return client
 
 
