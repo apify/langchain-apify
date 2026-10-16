@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
-import httpx
+import impit
 import pytest
 from apify_client import ApifyClient
 
@@ -251,19 +251,19 @@ def test_run_task_none_return_raises(client: ApifyToolsClient, mock_apify_client
 
 
 # ---------------------------------------------------------------------------
-# Transport-error wrapping (httpx / ApifyClientError -> RuntimeError)
+# Transport-error wrapping (impit / ApifyClientError -> RuntimeError)
 # ---------------------------------------------------------------------------
 
 
 def test_run_actor_network_error_wraps(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.actor.return_value.call.side_effect = httpx.ConnectError('conn refused')
+    mock_apify_client.actor.return_value.call.side_effect = impit.ConnectError('conn refused')
 
     with pytest.raises(RuntimeError, match='Apify Actor call failed'):
         client.run_actor('apify/test-actor')
 
 
 def test_get_dataset_items_network_error_wraps(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.dataset.return_value.list_items.side_effect = httpx.ConnectError('timeout')
+    mock_apify_client.dataset.return_value.list_items.side_effect = impit.ConnectError('timeout')
 
     with pytest.raises(RuntimeError, match='Apify dataset fetch failed'):
         client.get_dataset_items('dataset-xyz')
@@ -273,14 +273,14 @@ def test_run_actor_and_get_items_dataset_fetch_network_error(
     client: ApifyToolsClient, mock_apify_client: MagicMock
 ) -> None:
     mock_apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
-    mock_apify_client.dataset.return_value.list_items.side_effect = httpx.ConnectError('reset')
+    mock_apify_client.dataset.return_value.list_items.side_effect = impit.ConnectError('reset')
 
     with pytest.raises(RuntimeError, match='Apify dataset fetch failed'):
         client.run_actor_and_get_items('apify/test-actor')
 
 
 def test_run_task_network_error_wraps(client: ApifyToolsClient, mock_apify_client: MagicMock) -> None:
-    mock_apify_client.task.return_value.call.side_effect = httpx.ConnectError('conn refused')
+    mock_apify_client.task.return_value.call.side_effect = impit.ConnectError('conn refused')
 
     with pytest.raises(RuntimeError, match='Apify task call failed'):
         client.run_task('user/my-task')
@@ -290,7 +290,7 @@ def test_run_task_and_get_items_dataset_fetch_network_error(
     client: ApifyToolsClient, mock_apify_client: MagicMock
 ) -> None:
     mock_apify_client.task.return_value.call.return_value = SUCCEEDED_RUN
-    mock_apify_client.dataset.return_value.list_items.side_effect = httpx.ConnectError('reset')
+    mock_apify_client.dataset.return_value.list_items.side_effect = impit.ConnectError('reset')
 
     with pytest.raises(RuntimeError, match='Apify dataset fetch failed'):
         client.run_task_and_get_items('user/my-task')

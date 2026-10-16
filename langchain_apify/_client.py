@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-import httpx
+import impit
 from apify_client import ApifyClient
 from apify_client.errors import ApifyClientError
 from pydantic import SecretStr
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from apify_client._models import Run
 
 # Transport errors caught when calling Apify; anything else propagates.
-_TRANSPORT_EXCEPTIONS = (ApifyClientError, httpx.HTTPError)
+_TRANSPORT_EXCEPTIONS = (ApifyClientError, impit.HTTPError)
 
 # Apify run status indicating a successful finish.
 _RUN_STATUS_SUCCEEDED = 'SUCCEEDED'
