@@ -4,7 +4,7 @@ The `langchain-apify` package integrates Apify's web scraping and automation cap
 
 ## Setup
 
-To install the package, use pip:
+The package requires Python 3.11 or newer. To install it, use pip:
 
 ```bash
 pip install langchain-apify

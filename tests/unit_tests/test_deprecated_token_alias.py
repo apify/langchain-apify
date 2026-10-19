@@ -21,8 +21,7 @@ from contextlib import ExitStack
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
-from apify_client._types import ListPage
-from apify_client.clients import DatasetClient
+from apify_client._resource_clients import DatasetClient
 from langchain_core.documents import Document
 from pydantic import BaseModel
 
@@ -30,6 +29,7 @@ from langchain_apify import ApifyDatasetLoader, ApifyWrapper
 from langchain_apify._client import ApifyToolsClient
 from langchain_apify._utils import _resolve_apify_token
 from langchain_apify.tools import ApifyActorsTool, ApifyRunActorTool
+from tests.unit_tests.conftest import make_items_page
 
 if TYPE_CHECKING:
     import pytest
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 # Helpers
 # ---------------------------------------------------------------------------
 
-_EMPTY_LIST_PAGE = ListPage(data={'items': []})
+_EMPTY_ITEMS_PAGE = make_items_page([])
 
 
 def _noop_mapping(item: dict) -> Document:
@@ -93,7 +93,7 @@ class TestApifyDatasetLoaderTokenAlias:
     """Token-alias tests for :class:`ApifyDatasetLoader`."""
 
     def test_apify_token_no_warning(self) -> None:
-        with patch.object(DatasetClient, 'list_items', return_value=_EMPTY_LIST_PAGE):
+        with patch.object(DatasetClient, 'list_items', return_value=_EMPTY_ITEMS_PAGE):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter('always')
                 loader = ApifyDatasetLoader(
@@ -105,7 +105,7 @@ class TestApifyDatasetLoaderTokenAlias:
             assert loader.apify_token is not None
 
     def test_apify_api_token_emits_warning(self) -> None:
-        with patch.object(DatasetClient, 'list_items', return_value=_EMPTY_LIST_PAGE):
+        with patch.object(DatasetClient, 'list_items', return_value=_EMPTY_ITEMS_PAGE):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter('always')
                 loader = ApifyDatasetLoader(
@@ -120,7 +120,7 @@ class TestApifyDatasetLoaderTokenAlias:
 
     def test_both_specified_uses_apify_token(self) -> None:
         """When both are given, ``apify_token`` wins and the user is warned."""
-        with patch.object(DatasetClient, 'list_items', return_value=_EMPTY_LIST_PAGE):
+        with patch.object(DatasetClient, 'list_items', return_value=_EMPTY_ITEMS_PAGE):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter('always')
                 loader = ApifyDatasetLoader(

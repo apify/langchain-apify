@@ -10,8 +10,7 @@ from __future__ import annotations
 import bisect
 import json
 from collections.abc import Callable
-from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from langchain_core.tools import BaseTool, ToolException
 from pydantic import Field, PrivateAttr, SecretStr, model_validator
@@ -29,6 +28,10 @@ from langchain_apify._utils import (
     _resolve_deprecated_token_values,
 )
 
+if TYPE_CHECKING:
+    # apify-client 3.x exports its response models only from this private module.
+    from apify_client._models import Run
+
 # Apify accepts memory_mbytes only as one of these power-of-2 values.
 # https://docs.apify.com/api/v2/act-runs-post
 _VALID_MEMORY_MBYTES: tuple[int, ...] = (128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768)
@@ -38,21 +41,14 @@ _VALID_MEMORY_MBYTES: tuple[int, ...] = (128, 256, 512, 1024, 2048, 4096, 8192, 
 _TOOL_RUN_ERRORS: tuple[type[Exception], ...] = (RuntimeError, ValueError)
 
 
-def _iso(value: str | datetime | None) -> str | None:
-    """Coerce a possible ``datetime`` to an ISO-8601 string."""
-    if isinstance(value, datetime):
-        return value.isoformat()
-    return value
-
-
-def _run_meta(run: dict) -> dict:
-    """Extract a compact metadata dict from an Apify run-details dict."""
+def _run_meta(run: Run) -> dict:
+    """Extract a compact metadata dict from an Apify ``Run``."""
     return {
-        'run_id': run.get('id'),
-        'status': run.get('status'),
-        'dataset_id': run.get('defaultDatasetId'),
-        'started_at': _iso(run.get('startedAt')),
-        'finished_at': _iso(run.get('finishedAt')),
+        'run_id': run.id,
+        'status': run.status,
+        'dataset_id': run.default_dataset_id,
+        'started_at': run.started_at.isoformat(),
+        'finished_at': run.finished_at.isoformat() if run.finished_at else None,
     }
 
 
@@ -129,10 +125,10 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
         return max(0, min(value, self.max_crawl_depth))
 
     @staticmethod
-    def _envelope(run: dict | None, items: list, notice: str | None = None) -> str:
+    def _envelope(run: Run | None, items: list, notice: str | None = None) -> str:
         """Serialise the standard ``{"run": ..., "items": ...}`` tool envelope.
 
-        ``run`` is a raw Apify run-details dict (passed through :func:`_run_meta`)
+        ``run`` is an Apify ``Run`` (passed through :func:`_run_meta`)
         or ``None`` for dataset-only tools. When ``notice`` is provided it is added
         under a ``notice`` key to surface an out-of-band hint to the caller (e.g.
         the Actor returned demo placeholder data). ``default=str`` coerces

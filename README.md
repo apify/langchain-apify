@@ -33,6 +33,8 @@ If you are an agent or an LLM, refer to the [llms.txt](llms.txt) file to get pac
 
 ## Installation
 
+Requires Python 3.11 or newer.
+
 ```bash
 pip install langchain-apify
 ```

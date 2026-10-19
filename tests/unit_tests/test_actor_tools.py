@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -294,7 +295,7 @@ def test_google_maps_tool_returns_json(mock_tools_client: MagicMock) -> None:
 
     parsed = json.loads(tool._run(query='cafe in Berlin', max_results=2, language='en'))
 
-    assert parsed['run']['dataset_id'] == SUCCEEDED_RUN['defaultDatasetId']
+    assert parsed['run']['dataset_id'] == SUCCEEDED_RUN.default_dataset_id
     assert parsed['items'] == items
     mock_tools_client.google_maps_search.assert_called_once_with(
         'cafe in Berlin',
@@ -530,9 +531,7 @@ def test_search_tool_serialises_datetime_in_items(
     run_kwargs: dict,
     client_return_shape: str,
 ) -> None:
-    from datetime import datetime, timezone
-
-    timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     item_with_datetime = {'id': 'item-1', 'published_at': timestamp, 'text': 'hi'}
     items = [item_with_datetime]
 
@@ -561,8 +560,8 @@ EXPECTED_RUN_META: dict = {
     'run_id': 'run-abc',
     'status': 'SUCCEEDED',
     'dataset_id': 'dataset-xyz',
-    'started_at': '2025-01-01T00:00:00.000Z',
-    'finished_at': '2025-01-01T00:01:00.000Z',
+    'started_at': '2025-01-01T00:00:00+00:00',
+    'finished_at': '2025-01-01T00:01:00+00:00',
 }
 
 
@@ -1005,9 +1004,7 @@ def test_social_tool_serialises_datetime_in_items(
     run_kwargs: dict,
     mock_tools_client: MagicMock,
 ) -> None:
-    from datetime import datetime, timezone
-
-    timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
     items_with_datetime = [{'id': 'post-1', 'timestamp': timestamp, 'text': 'hello'}]
     getattr(mock_tools_client, method_name).return_value = (SUCCEEDED_RUN, items_with_datetime)
     tool = make_tool(tool_cls, mock_tools_client)
