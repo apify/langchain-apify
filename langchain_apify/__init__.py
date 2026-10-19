@@ -9,8 +9,10 @@ from langchain_apify.tools import (
     APIFY_CORE_TOOLS,
     APIFY_SEARCH_TOOLS,
     APIFY_SOCIAL_TOOLS,
+    APIFY_TRANSCRIPT_TOOLS,
     ApifyActorsTool,
     ApifyEcommerceScraperTool,
+    ApifyFacebookAdsTranscriptTool,
     ApifyFacebookPostsScraperTool,
     ApifyGetDatasetItemsTool,
     ApifyGoogleMapsTool,
@@ -19,6 +21,7 @@ from langchain_apify.tools import (
     ApifyLinkedInProfileDetailTool,
     ApifyLinkedInProfilePostsTool,
     ApifyLinkedInProfileSearchTool,
+    ApifyMediaTranscriberTool,
     ApifyRAGWebBrowserTool,
     ApifyRunActorAndGetDatasetTool,
     ApifyRunActorTool,
@@ -29,6 +32,7 @@ from langchain_apify.tools import (
     ApifyTwitterScraperTool,
     ApifyWebCrawlerTool,
     ApifyYouTubeScraperTool,
+    ApifyYouTubeTranscriptTool,
 )
 from langchain_apify.wrappers import ApifyWrapper
 
@@ -70,10 +74,15 @@ __all__ = [
     'ApifyGoogleMapsTool',
     'ApifyYouTubeScraperTool',
     'ApifyEcommerceScraperTool',
+    # Transcription Actor tools
+    'ApifyFacebookAdsTranscriptTool',
+    'ApifyYouTubeTranscriptTool',
+    'ApifyMediaTranscriberTool',
     # Tool group lists
     'APIFY_CORE_TOOLS',
     'APIFY_SOCIAL_TOOLS',
     'APIFY_SEARCH_TOOLS',
+    'APIFY_TRANSCRIPT_TOOLS',
     # Meta
     '__version__',
 ]
