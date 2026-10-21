@@ -21,6 +21,7 @@ _BOTH_TOKENS_MSG = (
     "and ignoring the deprecated 'apify_api_token'."
 )
 _USER_AGENT_ORIGIN_SUFFIX: str = '; Origin/langchain'
+_INTEGRATION_PLATFORM_HEADER: dict[str, str] = {'x-apify-integration-platform': 'langchain'}
 
 
 def _resolve_deprecated_token(
@@ -172,7 +173,7 @@ T = TypeVar('T', ApifyClient, ApifyClientAsync)
 
 
 def _create_apify_client(client_cls: type[T], token: str) -> T:
-    """Create an Apify client instance with a custom user-agent.
+    """Create an Apify client instance carrying this integration's tracking headers.
 
     Args:
         client_cls (ApifyClient | ApifyClientAsync): ApifyClient or ApifyClientAsync class.
@@ -187,10 +188,12 @@ def _create_apify_client(client_cls: type[T], token: str) -> T:
     if not token:
         msg = 'API token is required to create an Apify client.'
         raise ValueError(msg)
-    client = client_cls(token)
+    # `x-apify-integration-platform` is what the Apify platform reads to attribute a run to this integration.
+    client = client_cls(token, headers=_INTEGRATION_PLATFORM_HEADER)
 
-    # Mark the integration in the user-agent. The public `headers` argument would replace apify-client's own
-    # user-agent rather than extend it (and warns when it does), so the header dict is appended to in place.
+    # The user-agent marker predates that header and is kept for older platform paths. It cannot go through the
+    # `headers` argument above, which would replace apify-client's own user-agent rather than extend it (and
+    # warns when it does), so the header dict is appended to in place.
     client.http_client._headers['User-Agent'] += _USER_AGENT_ORIGIN_SUFFIX  # noqa: SLF001
     return client
 
