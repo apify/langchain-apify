@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 ### 🚀 Features
 
 - [**breaking**] Migrate to apify-client 3.x and require Python 3.11+ ([006d27a](https://github.com/apify/langchain-apify/commit/006d27ab2c8de7d28bd4b01cf413bb45d53cb03f)) by [@daveomri](https://github.com/daveomri), closes [#39](https://github.com/apify/langchain-apify/issues/39)
+- Added integration platform header ([#46](https://github.com/apify/langchain-apify/pull/46)) ([0bb491f](https://github.com/apify/langchain-apify/commit/0bb491ff621beb4a83ebd1d057dbacc7b990b45a)) by [@daveomri](https://github.com/daveomri)
 
 
 <!-- git-cliff-unreleased-end -->
