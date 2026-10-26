@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11, <4.0"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -580,7 +580,7 @@ name = "importlib-metadata"
 version = "9.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp", marker = "python_full_version < '3.12'" },
+    { name = "zipp" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a9/01/15bb152d77b21318514a96f43af312635eb2500c96b55398d020c93d86ea/importlib_metadata-9.0.0.tar.gz", hash = "sha256:a4f57ab599e6a2e3016d7595cfd72eb4661a5106e787a95bcc90c7105b831efc", size = 56405, upload-time = "2026-03-20T06:42:56.999Z" }
 wheels = [
@@ -797,7 +797,6 @@ dev = [
     { name = "langchain" },
     { name = "langchain-openai" },
     { name = "langchain-tests" },
-    { name = "langgraph" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -816,7 +815,6 @@ requires-dist = [
     { name = "langchain-core", specifier = ">=0.3.15,<2.0.0" },
     { name = "langchain-openai", marker = "extra == 'dev'", specifier = ">=0.3.2,<0.4.0" },
     { name = "langchain-tests", marker = "extra == 'dev'", specifier = ">=0.3.5,<0.4.0" },
-    { name = "langgraph", marker = "extra == 'dev'", specifier = ">=1.0.0,<2.0.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10,<2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.3,<8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.2,<0.24.0" },
