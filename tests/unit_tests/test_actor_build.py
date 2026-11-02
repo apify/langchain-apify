@@ -70,6 +70,35 @@ def test_build_feeds_the_actor_tool_readers() -> None:
     assert 'run_input' in args_schema.model_fields
 
 
+def test_build_without_description_feeds_the_actor_tool_readers() -> None:
+    """Many Actors set no `description` in `actor.json`, and the dump returns it as `None`, not as a missing key."""
+    actor_definition = {k: v for k, v in _BUILD_PAYLOAD['actorDefinition'].items() if k != 'description'}
+    build = Build.model_validate({**_BUILD_PAYLOAD, 'actorDefinition': actor_definition})
+    result = _get_actor_latest_build(_client_returning(build), _ACTOR_ID)
+
+    assert ApifyActorsTool._create_description(result) == ''
+    args_schema = ApifyActorsTool._build_tool_args_schema_model(result, _ACTOR_ID)
+    assert 'run_input' in args_schema.model_fields
+
+
+def test_build_without_actor_definition_raises_value_error() -> None:
+    build = Build.model_validate({k: v for k, v in _BUILD_PAYLOAD.items() if k != 'actorDefinition'})
+    result = _get_actor_latest_build(_client_returning(build), _ACTOR_ID)
+
+    assert ApifyActorsTool._create_description(result) == ''
+    with pytest.raises(ValueError, match='Input schema not found'):
+        ApifyActorsTool._build_tool_args_schema_model(result, _ACTOR_ID)
+
+
+@pytest.mark.parametrize(
+    'build',
+    [{}, {'actorDefinition': None}, {'actorDefinition': {}}, {'actorDefinition': {'description': None}}],
+    ids=['no-actor-definition', 'null-actor-definition', 'no-description', 'null-description'],
+)
+def test_description_is_empty_when_missing(build: dict) -> None:
+    assert ApifyActorsTool._create_description(build) == ''
+
+
 def test_missing_build_raises_value_error() -> None:
     with pytest.raises(ValueError, match='Failed to get the latest build data'):
         _get_actor_latest_build(_client_returning(None), _ACTOR_ID)
