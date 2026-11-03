@@ -238,5 +238,5 @@ def _get_actor_latest_build(apify_client: ApifyClient, actor_id: str) -> dict:
         raise ValueError(msg)
 
     # Callers read the build as the raw API payload. `by_alias` keeps the API's camelCase keys, and fields
-    # apify-client does not model, `actorDefinition.description` among them, survive as extras.
+    # apify-client does not model survive as extras. Modelled fields the API left out come back as `None`.
     return build.model_dump(by_alias=True, mode='json')

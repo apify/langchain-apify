@@ -1,8 +1,8 @@
 """``_get_actor_latest_build`` has to keep returning the raw API payload shape.
 
 The build now comes from `apify_client.actor(...).default_build().get()` as a pydantic `Build` rather than from a
-hand-built HTTP request, but `ApifyActorsTool` still reads it as the dict the Apify API returns. apify-client does
-not model every field of a build, so these tests pin the two keys the tool depends on.
+hand-built HTTP request, but `ApifyActorsTool` still reads it as the dict the Apify API returns. These tests pin
+the two keys the tool depends on, including when the API leaves them out and the dump returns `None`.
 """
 
 from __future__ import annotations
@@ -31,7 +31,6 @@ _BUILD_PAYLOAD: dict = {
         'actorSpecification': 1,
         'name': 'hello-world',
         'version': '0.1',
-        # `ActorDefinition` has no `description` field, so this one only survives as a pydantic extra.
         'description': 'An Actor that greets.',
         'input': {'type': 'object', 'properties': {'url': {'type': 'string'}}, 'required': ['url']},
     },

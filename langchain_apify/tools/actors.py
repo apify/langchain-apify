@@ -140,7 +140,8 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Returns:
             str: The description.
         """
-        actor_description = build.get('actorDefinition', {}).get('description', '')
+        # The build is a pydantic dump, so a field the API left out comes back as `None` rather than missing.
+        actor_description = (build.get('actorDefinition') or {}).get('description') or ''
         if len(actor_description) > _MAX_DESCRIPTION_LEN:
             actor_description = actor_description[:_MAX_DESCRIPTION_LEN] + '...(TRUNCATED, TOO LONG)'
         return actor_description
@@ -159,7 +160,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Raises:
             ValueError: If the input schema is not found in the Actor build.
         """
-        if not (actor_input := build.get('actorDefinition', {}).get('input')):
+        if not (actor_input := (build.get('actorDefinition') or {}).get('input')):
             msg = f'Input schema not found in the Actor build for Actor: {actor_id}'
             raise ValueError(msg)
 
