@@ -140,7 +140,7 @@ class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
         Returns:
             str: The description.
         """
-        # The build is a pydantic dump, so a field the API left out comes back as `None` rather than missing.
+        # The build is a pydantic dump, so a field the API left out is present as `None`.
         actor_description = (build.get('actorDefinition') or {}).get('description') or ''
         if len(actor_description) > _MAX_DESCRIPTION_LEN:
             actor_description = actor_description[:_MAX_DESCRIPTION_LEN] + '...(TRUNCATED, TOO LONG)'

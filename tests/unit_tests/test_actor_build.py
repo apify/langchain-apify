@@ -1,8 +1,8 @@
-"""``_get_actor_latest_build`` has to keep returning the raw API payload shape.
+"""`_get_actor_latest_build` returns the raw API payload shape.
 
-The build now comes from `apify_client.actor(...).default_build().get()` as a pydantic `Build` rather than from a
-hand-built HTTP request, but `ApifyActorsTool` still reads it as the dict the Apify API returns. These tests pin
-the two keys the tool depends on, including when the API leaves them out and the dump returns `None`.
+The build comes from `apify_client.actor(...).default_build().get()` as a pydantic `Build`, and `ApifyActorsTool`
+reads it as the dict the Apify API returns. These tests pin the two keys the tool depends on, including when the API
+leaves them out and the dump returns `None`.
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ def test_build_feeds_the_actor_tool_readers() -> None:
 
 
 def test_build_without_description_feeds_the_actor_tool_readers() -> None:
-    """Many Actors set no `description` in `actor.json`, and the dump returns it as `None`, not as a missing key."""
+    """An Actor without a `description` in `actor.json` dumps it as `None`, and both readers accept that."""
     actor_definition = {k: v for k, v in _BUILD_PAYLOAD['actorDefinition'].items() if k != 'description'}
     build = Build.model_validate({**_BUILD_PAYLOAD, 'actorDefinition': actor_definition})
     result = _get_actor_latest_build(_client_returning(build), _ACTOR_ID)
@@ -81,6 +81,7 @@ def test_build_without_description_feeds_the_actor_tool_readers() -> None:
 
 
 def test_build_without_actor_definition_raises_value_error() -> None:
+    """A build with no `actorDefinition` yields an empty description and fails on the missing input schema."""
     build = Build.model_validate({k: v for k, v in _BUILD_PAYLOAD.items() if k != 'actorDefinition'})
     result = _get_actor_latest_build(_client_returning(build), _ACTOR_ID)
 
@@ -91,10 +92,15 @@ def test_build_without_actor_definition_raises_value_error() -> None:
 
 @pytest.mark.parametrize(
     'build',
-    [{}, {'actorDefinition': None}, {'actorDefinition': {}}, {'actorDefinition': {'description': None}}],
-    ids=['no-actor-definition', 'null-actor-definition', 'no-description', 'null-description'],
+    [
+        pytest.param({}, id='no actorDefinition'),
+        pytest.param({'actorDefinition': None}, id='null actorDefinition'),
+        pytest.param({'actorDefinition': {}}, id='no description'),
+        pytest.param({'actorDefinition': {'description': None}}, id='null description'),
+    ],
 )
 def test_description_is_empty_when_missing(build: dict) -> None:
+    """A missing or `None` `actorDefinition` or `description` gives an empty description."""
     assert ApifyActorsTool._create_description(build) == ''
 
 
