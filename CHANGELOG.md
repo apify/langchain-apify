@@ -2,8 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-<!-- git-cliff-unreleased-start -->
-## 0.1.9 - **not yet released**
+## [0.2.0](https://github.com/apify/langchain-apify/releases/tag/v0.2.0) (2026-11-05)
 
 ### 🚀 Features
 
@@ -15,7 +14,6 @@ All notable changes to this project will be documented in this file.
 - Handle Actors without a description in ApifyActorsTool ([#50](https://github.com/apify/langchain-apify/pull/50)) ([5554ec9](https://github.com/apify/langchain-apify/commit/5554ec988b8d6eaefcf5922bed88bfae51ca5fd5)) by [@daveomri](https://github.com/daveomri)
 
 
-<!-- git-cliff-unreleased-end -->
 ## [0.1.7](https://github.com/apify/langchain-apify/releases/tag/v0.1.7) (2026-08-10)
 
 ### 🚀 Features
