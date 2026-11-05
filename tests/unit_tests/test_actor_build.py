@@ -1,8 +1,8 @@
-"""``_get_actor_latest_build`` has to keep returning the raw API payload shape.
+"""`_get_actor_latest_build` returns the raw API payload shape.
 
-The build now comes from `apify_client.actor(...).default_build().get()` as a pydantic `Build` rather than from a
-hand-built HTTP request, but `ApifyActorsTool` still reads it as the dict the Apify API returns. apify-client does
-not model every field of a build, so these tests pin the two keys the tool depends on.
+The build comes from `apify_client.actor(...).default_build().get()` as a pydantic `Build`, and `ApifyActorsTool`
+reads it as the dict the Apify API returns. These tests pin the two keys the tool depends on, including when the API
+leaves them out and the dump returns `None`.
 """
 
 from __future__ import annotations
@@ -31,7 +31,6 @@ _BUILD_PAYLOAD: dict = {
         'actorSpecification': 1,
         'name': 'hello-world',
         'version': '0.1',
-        # `ActorDefinition` has no `description` field, so this one only survives as a pydantic extra.
         'description': 'An Actor that greets.',
         'input': {'type': 'object', 'properties': {'url': {'type': 'string'}}, 'required': ['url']},
     },
@@ -68,6 +67,41 @@ def test_build_feeds_the_actor_tool_readers() -> None:
     assert ApifyActorsTool._create_description(result) == 'An Actor that greets.'
     args_schema = ApifyActorsTool._build_tool_args_schema_model(result, _ACTOR_ID)
     assert 'run_input' in args_schema.model_fields
+
+
+def test_build_without_description_feeds_the_actor_tool_readers() -> None:
+    """An Actor without a `description` in `actor.json` dumps it as `None`, and both readers accept that."""
+    actor_definition = {k: v for k, v in _BUILD_PAYLOAD['actorDefinition'].items() if k != 'description'}
+    build = Build.model_validate({**_BUILD_PAYLOAD, 'actorDefinition': actor_definition})
+    result = _get_actor_latest_build(_client_returning(build), _ACTOR_ID)
+
+    assert ApifyActorsTool._create_description(result) == ''
+    args_schema = ApifyActorsTool._build_tool_args_schema_model(result, _ACTOR_ID)
+    assert 'run_input' in args_schema.model_fields
+
+
+def test_build_without_actor_definition_raises_value_error() -> None:
+    """A build with no `actorDefinition` yields an empty description and fails on the missing input schema."""
+    build = Build.model_validate({k: v for k, v in _BUILD_PAYLOAD.items() if k != 'actorDefinition'})
+    result = _get_actor_latest_build(_client_returning(build), _ACTOR_ID)
+
+    assert ApifyActorsTool._create_description(result) == ''
+    with pytest.raises(ValueError, match='Input schema not found'):
+        ApifyActorsTool._build_tool_args_schema_model(result, _ACTOR_ID)
+
+
+@pytest.mark.parametrize(
+    'build',
+    [
+        pytest.param({}, id='no actorDefinition'),
+        pytest.param({'actorDefinition': None}, id='null actorDefinition'),
+        pytest.param({'actorDefinition': {}}, id='no description'),
+        pytest.param({'actorDefinition': {'description': None}}, id='null description'),
+    ],
+)
+def test_description_is_empty_when_missing(build: dict) -> None:
+    """A missing or `None` `actorDefinition` or `description` gives an empty description."""
+    assert ApifyActorsTool._create_description(build) == ''
 
 
 def test_missing_build_raises_value_error() -> None:
