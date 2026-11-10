@@ -48,6 +48,40 @@ jobs:
       python_versions: '["3.11", "3.12", "3.13", "3.14", "3.15"]'
       operating_systems: '["ubuntu-latest"]'
 
+  # Integration tests are inlined (not calling the reusable workflow) to avoid GitHub's compile-time secret
+  # validation for nested reusable workflows, which fails on fork PRs where repo secrets are not available.
+  integration_tests:
+    name: Integration tests (${{ matrix.python-version }})
+    if: >-
+      ${{
+        (github.event_name == 'pull_request' && github.event.pull_request.head.repo.owner.login == 'apify') ||
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+        github.event_name == 'workflow_dispatch'
+      }}
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.15"]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up uv package manager
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python dependencies
+        run: uv run poe install-dev
+
+      - name: Run integration tests
+        run: uv run poe integration-tests
+        env:
+          APIFY_TOKEN: ${{ secrets.APIFY_TEST_USER_PYTHON_SDK_API_TOKEN }}
+
   package_check:
     name: Package check
     runs-on: ubuntu-latest
