@@ -30,7 +30,7 @@ dev = [
     "langchain-tests>=0.3.5,<0.4.0",
     "ruff~=0.17.0",
     "ty~=0.0.0",
-    "codespell>=2.2.6,<3.0.0",
+    "typos<2.0.0",
 ]
 
 [project.urls]
@@ -50,7 +50,7 @@ clean = { cmd = "rm -rf .coverage .pytest_cache .ruff_cache .ty_cache build dist
 install-dev = { cmd = "uv sync", help = "Install development dependencies" }
 build = { cmd = "uv build", help = "Build the package" }
 type-check = { cmd = "uv run ty check", help = "Run the type checker" }
-spell-check = { cmd = "uv run codespell --toml pyproject.toml", help = "Check spelling" }
+spell-check = { cmd = "uv run typos", help = "Check spelling" }
 unit-tests = { cmd = "uv run pytest --disable-socket --allow-unix-socket tests/unit_tests", help = "Run unit tests" }
 unit-tests-cov = { cmd = "uv run pytest --disable-socket --allow-unix-socket --cov=langchain_apify --cov-report=xml:coverage-unit.xml tests/unit_tests", help = "Run unit tests with an XML coverage report" }
 integration-tests = { cmd = "uv run pytest tests/integration_tests", help = "Run integration tests against the Apify platform" }
