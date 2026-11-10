@@ -32,20 +32,20 @@ jobs:
     name: Lint check
     uses: apify/workflows/.github/workflows/python_lint_check.yaml@main
     with:
-      python_versions: '["3.11", "3.12", "3.13"]'
+      python_versions: '["3.11", "3.12", "3.13", "3.14", "3.15"]'
 
   type_check:
     name: Type check
     uses: apify/workflows/.github/workflows/python_type_check.yaml@main
     with:
-      python_versions: '["3.11", "3.12", "3.13"]'
+      python_versions: '["3.11", "3.12", "3.13", "3.14", "3.15"]'
 
   unit_tests:
     name: Unit tests
     uses: apify/workflows/.github/workflows/python_unit_tests.yaml@main
     secrets: inherit
     with:
-      python_versions: '["3.11", "3.12", "3.13"]'
+      python_versions: '["3.11", "3.12", "3.13", "3.14", "3.15"]'
       operating_systems: '["ubuntu-latest"]'
 
   package_check:
