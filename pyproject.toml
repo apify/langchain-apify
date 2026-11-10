@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build"]
+build-backend = "uv_build"
 
 [project]
 name = "langchain-apify"
@@ -39,29 +39,16 @@ dev = [
 "Release Notes" = "https://github.com/apify/langchain-apify/releases?expanded=true"
 "Issue Tracker" = "https://github.com/apify/langchain-apify/issues"
 
-[tool.hatch.build.targets.wheel]
-packages = ["langchain_apify"]
-
-# Source distribution - explicit allowlist so local-only paths (dist/, .venv/,
-# res_lc*.txt, docs/, etc.) never reach PyPI.
-[tool.hatch.build.targets.sdist]
-include = [
-    "/langchain_apify",
-    "/tests",
-    "/pyproject.toml",
-    "/README.md",
-    "/CHANGELOG.md",
-    "/CONTRIBUTING.md",
-    "/LICENSE",
-    "/llms.txt",
-]
+[tool.uv.build-backend]
+# The module, pyproject.toml, README and LICENSE are included in the sdist by default.
+source-include = ["CHANGELOG.md", "CONTRIBUTING.md", "llms.txt", "tests/**"]
 
 # Run tasks with: uv run poe <task>
 [tool.poe.tasks]
 clean = { cmd = "rm -rf .coverage .mypy_cache .pytest_cache .ruff_cache build dist htmlcov", help = "Remove build artifacts and clean caches" }
 install-dev = { cmd = "uv sync", help = "Install development dependencies" }
 build = { cmd = "uv build", help = "Build the package" }
-type-check = { cmd = "uv run mypy langchain_apify", help = "Run the type checker" }
+type-check = { cmd = "uv run mypy src/langchain_apify", help = "Run the type checker" }
 spell-check = { cmd = "uv run codespell --toml pyproject.toml", help = "Check spelling" }
 unit-tests = { cmd = "uv run pytest --disable-socket --allow-unix-socket tests/unit_tests", help = "Run unit tests" }
 unit-tests-cov = { cmd = "uv run pytest --disable-socket --allow-unix-socket --cov=langchain_apify --cov-report=xml:coverage-unit.xml tests/unit_tests", help = "Run unit tests with an XML coverage report" }
@@ -77,7 +64,7 @@ shell = "uv run ruff check --fix && uv run ruff format"
 help = "Fix lint issues and format code"
 
 [tool.poe.tasks.check-imports]
-shell = "uv run python scripts/check_imports.py $(find langchain_apify -name '*.py')"
+shell = "uv run python scripts/check_imports.py $(find src/langchain_apify -name '*.py')"
 help = "Check that every module imports on its own"
 
 [tool.mypy]
