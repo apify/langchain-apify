@@ -167,3 +167,10 @@ asyncio_mode = "auto"
 
 [tool.uv]
 override-dependencies = ["vcrpy>=8.2.1,<9.0.0"]
+# Minimal defense against supply-chain attacks.
+exclude-newer = "24 hours"
+
+[tool.uv.exclude-newer-package]
+# Allow internal Apify packages to install immediately.
+apify-client = false
+impit = false

@@ -69,7 +69,7 @@ class _ApifyGenericTool(BaseTool):
     """
 
     # Narrower than `BaseTool`'s on purpose: these tools' handlers return the error as a string.
-    handle_tool_error: bool | str | Callable[[ToolException], str] | None = True  # ty: ignore[incompatible-mutable-override]
+    handle_tool_error: bool | str | Callable[[ToolException], str] | None = True  # ty: ignore[invalid-mutable-override]
 
     apify_token: SecretStr | None = Field(
         default_factory=_apify_token_secret_factory,
