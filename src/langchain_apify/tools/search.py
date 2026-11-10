@@ -25,7 +25,7 @@ from langchain_apify._constants import (
     _MAX_ITEMS_CAP,
     _RAG_MAX_RESULTS_CAP,
 )
-from langchain_apify._types import (  # noqa: TCH001  # runtime-needed: pydantic Field annotations
+from langchain_apify._types import (  # runtime-needed: pydantic Field annotations
     CrawlerType,
     EcommerceUrlType,
     YouTubeSearchType,

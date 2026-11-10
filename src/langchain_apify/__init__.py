@@ -41,7 +41,7 @@ except metadata.PackageNotFoundError:
     __version__ = ''
 del metadata  # optional, avoids polluting the results of dir(__package__)
 
-__all__ = [
+__all__ = [  # noqa: RUF022 - grouped by tool family
     # Existing components (backward-compatible)
     'ApifyActorsTool',
     'ApifyCrawlLoader',

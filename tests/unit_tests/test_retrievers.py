@@ -25,7 +25,7 @@ RAG_ITEMS: list[dict] = [
 ]
 
 
-def _make_retriever(mock_client: MagicMock, **kwargs: Any) -> ApifySearchRetriever:  # noqa: ANN401
+def _make_retriever(mock_client: MagicMock, **kwargs: Any) -> ApifySearchRetriever:
     """Instantiate a retriever with a mocked ApifyToolsClient."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         retriever = ApifySearchRetriever(apify_token=SecretStr('dummy-token'), **kwargs)

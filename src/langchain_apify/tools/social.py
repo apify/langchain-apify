@@ -17,7 +17,7 @@ from langchain_apify._constants import (
     _MAX_ITEMS_CAP,
 )
 from langchain_apify._error_messages import _NOTICE_TWITTER_DEMO
-from langchain_apify._types import (  # noqa: TCH001  # runtime-needed: pydantic Field annotations
+from langchain_apify._types import (  # runtime-needed: pydantic Field annotations
     InstagramSearchType,
     TikTokSearchType,
     TwitterSearchMode,
@@ -461,7 +461,7 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
     )
     args_schema: ArgsSchema | None = ApifyTwitterScraperInput
 
-    def _run(  # noqa: PLR0913
+    def _run(  # noqa: PLR0917 - LangChain calls `_run` with the tool's arguments as declared
         self,
         search_query: str,
         search_mode: TwitterSearchMode = 'search',

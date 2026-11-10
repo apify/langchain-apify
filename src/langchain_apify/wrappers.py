@@ -70,8 +70,8 @@ class ApifyWrapper(BaseModel):
     def __init__(
         self,
         apify_token: str | SecretStr | None = None,
-        *args: Any,  # noqa: ANN401
-        **kwargs: Any,  # noqa: ANN401
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         """Initialise the wrapper.
 
@@ -107,7 +107,7 @@ class ApifyWrapper(BaseModel):
         self.apify_client_async = _create_apify_client(ApifyClientAsync, token)
         return self
 
-    def call_actor(  # noqa: PLR0913
+    def call_actor(
         self,
         actor_id: str,
         run_input: dict,
@@ -156,7 +156,7 @@ class ApifyWrapper(BaseModel):
             apify_token=self.apify_token,
         )
 
-    async def acall_actor(  # noqa: PLR0913
+    async def acall_actor(
         self,
         actor_id: str,
         run_input: dict,
@@ -205,7 +205,7 @@ class ApifyWrapper(BaseModel):
             apify_token=self.apify_token,
         )
 
-    def call_actor_task(  # noqa: PLR0913
+    def call_actor_task(
         self,
         task_id: str,
         task_input: dict,
@@ -255,7 +255,7 @@ class ApifyWrapper(BaseModel):
             apify_token=self.apify_token,
         )
 
-    async def acall_actor_task(  # noqa: PLR0913
+    async def acall_actor_task(
         self,
         task_id: str,
         task_input: dict,

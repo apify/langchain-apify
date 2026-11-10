@@ -65,12 +65,14 @@ Generic platform primitives: run any Actor or task and fetch dataset items. Avai
 import os, json
 from langchain_apify import ApifyRunActorAndGetDatasetTool
 
-os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
+os.environ['APIFY_TOKEN'] = 'YOUR_APIFY_TOKEN'
 
-result = ApifyRunActorAndGetDatasetTool().invoke({
-    "actor_id": "apify/python-example",
-    "run_input": {"first_number": 2, "second_number": 3},
-})
+result = ApifyRunActorAndGetDatasetTool().invoke(
+    {
+        'actor_id': 'apify/python-example',
+        'run_input': {'first_number': 2, 'second_number': 3},
+    }
+)
 print(json.loads(result))
 ```
 
@@ -89,12 +91,14 @@ Web search, maps, video, e-commerce, and content crawling. Available as `APIFY_S
 import os, json
 from langchain_apify import ApifyGoogleSearchTool
 
-os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
+os.environ['APIFY_TOKEN'] = 'YOUR_APIFY_TOKEN'
 
-result = ApifyGoogleSearchTool().invoke({
-    "query": "langchain apify integration",
-    "max_results": 5,
-})
+result = ApifyGoogleSearchTool().invoke(
+    {
+        'query': 'langchain apify integration',
+        'max_results': 5,
+    }
+)
 print(json.loads(result))
 ```
 
@@ -114,13 +118,15 @@ Instagram, LinkedIn, Twitter/X, TikTok, and Facebook. Available as `APIFY_SOCIAL
 import os, json
 from langchain_apify import ApifyInstagramScraperTool
 
-os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
+os.environ['APIFY_TOKEN'] = 'YOUR_APIFY_TOKEN'
 
-result = ApifyInstagramScraperTool().invoke({
-    "search_type": "user",
-    "search_query": "apify",
-    "max_results": 3,
-})
+result = ApifyInstagramScraperTool().invoke(
+    {
+        'search_type': 'user',
+        'search_query': 'apify',
+        'max_results': 3,
+    }
+)
 print(json.loads(result))
 ```
 
@@ -134,18 +140,18 @@ from langchain.agents import create_agent
 from langchain_apify import APIFY_SEARCH_TOOLS
 from langchain_openai import ChatOpenAI
 
-os.environ["OPENAI_API_KEY"] = "YOUR_OPENAI_API_KEY"
-os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
+os.environ['OPENAI_API_KEY'] = 'YOUR_OPENAI_API_KEY'
+os.environ['APIFY_TOKEN'] = 'YOUR_APIFY_TOKEN'
 
-model = ChatOpenAI(model="gpt-5.4-mini")
+model = ChatOpenAI(model='gpt-5.4-mini')
 tools = [tool_cls() for tool_cls in APIFY_SEARCH_TOOLS]
 agent = create_agent(model, tools)
 
 for chunk in agent.stream(
-    {"messages": [("human", "search the web for what Apify Actors are")]},
-    stream_mode="values",
+    {'messages': [('human', 'search the web for what Apify Actors are')]},
+    stream_mode='values',
 ):
-    chunk["messages"][-1].pretty_print()
+    chunk['messages'][-1].pretty_print()
 ```
 
 ### `ApifyActorsTool`: wrap any Actor by ID
@@ -156,12 +162,14 @@ For Actors without a dedicated wrapper above, `ApifyActorsTool` builds an input 
 import os
 from langchain_apify import ApifyActorsTool
 
-os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
+os.environ['APIFY_TOKEN'] = 'YOUR_APIFY_TOKEN'
 
-tool = ApifyActorsTool("apify/rag-web-browser")
-result = tool.invoke(input={
-    "run_input": {"query": "what is an Apify Actor?", "maxResults": 3},
-})
+tool = ApifyActorsTool('apify/rag-web-browser')
+result = tool.invoke(
+    input={
+        'run_input': {'query': 'what is an Apify Actor?', 'maxResults': 3},
+    }
+)
 ```
 
 ## Retriever
@@ -172,12 +180,12 @@ result = tool.invoke(input={
 import os
 from langchain_apify import ApifySearchRetriever
 
-os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
+os.environ['APIFY_TOKEN'] = 'YOUR_APIFY_TOKEN'
 
 retriever = ApifySearchRetriever(max_results=3)
-docs = retriever.invoke("what is web scraping")
+docs = retriever.invoke('what is web scraping')
 for doc in docs:
-    print(doc.metadata["source"], "-", doc.metadata.get("title"))
+    print(doc.metadata['source'], '-', doc.metadata.get('title'))
 ```
 
 ## Document loaders
@@ -192,10 +200,10 @@ Active crawler that wraps `apify/website-content-crawler`. Crawls a seed URL and
 import os
 from langchain_apify import ApifyCrawlLoader
 
-os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
+os.environ['APIFY_TOKEN'] = 'YOUR_APIFY_TOKEN'
 
 loader = ApifyCrawlLoader(
-    url="https://docs.apify.com",
+    url='https://docs.apify.com',
     max_crawl_pages=5,
     max_crawl_depth=1,
 )
@@ -211,13 +219,13 @@ import os
 from langchain_apify import ApifyDatasetLoader
 from langchain_core.documents import Document
 
-os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
+os.environ['APIFY_TOKEN'] = 'YOUR_APIFY_TOKEN'
 
 loader = ApifyDatasetLoader(
-    dataset_id="your-dataset-id",
+    dataset_id='your-dataset-id',
     dataset_mapping_function=lambda item: Document(
-        page_content=item["text"],
-        metadata={"source": item["url"]},
+        page_content=item['text'],
+        metadata={'source': item['url']},
     ),
 )
 ```
@@ -236,20 +244,20 @@ import os
 from langchain_apify import ApifyWrapper
 from langchain_core.documents import Document
 
-os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"
+os.environ['APIFY_TOKEN'] = 'YOUR_APIFY_TOKEN'
 
 apify = ApifyWrapper()
 
 loader = apify.call_actor(
-    actor_id="apify/website-content-crawler",
+    actor_id='apify/website-content-crawler',
     run_input={
-        "startUrls": [{"url": "https://python.langchain.com/docs/get_started/introduction"}],
-        "maxCrawlPages": 10,
-        "crawlerType": "cheerio",
+        'startUrls': [{'url': 'https://python.langchain.com/docs/get_started/introduction'}],
+        'maxCrawlPages': 10,
+        'crawlerType': 'cheerio',
     },
     dataset_mapping_function=lambda item: Document(
-        page_content=item["text"] or "",
-        metadata={"source": item["url"]},
+        page_content=item['text'] or '',
+        metadata={'source': item['url']},
     ),
 )
 documents = loader.load()
@@ -276,10 +284,11 @@ For more information, see the [Apify LangChain integration documentation](https:
 from apify import Actor
 from langchain_core.documents import Document
 
+
 async def main():
     async with Actor:
         # Get dataset ID from input or integration payload
-        dataset_id = Actor.get_input().get("datasetId")
+        dataset_id = Actor.get_input().get('datasetId')
 
         # Open dataset using Actor SDK (respects LIMITED_PERMISSIONS)
         dataset = await Actor.open_dataset(name=dataset_id)
@@ -287,7 +296,7 @@ async def main():
         # Transform items to Documents
         documents = []
         async for item in dataset.iterate_items():
-            doc = Document(page_content=item.get("text", ""), metadata={"url": item.get("url")})
+            doc = Document(page_content=item.get('text', ''), metadata={'url': item.get('url')})
             documents.append(doc)
 ```
 

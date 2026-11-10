@@ -120,10 +120,10 @@ def test_google_search_tool_rejects_malformed_locale(mock_tools_client: MagicMoc
     """country_code and language_code must be exactly two letters."""
     tool = make_tool(ApifyGoogleSearchTool, mock_tools_client)
 
-    with pytest.raises(ValueError, match='string_pattern_mismatch|String should match pattern'):
+    with pytest.raises(ValueError, match=r'string_pattern_mismatch|String should match pattern'):
         tool.invoke({'query': 'test', 'country_code': bad_code})
 
-    with pytest.raises(ValueError, match='string_pattern_mismatch|String should match pattern'):
+    with pytest.raises(ValueError, match=r'string_pattern_mismatch|String should match pattern'):
         tool.invoke({'query': 'test', 'language_code': bad_code})
 
 

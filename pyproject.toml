@@ -9,6 +9,7 @@ description = "An integration package connecting Apify and LangChain"
 authors = [{ name = "Apify Technologies s.r.o.", email = "support@apify.com" }]
 readme = "README.md"
 license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.11,<4.0"
 dependencies = [
     "langchain-core>=0.3.15,<2.0.0",
@@ -27,7 +28,7 @@ dev = [
     "pytest-socket>=0.7.0,<0.8.0",
     "pytest-watcher>=0.3.4,<0.4.0",
     "langchain-tests>=0.3.5,<0.4.0",
-    "ruff>=0.5,<0.6",
+    "ruff~=0.17.0",
     "mypy>=1.10,<2.0.0",
     "codespell>=2.2.6,<3.0.0",
 ]
@@ -72,20 +73,29 @@ disallow_untyped_defs = true
 
 [tool.ruff]
 line-length = 120
+include = ["**/*.py", "**/*.md"]
 
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "D100",     # Missing docstring in public module
-    "D104",     # Missing docstring in public package
-    "D107",     # Missing docstring in `__init__`
-    "COM812",   # Missing trailing comma
-    "ISC001",   # Single line implicit concatenation
-    "RUF101",   # redirected-noqa
-    "S105",     # Possible hard-coded password
-    "S106",     # Checks for potential uses of hardcoded passwords in function calls.
-    "CPY001",   # missing copyright notice
-    "TCH003",   # Move standard library import into type-checking block
+    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed in {filename}
+    "BLE001",  # Do not catch blind exception
+    "C901",    # `{name}` is too complex
+    "COM812",  # This rule may cause conflicts when used with the formatter
+    "CPY001",  # Missing copyright notice at top of file
+    "D100",    # Missing docstring in public module
+    "D104",    # Missing docstring in public package
+    "D107",    # Missing docstring in `__init__`
+    "EM",      # flake8-errmsg
+    "FIX",     # flake8-fixme
+    "G004",    # Logging statement uses f-string
+    "ISC001",  # This rule may cause conflicts when used with the formatter
+    "PLR0911", # Too many return statements
+    "PLR0913", # Too many arguments in function definition
+    "PLR0915", # Too many statements
+    "PTH",     # flake8-use-pathlib
+    "TD002",   # Missing author in TODO; try: `# TODO(<author_name>): ...` or `# TODO @<author_name>: ...
+    "TRY003",  # Avoid specifying long messages outside the exception class
 ]
 
 [tool.ruff.format]
@@ -113,6 +123,8 @@ indent-style = "space"
     "INP001",  # File {filename} is part of an implicit namespace package, add an __init__.py
     "PLR2004", # Magic value used in comparison, consider replacing {value} with a constant variable
     "S101",    # Use of assert detected
+    "S105",    # Possible hardcoded password assigned to: "{name}"
+    "S106",    # Possible hardcoded password assigned to argument: "{name}"
     "SLF001",  # Private member accessed: `{name}`
     "T20",     # flake8-print
     "TRY301",  # Abstract `raise` to an inner function
@@ -125,6 +137,13 @@ convention = "google"
 [tool.ruff.lint.flake8-quotes]
 docstring-quotes = "double"
 inline-quotes = "single"
+
+[tool.ruff.lint.flake8-type-checking]
+# Pydantic resolves field annotations at runtime, so their imports can't move into a TYPE_CHECKING block.
+runtime-evaluated-base-classes = ["pydantic.BaseModel", "langchain_core.tools.BaseTool"]
+
+[tool.ruff.lint.pylint]
+max-branches = 18
 
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false

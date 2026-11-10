@@ -96,7 +96,7 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     def _handle_deprecated_apify_api_token(cls, values: dict) -> dict:
         return _resolve_deprecated_token_values(values)
 
-    def model_post_init(self, context: Any) -> None:  # noqa: ANN401
+    def model_post_init(self, context: Any) -> None:
         if self.apify_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)

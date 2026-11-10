@@ -85,7 +85,7 @@ CRAWL_ITEMS: list[dict] = [
 
 def _make_crawl_loader(
     mock_client: MagicMock,
-    **kwargs: Any,  # noqa: ANN401
+    **kwargs: Any,
 ) -> ApifyCrawlLoader:
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         loader = ApifyCrawlLoader(url='https://example.com', apify_token='dummy', **kwargs)
