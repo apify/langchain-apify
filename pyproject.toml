@@ -16,19 +16,20 @@ dependencies = [
     "impit>=0.14.0,<1.0.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "langchain>=1.0.0,<2.0.0",
     "langchain-openai>=0.3.2,<0.4.0",
+    "poethepoet<1.0.0",
     "pytest>=7.4.3,<8.0.0",
     "pytest-asyncio>=0.23.2,<0.24.0",
+    "pytest-cov<8.0.0",
     "pytest-socket>=0.7.0,<0.8.0",
     "pytest-watcher>=0.3.4,<0.4.0",
     "langchain-tests>=0.3.5,<0.4.0",
     "ruff>=0.5,<0.6",
     "mypy>=1.10,<2.0.0",
     "codespell>=2.2.6,<3.0.0",
-    "hatch",
 ]
 
 [project.urls]
@@ -55,19 +56,29 @@ include = [
     "/llms.txt",
 ]
 
-[tool.hatch.envs.default]
-features = ["dev"]
+# Run tasks with: uv run poe <task>
+[tool.poe.tasks]
+clean = { cmd = "rm -rf .coverage .mypy_cache .pytest_cache .ruff_cache build dist htmlcov", help = "Remove build artifacts and clean caches" }
+install-dev = { cmd = "uv sync", help = "Install development dependencies" }
+build = { cmd = "uv build", help = "Build the package" }
+type-check = { cmd = "uv run mypy langchain_apify", help = "Run the type checker" }
+spell-check = { cmd = "uv run codespell --toml pyproject.toml", help = "Check spelling" }
+unit-tests = { cmd = "uv run pytest --disable-socket --allow-unix-socket tests/unit_tests", help = "Run unit tests" }
+unit-tests-cov = { cmd = "uv run pytest --disable-socket --allow-unix-socket --cov=langchain_apify --cov-report=xml:coverage-unit.xml tests/unit_tests", help = "Run unit tests with an XML coverage report" }
+integration-tests = { cmd = "uv run pytest tests/integration_tests", help = "Run integration tests against the Apify platform" }
+check-code = { sequence = ["lint", "type-check", "spell-check", "check-imports", "unit-tests"], help = "Run all checks and unit tests" }
 
-[tool.hatch.envs.default.scripts]
-test = "pytest --disable-socket --allow-unix-socket tests/unit_tests/ {args}"
-integration-test = "pytest tests/integration_tests/ {args}"
-lint = "ruff check langchain_apify tests"
-format-check = "ruff format --check langchain_apify tests"
-format = ["ruff format langchain_apify tests", "ruff check --select I --fix langchain_apify tests"]
-typecheck = "mypy langchain_apify"
-spell-check = "codespell --toml pyproject.toml"
-check-imports = "python scripts/check_imports.py $(find langchain_apify -name '*.py')"
-prepare = ["format-check", "lint", "typecheck", "spell-check", "check-imports", "test"]
+[tool.poe.tasks.lint]
+shell = "uv run ruff format --check && uv run ruff check"
+help = "Run the linter and check formatting"
+
+[tool.poe.tasks.format]
+shell = "uv run ruff check --fix && uv run ruff format"
+help = "Fix lint issues and format code"
+
+[tool.poe.tasks.check-imports]
+shell = "uv run python scripts/check_imports.py $(find langchain_apify -name '*.py')"
+help = "Check that every module imports on its own"
 
 [tool.mypy]
 disallow_untyped_defs = true
