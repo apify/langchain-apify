@@ -1,0 +1,73 @@
+name: Checks
+
+on:
+  # Runs when invoked by another workflow. For manual runs, dispatch `CI (main)` instead - that wraps this
+  # workflow via `uses:`, so the resulting check-run names get the `Checks /` prefix that the manual release
+  # workflows look for via `wait-for-checks`.
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  actions_lint_check:
+    name: Actions lint check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run actionlint
+        uses: rhysd/actionlint@914e7df21a07ef503a81201c76d2b11c789d3fca # v1.7.12
+
+  spell_check:
+    name: Spell check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check spelling with typos
+        uses: crate-ci/typos@7f9d0819ca1c008ade73f4b41fa9d258d48f605b # v1.51.1
+
+  lint_check:
+    name: Lint check
+    uses: apify/workflows/.github/workflows/python_lint_check.yaml@main
+    with:
+      python_versions: '["3.11", "3.12", "3.13"]'
+
+  type_check:
+    name: Type check
+    uses: apify/workflows/.github/workflows/python_type_check.yaml@main
+    with:
+      python_versions: '["3.11", "3.12", "3.13"]'
+
+  unit_tests:
+    name: Unit tests
+    uses: apify/workflows/.github/workflows/python_unit_tests.yaml@main
+    secrets: inherit
+    with:
+      python_versions: '["3.11", "3.12", "3.13"]'
+      operating_systems: '["ubuntu-latest"]'
+
+  package_check:
+    name: Package check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up uv package manager
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          python-version: "3.14"
+
+      - name: Build sdist and wheel
+        run: uv run poe build
+
+      - name: Verify built package
+        uses: apify/actions/python-package-check@v1.6.2
+        with:
+          package_name: langchain_apify
+          dist_dir: dist
+          python_version: "3.14"
+          smoke_code: |
+            from langchain_apify import ApifyActorsTool, ApifyDatasetLoader, ApifyRunActorTool, ApifySearchRetriever, ApifyWrapper

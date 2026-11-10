@@ -19,7 +19,7 @@ LangChain Apify: A full-stack scraping platform built on Apify's infrastructure 
 </h3>
 
 [![GitHub Repo stars](https://img.shields.io/github/stars/apify/langchain-apify)](https://github.com/apify/langchain-apify/stargazers)
-[![Tests](https://github.com/apify/langchain-apify/actions/workflows/run_code_checks.yml/badge.svg)](https://github.com/apify/langchain-apify/actions/workflows/run_code_checks.yml/badge.svg)
+[![Tests](https://github.com/apify/langchain-apify/actions/workflows/on_main.yaml/badge.svg?branch=main)](https://github.com/apify/langchain-apify/actions/workflows/on_main.yaml)
 
 </div>
 
