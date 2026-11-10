@@ -48,4 +48,4 @@ def test_run_meta_has_single_canonical_home() -> None:
     from langchain_apify.tools.base import _run_meta  # noqa: F401, PLC0415
 
     with pytest.raises(ImportError):
-        from langchain_apify._utils import _run_meta as _stale  # type: ignore[attr-defined]  # noqa: F401, PLC0415
+        from langchain_apify._utils import _run_meta as _stale  # ty: ignore[import-not-found]  # noqa: F401, PLC0415

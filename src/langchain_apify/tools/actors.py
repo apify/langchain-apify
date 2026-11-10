@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     )
 
 
-class ApifyActorsTool(BaseTool):  # type: ignore[override, override]
+class ApifyActorsTool(BaseTool):
     """Tool that runs Apify Actors.
 
     To use, you should have the environment variable ``APIFY_TOKEN`` set

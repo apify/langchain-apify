@@ -185,7 +185,7 @@ class ApifyFacebookPostsScraperInput(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyInstagramScraperTool(_ApifyGenericTool):
     """Scrape Instagram profiles, hashtags, posts, or comments.
 
     Uses the ``apify/instagram-scraper`` Actor under the hood.
@@ -249,7 +249,7 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):  # type: ignore[override]
         return self._envelope(run, items)
 
 
-class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):
     """Extract posts from a LinkedIn profile.
 
     Uses the ``apimaestro/linkedin-profile-posts`` Actor under the hood.
@@ -305,7 +305,7 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):  # type: ignore[override
         return self._envelope(run, items)
 
 
-class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):
     """Search for LinkedIn profiles by keyword or criteria.
 
     Uses the ``harvestapi/linkedin-profile-search`` Actor under the hood.
@@ -361,7 +361,7 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):  # type: ignore[overrid
         return self._envelope(run, items)
 
 
-class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):
     """Retrieve detailed information from a specific LinkedIn profile.
 
     Uses the ``apimaestro/linkedin-profile-detail`` Actor under the hood.
@@ -417,7 +417,7 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):  # type: ignore[overrid
         return self._envelope(run, items)
 
 
-class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyTwitterScraperTool(_ApifyGenericTool):
     """Scrape tweets, profiles, or replies from Twitter/X.
 
     Uses the ``apidojo/twitter-scraper-lite`` Actor under the hood.
@@ -487,7 +487,7 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):  # type: ignore[override]
         return self._envelope(run, items, notice=notice)
 
 
-class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyTikTokScraperTool(_ApifyGenericTool):
     """Scrape TikTok videos, profiles, or hashtag content.
 
     Uses the ``clockworks/tiktok-scraper`` Actor under the hood.
@@ -547,7 +547,7 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):  # type: ignore[override]
         return self._envelope(run, items)
 
 
-class ApifyFacebookPostsScraperTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyFacebookPostsScraperTool(_ApifyGenericTool):
     """Scrape public Facebook page posts.
 
     Uses the ``apify/facebook-posts-scraper`` Actor under the hood.

@@ -57,7 +57,7 @@ def _run_meta(run: Run) -> dict:
 # ---------------------------------------------------------------------------
 
 
-class _ApifyGenericTool(BaseTool):  # type: ignore[override]
+class _ApifyGenericTool(BaseTool):
     """Shared base for all generic Apify tools.
 
     Handles ``ApifyToolsClient`` creation, sets ``handle_tool_error``,
@@ -68,7 +68,8 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     ``args_schema``, and ``_run()``.
     """
 
-    handle_tool_error: bool | str | Callable[[ToolException], str] | None = True
+    # Narrower than `BaseTool`'s on purpose: these tools' handlers return the error as a string.
+    handle_tool_error: bool | str | Callable[[ToolException], str] | None = True  # ty: ignore[incompatible-mutable-override]
 
     apify_token: SecretStr | None = Field(
         default_factory=_apify_token_secret_factory,

@@ -29,7 +29,7 @@ dev = [
     "pytest-watcher>=0.3.4,<0.4.0",
     "langchain-tests>=0.3.5,<0.4.0",
     "ruff~=0.17.0",
-    "mypy>=1.10,<2.0.0",
+    "ty~=0.0.0",
     "codespell>=2.2.6,<3.0.0",
 ]
 
@@ -46,10 +46,10 @@ source-include = ["CHANGELOG.md", "CONTRIBUTING.md", "llms.txt", "tests/**"]
 
 # Run tasks with: uv run poe <task>
 [tool.poe.tasks]
-clean = { cmd = "rm -rf .coverage .mypy_cache .pytest_cache .ruff_cache build dist htmlcov", help = "Remove build artifacts and clean caches" }
+clean = { cmd = "rm -rf .coverage .pytest_cache .ruff_cache .ty_cache build dist htmlcov", help = "Remove build artifacts and clean caches" }
 install-dev = { cmd = "uv sync", help = "Install development dependencies" }
 build = { cmd = "uv build", help = "Build the package" }
-type-check = { cmd = "uv run mypy src/langchain_apify", help = "Run the type checker" }
+type-check = { cmd = "uv run ty check", help = "Run the type checker" }
 spell-check = { cmd = "uv run codespell --toml pyproject.toml", help = "Check spelling" }
 unit-tests = { cmd = "uv run pytest --disable-socket --allow-unix-socket tests/unit_tests", help = "Run unit tests" }
 unit-tests-cov = { cmd = "uv run pytest --disable-socket --allow-unix-socket --cov=langchain_apify --cov-report=xml:coverage-unit.xml tests/unit_tests", help = "Run unit tests with an XML coverage report" }
@@ -67,9 +67,6 @@ help = "Fix lint issues and format code"
 [tool.poe.tasks.check-imports]
 shell = "uv run python scripts/check_imports.py $(find src/langchain_apify -name '*.py')"
 help = "Check that every module imports on its own"
-
-[tool.mypy]
-disallow_untyped_defs = true
 
 [tool.ruff]
 line-length = 120
@@ -148,6 +145,15 @@ max-branches = 18
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false
 mark-parentheses = false
+
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.ty.src]
+include = ["src", "tests", "docs/examples"]
+
+[tool.ty.rules]
+unused-ignore-comment = "error"
 
 [tool.coverage.run]
 omit = ["tests/*"]

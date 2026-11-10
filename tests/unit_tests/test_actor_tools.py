@@ -771,7 +771,7 @@ def test_twitter_tool_value_error_raises_tool_exception(mock_tools_client: Magic
     tool = make_tool(ApifyTwitterScraperTool, mock_tools_client)
 
     with pytest.raises(ToolException, match='Unsupported Twitter search_mode'):
-        tool._run(search_query='apify', search_mode='replies')  # type: ignore[arg-type]
+        tool._run(search_query='apify', search_mode='replies')
 
 
 def test_twitter_tool_demo_items_add_notice(mock_tools_client: MagicMock) -> None:

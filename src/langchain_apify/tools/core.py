@@ -109,7 +109,7 @@ class ApifyRunTaskAndGetDatasetInput(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyRunActorTool(_ApifyGenericTool):
     """Run any Apify Actor by ID with an arbitrary JSON input.
 
     Returns run metadata in a JSON envelope.  Use
@@ -168,7 +168,7 @@ class ApifyRunActorTool(_ApifyGenericTool):  # type: ignore[override]
         return self._envelope(run, [])
 
 
-class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyGetDatasetItemsTool(_ApifyGenericTool):
     """Fetch items from an existing Apify dataset by ID.
 
     Returns a JSON object with ``"run"`` (always ``null`` here, since no Actor
@@ -218,7 +218,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):  # type: ignore[override]
         return self._envelope(None, items)
 
 
-class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):
     """Run any Apify Actor and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunActorTool` and :class:`ApifyGetDatasetItemsTool`
@@ -282,7 +282,7 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[overrid
         return self._envelope(run, items)
 
 
-class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyScrapeUrlTool(_ApifyGenericTool):
     """Scrape a single URL and return its content in a JSON envelope.
 
     Uses the ``apify/website-content-crawler`` Actor under the hood with
@@ -334,7 +334,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):  # type: ignore[override]
         return self._envelope(run, [{'url': url, 'content': content}])
 
 
-class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyRunTaskTool(_ApifyGenericTool):
     """Run a saved Apify Actor task by ID and return run metadata.
 
     Actor tasks are pre-configured Actor runs saved in the Apify Console.
@@ -394,7 +394,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):  # type: ignore[override]
         return self._envelope(run, [])
 
 
-class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):
     """Run a saved Apify Actor task and return both run metadata and dataset items.
 
     Combines :class:`ApifyRunTaskTool` and :class:`ApifyGetDatasetItemsTool`

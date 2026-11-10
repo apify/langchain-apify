@@ -64,7 +64,7 @@ def test_deprecated_apify_api_token_alias_warns() -> None:
     # declared field, hence the call-arg ignore.
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         with pytest.warns(DeprecationWarning, match='apify_api_token'):
-            retriever = ApifySearchRetriever(apify_api_token=SecretStr('legacy-token'))  # type: ignore[call-arg]
+            retriever = ApifySearchRetriever(apify_api_token=SecretStr('legacy-token'))
         assert retriever.apify_token == SecretStr('legacy-token')
 
 

@@ -64,8 +64,9 @@ class ApifyWrapper(BaseModel):
         exclude=True,
         repr=False,
     )
-    apify_client: ApifyClient = Field(default=None, exclude=True)  # type: ignore[assignment]
-    apify_client_async: ApifyClientAsync = Field(default=None, exclude=True)  # type: ignore[assignment]
+    # The `_init_clients` validator always sets both clients, so callers never see the `None` default.
+    apify_client: ApifyClient = Field(default=None, exclude=True)  # ty: ignore[invalid-assignment]
+    apify_client_async: ApifyClientAsync = Field(default=None, exclude=True)  # ty: ignore[invalid-assignment]
 
     def __init__(
         self,

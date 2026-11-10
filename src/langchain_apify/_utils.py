@@ -170,7 +170,7 @@ def _run_timeout(timeout_secs: int | None) -> timedelta | None:
     return timedelta(seconds=timeout_secs) if timeout_secs is not None else None
 
 
-T = TypeVar('T', ApifyClient, ApifyClientAsync)
+T = TypeVar('T', bound=ApifyClient | ApifyClientAsync)
 
 
 def _create_apify_client(client_cls: type[T], token: str) -> T:

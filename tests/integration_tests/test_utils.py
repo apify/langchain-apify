@@ -12,7 +12,8 @@ def test_get_actor_latest_build() -> None:
         ValueError: If the APIFY_TOKEN environment variable is not set.
     """
     if (token := _resolve_apify_token()) is None:
-        pytest.skip(_ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET)
+        # ty can't read pytest 7's `skip` signature, which is typed through a Protocol attribute.
+        pytest.skip(_ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET)  # ty: ignore[too-many-positional-arguments]
 
     apify_client = _create_apify_client(ApifyClient, token)
 

@@ -604,12 +604,12 @@ def test_generic_tools_have_correct_metadata() -> None:
     """Verify name, description, and args_schema are set on all generic tools."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         tools = [
-            ApifyRunActorTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyGetDatasetItemsTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyRunActorAndGetDatasetTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyScrapeUrlTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyRunTaskTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
-            ApifyRunTaskAndGetDatasetTool(apify_token='dummy'),  # type: ignore[call-arg,arg-type]
+            ApifyRunActorTool(apify_token='dummy'),
+            ApifyGetDatasetItemsTool(apify_token='dummy'),
+            ApifyRunActorAndGetDatasetTool(apify_token='dummy'),
+            ApifyScrapeUrlTool(apify_token='dummy'),
+            ApifyRunTaskTool(apify_token='dummy'),
+            ApifyRunTaskAndGetDatasetTool(apify_token='dummy'),
         ]
 
     expected_names = [
@@ -631,7 +631,7 @@ def test_generic_tools_have_correct_metadata() -> None:
 def test_apify_token_excluded_from_model_dump() -> None:
     """The apify_token field must not appear in model_dump() output."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
-        tool = ApifyRunActorTool(apify_token='x')  # type: ignore[call-arg,arg-type]
+        tool = ApifyRunActorTool(apify_token='x')
     dumped = tool.model_dump()
     assert 'apify_token' not in dumped
     assert 'apify_api_token' not in dumped

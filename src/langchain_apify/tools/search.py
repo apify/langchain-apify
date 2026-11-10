@@ -151,7 +151,7 @@ class ApifyEcommerceScraperInput(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyGoogleSearchTool(_ApifyGenericTool):
     """Search Google and return structured results via Apify.
 
     Wraps the ``apify/google-search-scraper`` Actor behind a simplified,
@@ -215,7 +215,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):  # type: ignore[override]
         return self._envelope(run, results)
 
 
-class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyWebCrawlerTool(_ApifyGenericTool):
     """Crawl a website and return page content as JSON via Apify.
 
     Wraps the ``apify/website-content-crawler`` Actor.  Returns a JSON envelope
@@ -292,7 +292,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):  # type: ignore[override]
         return self._envelope(run, pages)
 
 
-class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyRAGWebBrowserTool(_ApifyGenericTool):
     """Search the web and return content from top results.
 
     Wraps the ``apify/rag-web-browser`` Actor.  Unlike
@@ -359,7 +359,7 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):  # type: ignore[override]
         return self._envelope(run, results)
 
 
-class ApifyGoogleMapsTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyGoogleMapsTool(_ApifyGenericTool):
     """Search Google Maps for places, reviews, and business details.
 
     Wraps the ``compass/crawler-google-places`` Actor.
@@ -415,7 +415,7 @@ class ApifyGoogleMapsTool(_ApifyGenericTool):  # type: ignore[override]
         return self._envelope(run, items)
 
 
-class ApifyYouTubeScraperTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyYouTubeScraperTool(_ApifyGenericTool):
     """Scrape YouTube videos, channels, or search results.
 
     Wraps the ``streamers/youtube-scraper`` Actor.
@@ -475,7 +475,7 @@ class ApifyYouTubeScraperTool(_ApifyGenericTool):  # type: ignore[override]
         return self._envelope(run, items)
 
 
-class ApifyEcommerceScraperTool(_ApifyGenericTool):  # type: ignore[override]
+class ApifyEcommerceScraperTool(_ApifyGenericTool):
     """Extract product or listing data from an e-commerce URL.
 
     Wraps the ``apify/e-commerce-scraping-tool`` Actor.
