@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv_build"]
+requires = ["uv_build>=0.13,<0.14"]
 build-backend = "uv_build"
 
 [project]
@@ -49,7 +49,7 @@ dev = [
 
 [tool.uv.build-backend]
 # The module, pyproject.toml, README and LICENSE are included in the sdist by default.
-source-include = ["CHANGELOG.md", "CONTRIBUTING.md", "llms.txt", "tests/**"]
+source-include = ["CHANGELOG.md", "CONTRIBUTING.md", "llms.txt"]
 
 # Run tasks with: uv run poe <task>
 [tool.poe.tasks]
@@ -64,7 +64,7 @@ integration-tests = { cmd = "uv run pytest tests/integration_tests", help = "Run
 check-code = { sequence = ["lint", "type-check", "spell-check", "check-imports", "unit-tests"], help = "Run all checks and unit tests" }
 
 [tool.poe.tasks.lint]
-shell = "uv run ruff format --check && uv run ruff check"
+shell = "uv run ruff format --check && uv run ruff check && bash scripts/lint_imports.sh"
 help = "Run the linter and check formatting"
 
 [tool.poe.tasks.format]
@@ -120,6 +120,7 @@ indent-style = "space"
 "**/{docs/examples}/*" = [
     "D",       # Everything from the pydocstyle
     "INP001",  # File {filename} is part of an implicit namespace package, add an __init__.py
+    "S105",    # Possible hardcoded password assigned to: "{name}"
     "T201",    # Use of `print` statement
 ]
 "**/{tests}/*" = [

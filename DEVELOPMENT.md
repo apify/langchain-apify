@@ -6,7 +6,7 @@ This file covers everything you need to run the code locally: install, format, l
 
 ## Installation
 
-This project uses [uv](https://docs.astral.sh/uv/) for dependency management and [Poe the Poet](https://poethepoet.natn.io/) as the task runner.
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management and [Poe the Poet](https://poethepoet.natn.io/) as the task runner. Use uv 0.13.5 or newer (`uv self update`); older versions such as 0.8 can't parse `pyproject.toml`.
 
 Clone the repository and install the project with its development dependencies:
 
