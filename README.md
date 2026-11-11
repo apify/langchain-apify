@@ -172,6 +172,58 @@ result = tool.invoke(
 )
 ```
 
+### Running tools asynchronously
+
+With `ainvoke`, and in async agents, the tools run Actors on the async Apify client, so a long Actor run doesn't block a thread:
+
+```python
+import asyncio
+import os
+from langchain_apify import ApifyGoogleSearchTool
+
+os.environ['APIFY_TOKEN'] = 'YOUR_APIFY_TOKEN'
+
+
+async def main() -> None:
+    result = await ApifyGoogleSearchTool().ainvoke({'query': 'what is an Apify Actor?', 'max_results': 3})
+    print(result)
+
+
+asyncio.run(main())
+```
+
+### Capping the cost of a run
+
+Some Actors charge per result or per event. `max_total_charge_usd` caps what each run a tool starts may cost. You set it when you create the tool, and the LLM can't change it:
+
+```python
+from langchain_apify import ApifyActorsTool, ApifyGoogleSearchTool
+
+search = ApifyGoogleSearchTool(max_total_charge_usd=0.50)
+actor = ApifyActorsTool('apify/rag-web-browser', max_total_charge_usd=0.50)
+```
+
+`ApifySearchRetriever` takes the same argument, and the `ApifyWrapper` call methods take it per call.
+
+### Marking tool output as untrusted
+
+Scraped pages can contain text written to look like instructions to the agent. With `mark_output_untrusted=True`, a tool returns its output between markers that tell the agent it's data from an outside source:
+
+```python
+from langchain_apify import ApifyScrapeUrlTool
+
+tool = ApifyScrapeUrlTool(mark_output_untrusted=True)
+```
+
+```text
+<<<EXTERNAL_UNTRUSTED_CONTENT>>>
+Source: apify:apify_scrape_url
+{"run": {...}, "items": [...]}
+<<<END_EXTERNAL_UNTRUSTED_CONTENT>>>
+```
+
+Markers that appear inside the scraped content are removed first. It's off by default, because it changes the output from plain JSON. `ApifyActorsTool` takes the same argument and then returns the items as JSON between the markers.
+
 ## Retriever
 
 `ApifySearchRetriever` is a `BaseRetriever` over `apify/rag-web-browser` for RAG pipelines. Each result becomes a LangChain `Document` with `metadata['source']`, `metadata['title']`, and any additional fields the Actor returns.
