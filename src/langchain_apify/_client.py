@@ -548,6 +548,25 @@ class ApifyToolsClient:
             )
         )
 
+    async def ainstagram_scrape(
+        self,
+        search_type: str,
+        search_query: str,
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
+        only_posts_newer_than: str | None = None,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`instagram_scrape`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
+            self.instagram_scrape_call(
+                search_type=search_type,
+                search_query=search_query,
+                max_results=max_results,
+                only_posts_newer_than=only_posts_newer_than,
+                timeout_secs=timeout_secs,
+            )
+        )
+
     def google_search_call(
         self,
         query: str,
@@ -610,6 +629,25 @@ class ApifyToolsClient:
             )
         )
 
+    async def agoogle_search(
+        self,
+        query: str,
+        max_results: int = _DEFAULT_GOOGLE_MAX_RESULTS,
+        country_code: str | None = None,
+        language_code: str | None = None,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`google_search`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
+            self.google_search_call(
+                query=query,
+                max_results=max_results,
+                country_code=country_code,
+                language_code=language_code,
+                timeout_secs=timeout_secs,
+            )
+        )
+
     def rag_web_search_call(
         self,
         query: str,
@@ -647,6 +685,17 @@ class ApifyToolsClient:
     ) -> tuple[Run, list[dict]]:
         """Run :meth:`rag_web_search_call` and return a ``(run_details, items)`` tuple."""
         return self.run_call(self.rag_web_search_call(query=query, max_results=max_results, timeout_secs=timeout_secs))
+
+    async def arag_web_search(
+        self,
+        query: str,
+        max_results: int = _DEFAULT_RAG_MAX_RESULTS,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`rag_web_search`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
+            self.rag_web_search_call(query=query, max_results=max_results, timeout_secs=timeout_secs)
+        )
 
     def linkedin_profile_posts_call(
         self,
@@ -688,6 +737,19 @@ class ApifyToolsClient:
             )
         )
 
+    async def alinkedin_profile_posts(
+        self,
+        profile_url: str,
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`linkedin_profile_posts`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
+            self.linkedin_profile_posts_call(
+                profile_url=profile_url, max_results=max_results, timeout_secs=timeout_secs
+            )
+        )
+
     def linkedin_profile_search_call(
         self,
         query: str,
@@ -723,6 +785,17 @@ class ApifyToolsClient:
     ) -> tuple[Run, list[dict]]:
         """Run :meth:`linkedin_profile_search_call` and return a ``(run_details, items)`` tuple."""
         return self.run_call(
+            self.linkedin_profile_search_call(query=query, max_results=max_results, timeout_secs=timeout_secs)
+        )
+
+    async def alinkedin_profile_search(
+        self,
+        query: str,
+        max_results: int = _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`linkedin_profile_search`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
             self.linkedin_profile_search_call(query=query, max_results=max_results, timeout_secs=timeout_secs)
         )
 
@@ -774,6 +847,20 @@ class ApifyToolsClient:
             )
         )
 
+    async def agoogle_maps_search(
+        self,
+        query: str,
+        max_results: int = _DEFAULT_GOOGLE_MAPS_MAX_RESULTS,
+        language: str | None = None,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`google_maps_search`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
+            self.google_maps_search_call(
+                query=query, max_results=max_results, language=language, timeout_secs=timeout_secs
+            )
+        )
+
     def linkedin_profile_detail_call(
         self,
         profile_url: str,
@@ -812,6 +899,20 @@ class ApifyToolsClient:
     ) -> tuple[Run, list[dict]]:
         """Run :meth:`linkedin_profile_detail_call` and return a ``(run_details, items)`` tuple."""
         return self.run_call(
+            self.linkedin_profile_detail_call(
+                profile_url=profile_url, include_email=include_email, timeout_secs=timeout_secs
+            )
+        )
+
+    async def alinkedin_profile_detail(
+        self,
+        profile_url: str,
+        *,
+        include_email: bool = False,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`linkedin_profile_detail`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
             self.linkedin_profile_detail_call(
                 profile_url=profile_url, include_email=include_email, timeout_secs=timeout_secs
             )
@@ -894,6 +995,30 @@ class ApifyToolsClient:
             )
         )
 
+    async def atwitter_scrape(
+        self,
+        search_query: str,
+        *,
+        search_mode: str = 'search',
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
+        start: str | None = None,
+        end: str | None = None,
+        sort: str | None = None,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`twitter_scrape`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
+            self.twitter_scrape_call(
+                search_query=search_query,
+                search_mode=search_mode,
+                max_results=max_results,
+                start=start,
+                end=end,
+                sort=sort,
+                timeout_secs=timeout_secs,
+            )
+        )
+
     def tiktok_scrape_call(
         self,
         search_query: str,
@@ -951,6 +1076,20 @@ class ApifyToolsClient:
             )
         )
 
+    async def atiktok_scrape(
+        self,
+        search_query: str,
+        search_type: str = 'search',
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`tiktok_scrape`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
+            self.tiktok_scrape_call(
+                search_query=search_query, search_type=search_type, max_results=max_results, timeout_secs=timeout_secs
+            )
+        )
+
     def facebook_posts_scrape_call(
         self,
         page_url: str,
@@ -998,6 +1137,25 @@ class ApifyToolsClient:
     ) -> tuple[Run, list[dict]]:
         """Run :meth:`facebook_posts_scrape_call` and return a ``(run_details, items)`` tuple."""
         return self.run_call(
+            self.facebook_posts_scrape_call(
+                page_url=page_url,
+                max_results=max_results,
+                only_posts_newer_than=only_posts_newer_than,
+                only_posts_older_than=only_posts_older_than,
+                timeout_secs=timeout_secs,
+            )
+        )
+
+    async def afacebook_posts_scrape(
+        self,
+        page_url: str,
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
+        only_posts_newer_than: str | None = None,
+        only_posts_older_than: str | None = None,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`facebook_posts_scrape`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
             self.facebook_posts_scrape_call(
                 page_url=page_url,
                 max_results=max_results,
@@ -1076,6 +1234,20 @@ class ApifyToolsClient:
             )
         )
 
+    async def ayoutube_scrape(
+        self,
+        search_query: str,
+        search_type: str = 'search',
+        max_results: int = _DEFAULT_YOUTUBE_MAX_RESULTS,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`youtube_scrape`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
+            self.youtube_scrape_call(
+                search_query=search_query, search_type=search_type, max_results=max_results, timeout_secs=timeout_secs
+            )
+        )
+
     def ecommerce_scrape_call(
         self,
         url: str,
@@ -1131,6 +1303,18 @@ class ApifyToolsClient:
             self.ecommerce_scrape_call(url=url, url_type=url_type, max_results=max_results, timeout_secs=timeout_secs)
         )
 
+    async def aecommerce_scrape(
+        self,
+        url: str,
+        url_type: str = 'product',
+        max_results: int = _DEFAULT_ECOMMERCE_MAX_RESULTS,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`ecommerce_scrape`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
+            self.ecommerce_scrape_call(url=url, url_type=url_type, max_results=max_results, timeout_secs=timeout_secs)
+        )
+
     def crawl_website_call(
         self,
         url: str,
@@ -1176,6 +1360,25 @@ class ApifyToolsClient:
     ) -> tuple[Run, list[dict]]:
         """Run :meth:`crawl_website_call` and return a ``(run_details, items)`` tuple."""
         return self.run_call(
+            self.crawl_website_call(
+                url=url,
+                max_crawl_pages=max_crawl_pages,
+                max_crawl_depth=max_crawl_depth,
+                crawler_type=crawler_type,
+                timeout_secs=timeout_secs,
+            )
+        )
+
+    async def acrawl_website(
+        self,
+        url: str,
+        max_crawl_pages: int = _DEFAULT_MAX_CRAWL_PAGES,
+        max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
+        crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`crawl_website`, on ``ApifyClientAsync``."""
+        return await self.arun_call(
             self.crawl_website_call(
                 url=url,
                 max_crawl_pages=max_crawl_pages,
