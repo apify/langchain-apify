@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import impit
-from apify_client import ApifyClient
+from apify_client import ApifyClient, ApifyClientAsync
 from apify_client.errors import ApifyClientError
 from pydantic import SecretStr
 
@@ -39,6 +40,8 @@ from langchain_apify._utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     # apify-client 3.x exports its response models only from this private module.
     from apify_client._models import Run
 
@@ -78,11 +81,55 @@ _INSTAGRAM_RESULTS_TYPE_MAP = {
 }
 
 
+def _organic_results(items: list[dict]) -> list[dict]:
+    """Flatten Google search result pages into ``title``/``url``/``description`` results."""
+    return [
+        {
+            'title': organic.get('title', ''),
+            'url': organic.get('url', ''),
+            'description': organic.get('description', ''),
+        }
+        for item in items
+        for organic in item.get('organicResults', [])
+    ]
+
+
+def _scraped_content(url: str, items: list[dict]) -> tuple[str, str]:
+    """Return a scraped page's content and whether it came from ``markdown`` or ``text``.
+
+    Raises:
+        RuntimeError: If the crawl returned no page or no content.
+    """
+    if not items:
+        msg = _ERROR_SCRAPE_EMPTY.format(url=url)
+        raise RuntimeError(msg)
+
+    markdown = items[0].get('markdown') or ''
+    content = _extract_content(items[0])
+    if not content:
+        msg = _ERROR_SCRAPE_EMPTY.format(url=url)
+        raise RuntimeError(msg)
+    return content, 'markdown' if markdown else 'text'
+
+
+@dataclass(frozen=True)
+class _ActorCall:
+    """One Actor run built by a ``*_call`` method, for :meth:`ApifyToolsClient.run_call` or ``arun_call``."""
+
+    actor_id: str
+    run_input: dict
+    timeout_secs: int
+    dataset_items_limit: int
+    # Turns the dataset items into the method's result; without it, the items are returned as they are.
+    postprocess: Callable[[list[dict]], list[dict]] | None = None
+
+
 class ApifyToolsClient:
     """Internal helper that wraps ``ApifyClient`` for the tools layer.
 
-    One convenience method per tool operation. All methods are synchronous and
-    block until the Actor run finishes.
+    One convenience method per tool operation, built by a ``*_call`` method and
+    run by :meth:`run_call` (blocking) or :meth:`arun_call` (on ``ApifyClientAsync``).
+    The core methods have ``a``-prefixed async versions.
 
     Args:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
@@ -113,7 +160,40 @@ class ApifyToolsClient:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
         self._client = _create_apify_client(ApifyClient, _token)
+        self._token = _token
+        self._async_client: ApifyClientAsync | None = None
         self._max_total_charge_usd = max_total_charge_usd
+
+    @property
+    def _aclient(self) -> ApifyClientAsync:
+        # Created on the first async call, so sync-only use never opens a second HTTP client.
+        if self._async_client is None:
+            self._async_client = _create_apify_client(ApifyClientAsync, self._token)
+        return self._async_client
+
+    def _actor_call_kwargs(self, run_input: dict | None, timeout_secs: int, memory_mbytes: int | None) -> dict:
+        call_kwargs: dict = {'run_input': run_input, 'run_timeout': _run_timeout(timeout_secs), 'logger': None}
+        if memory_mbytes is not None:
+            call_kwargs['memory_mbytes'] = memory_mbytes
+        if self._max_total_charge_usd is not None:
+            call_kwargs['max_total_charge_usd'] = _charge_limit(self._max_total_charge_usd)
+        return call_kwargs
+
+    def _task_call_kwargs(self, task_input: dict | None, timeout_secs: int, memory_mbytes: int | None) -> dict:
+        call_kwargs: dict = {'task_input': task_input, 'run_timeout': _run_timeout(timeout_secs)}
+        if memory_mbytes is not None:
+            call_kwargs['memory_mbytes'] = memory_mbytes
+        if self._max_total_charge_usd is not None:
+            call_kwargs['max_total_charge_usd'] = _charge_limit(self._max_total_charge_usd)
+        return call_kwargs
+
+    @classmethod
+    def _finished_run(cls, run: Run | None, caller: str) -> Run:
+        if run is None:
+            msg = f'{caller} call returned no run details.'
+            raise RuntimeError(msg)
+        cls._check_run_status(run)
+        return run
 
     def run_actor(
         self,
@@ -136,22 +216,29 @@ class ApifyToolsClient:
         Raises:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
-        call_kwargs: dict = {'run_input': run_input, 'run_timeout': _run_timeout(timeout_secs), 'logger': None}
-        if memory_mbytes is not None:
-            call_kwargs['memory_mbytes'] = memory_mbytes
-        if self._max_total_charge_usd is not None:
-            call_kwargs['max_total_charge_usd'] = _charge_limit(self._max_total_charge_usd)
-
         try:
-            run = self._client.actor(actor_id).call(**call_kwargs)
+            run = self._client.actor(actor_id).call(**self._actor_call_kwargs(run_input, timeout_secs, memory_mbytes))
         except _TRANSPORT_EXCEPTIONS as exc:
             msg = f'Apify Actor call failed for {actor_id}: {exc}'
             raise RuntimeError(msg) from exc
-        if run is None:
-            msg = f'Actor {actor_id} call returned no run details.'
-            raise RuntimeError(msg)
-        self._check_run_status(run)
-        return run
+        return self._finished_run(run, f'Actor {actor_id}')
+
+    async def arun_actor(
+        self,
+        actor_id: str,
+        run_input: dict | None = None,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+        memory_mbytes: int | None = None,
+    ) -> Run:
+        """Async version of :meth:`run_actor`, on ``ApifyClientAsync``."""
+        try:
+            run = await self._aclient.actor(actor_id).call(
+                **self._actor_call_kwargs(run_input, timeout_secs, memory_mbytes)
+            )
+        except _TRANSPORT_EXCEPTIONS as exc:
+            msg = f'Apify Actor call failed for {actor_id}: {exc}'
+            raise RuntimeError(msg) from exc
+        return self._finished_run(run, f'Actor {actor_id}')
 
     def get_dataset_items(
         self, dataset_id: str, limit: int = _DEFAULT_DATASET_ITEMS_LIMIT, offset: int = 0
@@ -171,6 +258,17 @@ class ApifyToolsClient:
         except _TRANSPORT_EXCEPTIONS as exc:
             msg = f'Apify dataset fetch failed for {dataset_id}: {exc}'
             raise RuntimeError(msg) from exc
+
+    async def aget_dataset_items(
+        self, dataset_id: str, limit: int = _DEFAULT_DATASET_ITEMS_LIMIT, offset: int = 0
+    ) -> list[dict]:
+        """Async version of :meth:`get_dataset_items`, on ``ApifyClientAsync``."""
+        try:
+            page = await self._aclient.dataset(dataset_id).list_items(limit=limit, offset=offset, clean=True)
+        except _TRANSPORT_EXCEPTIONS as exc:
+            msg = f'Apify dataset fetch failed for {dataset_id}: {exc}'
+            raise RuntimeError(msg) from exc
+        return page.items
 
     def run_actor_and_get_items(
         self,
@@ -199,6 +297,49 @@ class ApifyToolsClient:
         items = self.get_dataset_items(run.default_dataset_id, dataset_items_limit)
         return run, items
 
+    async def arun_actor_and_get_items(
+        self,
+        actor_id: str,
+        run_input: dict | None = None,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+        memory_mbytes: int | None = None,
+        dataset_items_limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`run_actor_and_get_items`, on ``ApifyClientAsync``."""
+        run = await self.arun_actor(actor_id, run_input, timeout_secs, memory_mbytes)
+        items = await self.aget_dataset_items(run.default_dataset_id, dataset_items_limit)
+        return run, items
+
+    def run_call(self, call: _ActorCall) -> tuple[Run, list[dict]]:
+        """Run an Actor call built by a ``*_call`` method and block until it finishes.
+
+        Args:
+            call: The Actor call to run.
+
+        Returns:
+            A ``(run_details, items)`` tuple, with the items post-processed as the call specifies.
+
+        Raises:
+            RuntimeError: If the run does not finish with status ``SUCCEEDED``.
+        """
+        run, items = self.run_actor_and_get_items(
+            call.actor_id,
+            run_input=call.run_input,
+            timeout_secs=call.timeout_secs,
+            dataset_items_limit=call.dataset_items_limit,
+        )
+        return run, call.postprocess(items) if call.postprocess else items
+
+    async def arun_call(self, call: _ActorCall) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`run_call`, on ``ApifyClientAsync``."""
+        run, items = await self.arun_actor_and_get_items(
+            call.actor_id,
+            run_input=call.run_input,
+            timeout_secs=call.timeout_secs,
+            dataset_items_limit=call.dataset_items_limit,
+        )
+        return run, call.postprocess(items) if call.postprocess else items
+
     def run_task(
         self,
         task_id: str,
@@ -221,22 +362,29 @@ class ApifyToolsClient:
         Raises:
             RuntimeError: If the run does not finish with status ``SUCCEEDED``.
         """
-        call_kwargs: dict = {'task_input': task_input, 'run_timeout': _run_timeout(timeout_secs)}
-        if memory_mbytes is not None:
-            call_kwargs['memory_mbytes'] = memory_mbytes
-        if self._max_total_charge_usd is not None:
-            call_kwargs['max_total_charge_usd'] = _charge_limit(self._max_total_charge_usd)
-
         try:
-            run = self._client.task(task_id).call(**call_kwargs)
+            run = self._client.task(task_id).call(**self._task_call_kwargs(task_input, timeout_secs, memory_mbytes))
         except _TRANSPORT_EXCEPTIONS as exc:
             msg = f'Apify task call failed for {task_id}: {exc}'
             raise RuntimeError(msg) from exc
-        if run is None:
-            msg = f'Task {task_id} call returned no run details.'
-            raise RuntimeError(msg)
-        self._check_run_status(run)
-        return run
+        return self._finished_run(run, f'Task {task_id}')
+
+    async def arun_task(
+        self,
+        task_id: str,
+        task_input: dict | None = None,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+        memory_mbytes: int | None = None,
+    ) -> Run:
+        """Async version of :meth:`run_task`, on ``ApifyClientAsync``."""
+        try:
+            run = await self._aclient.task(task_id).call(
+                **self._task_call_kwargs(task_input, timeout_secs, memory_mbytes)
+            )
+        except _TRANSPORT_EXCEPTIONS as exc:
+            msg = f'Apify task call failed for {task_id}: {exc}'
+            raise RuntimeError(msg) from exc
+        return self._finished_run(run, f'Task {task_id}')
 
     def run_task_and_get_items(
         self,
@@ -266,6 +414,19 @@ class ApifyToolsClient:
         items = self.get_dataset_items(run.default_dataset_id, dataset_items_limit)
         return run, items
 
+    async def arun_task_and_get_items(
+        self,
+        task_id: str,
+        task_input: dict | None = None,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+        memory_mbytes: int | None = None,
+        dataset_items_limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
+    ) -> tuple[Run, list[dict]]:
+        """Async version of :meth:`run_task_and_get_items`, on ``ApifyClientAsync``."""
+        run = await self.arun_task(task_id, task_input, timeout_secs, memory_mbytes)
+        items = await self.aget_dataset_items(run.default_dataset_id, dataset_items_limit)
+        return run, items
+
     def scrape_url_with_metadata(
         self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS
     ) -> tuple[Run, list[dict], str, str]:
@@ -284,26 +445,32 @@ class ApifyToolsClient:
         Raises:
             RuntimeError: If the Actor run fails or no content is extracted.
         """
-        run_input = {
-            'startUrls': [{'url': url}],
-            'maxCrawlPages': 1,
-        }
-        run, items = self.run_actor_and_get_items(
+        run, items = self.run_call(self.scrape_url_call(url, timeout_secs))
+        return run, items, *_scraped_content(url, items)
+
+    async def ascrape_url_with_metadata(
+        self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS
+    ) -> tuple[Run, list[dict], str, str]:
+        """Async version of :meth:`scrape_url_with_metadata`, on ``ApifyClientAsync``."""
+        run, items = await self.arun_call(self.scrape_url_call(url, timeout_secs))
+        return run, items, *_scraped_content(url, items)
+
+    def scrape_url_call(self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS) -> _ActorCall:
+        """Build the ``apify/website-content-crawler`` call that scrapes a single URL.
+
+        Args:
+            url: The URL to scrape.
+            timeout_secs: Maximum time to wait for the crawl to finish.
+
+        Returns:
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
+        """
+        return _ActorCall(
             _WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
-            run_input=run_input,
+            run_input={'startUrls': [{'url': url}], 'maxCrawlPages': 1},
             timeout_secs=timeout_secs,
             dataset_items_limit=1,
         )
-        if not items:
-            msg = _ERROR_SCRAPE_EMPTY.format(url=url)
-            raise RuntimeError(msg)
-
-        markdown = items[0].get('markdown') or ''
-        content = _extract_content(items[0])
-        if not content:
-            msg = _ERROR_SCRAPE_EMPTY.format(url=url)
-            raise RuntimeError(msg)
-        return run, items, content, 'markdown' if markdown else 'text'
 
     def scrape_url(self, url: str, timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS) -> str:
         """Scrape a single URL and return only the page content.
@@ -314,14 +481,14 @@ class ApifyToolsClient:
         _, _, content, _ = self.scrape_url_with_metadata(url=url, timeout_secs=timeout_secs)
         return content
 
-    def instagram_scrape(
+    def instagram_scrape_call(
         self,
         search_type: str,
         search_query: str,
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         only_posts_newer_than: str | None = None,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
-    ) -> tuple[Run, list[dict]]:
+    ) -> _ActorCall:
         """Scrape Instagram via ``apify/instagram-scraper``.
 
         Args:
@@ -334,11 +501,10 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            A ``(run_details, items)`` tuple.
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
 
         Raises:
             ValueError: If ``search_type`` is not recognised.
-            RuntimeError: If the Actor run does not succeed.
         """
         results_type = _INSTAGRAM_RESULTS_TYPE_MAP.get(search_type)
         if results_type is None:
@@ -356,21 +522,40 @@ class ApifyToolsClient:
         }
         if only_posts_newer_than is not None:
             run_input['onlyPostsNewerThan'] = only_posts_newer_than
-        return self.run_actor_and_get_items(
+        return _ActorCall(
             _INSTAGRAM_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_results,
         )
 
-    def google_search(
+    def instagram_scrape(
+        self,
+        search_type: str,
+        search_query: str,
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
+        only_posts_newer_than: str | None = None,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Run :meth:`instagram_scrape_call` and return a ``(run_details, items)`` tuple."""
+        return self.run_call(
+            self.instagram_scrape_call(
+                search_type=search_type,
+                search_query=search_query,
+                max_results=max_results,
+                only_posts_newer_than=only_posts_newer_than,
+                timeout_secs=timeout_secs,
+            )
+        )
+
+    def google_search_call(
         self,
         query: str,
         max_results: int = _DEFAULT_GOOGLE_MAX_RESULTS,
         country_code: str | None = None,
         language_code: str | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> tuple[Run, list[dict]]:
+    ) -> _ActorCall:
         """Run a Google search and return structured results.
 
         Uses ``apify/google-search-scraper`` with a single query.
@@ -383,11 +568,8 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            A ``(run_details, results)`` tuple. Each result dict has
-            ``title``, ``url``, and ``description`` keys.
-
-        Raises:
-            RuntimeError: If the Actor run fails.
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`. Each result it
+            returns has ``title``, ``url``, and ``description`` keys.
         """
         # apify/google-search-scraper has no resultsPerPage input; result count
         # is driven by maxPagesPerQuery (~10 results/page). Request enough pages
@@ -401,29 +583,39 @@ class ApifyToolsClient:
         if language_code is not None:
             run_input['languageCode'] = language_code
 
-        run, items = self.run_actor_and_get_items(
+        return _ActorCall(
             _GOOGLE_SEARCH_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_results,
+            postprocess=lambda items: _organic_results(items)[:max_results],
         )
-        results: list[dict] = [
-            {
-                'title': organic.get('title', ''),
-                'url': organic.get('url', ''),
-                'description': organic.get('description', ''),
-            }
-            for item in items
-            for organic in item.get('organicResults', [])
-        ]
-        return run, results[:max_results]
 
-    def rag_web_search(
+    def google_search(
+        self,
+        query: str,
+        max_results: int = _DEFAULT_GOOGLE_MAX_RESULTS,
+        country_code: str | None = None,
+        language_code: str | None = None,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Run :meth:`google_search_call` and return a ``(run_details, results)`` tuple."""
+        return self.run_call(
+            self.google_search_call(
+                query=query,
+                max_results=max_results,
+                country_code=country_code,
+                language_code=language_code,
+                timeout_secs=timeout_secs,
+            )
+        )
+
+    def rag_web_search_call(
         self,
         query: str,
         max_results: int = _DEFAULT_RAG_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> tuple[Run, list[dict]]:
+    ) -> _ActorCall:
         """Search the web and return crawled page content for RAG.
 
         Uses ``apify/rag-web-browser``.
@@ -434,19 +626,50 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            A ``(run_details, items)`` tuple. Each item dict has at least
-            ``crawledUrl``, ``text``, and a nested ``metadata`` block (among
-            other keys returned by the Actor).
-
-        Raises:
-            RuntimeError: If the Actor run fails.
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
         """
         run_input: dict = {
             'query': query,
             'maxResults': max_results,
         }
-        return self.run_actor_and_get_items(
+        return _ActorCall(
             _RAG_WEB_BROWSER_ACTOR_ID,
+            run_input=run_input,
+            timeout_secs=timeout_secs,
+            dataset_items_limit=max_results,
+        )
+
+    def rag_web_search(
+        self,
+        query: str,
+        max_results: int = _DEFAULT_RAG_MAX_RESULTS,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Run :meth:`rag_web_search_call` and return a ``(run_details, items)`` tuple."""
+        return self.run_call(self.rag_web_search_call(query=query, max_results=max_results, timeout_secs=timeout_secs))
+
+    def linkedin_profile_posts_call(
+        self,
+        profile_url: str,
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> _ActorCall:
+        """Scrape LinkedIn profile posts via ``apimaestro/linkedin-profile-posts``.
+
+        Args:
+            profile_url: LinkedIn profile URL or username.
+            max_results: Maximum number of posts to return.
+            timeout_secs: Maximum time to wait for the run to finish.
+
+        Returns:
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
+        """
+        run_input: dict = {
+            'username': profile_url,
+            'total_posts': max_results,
+        }
+        return _ActorCall(
+            _LINKEDIN_POSTS_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_results,
@@ -458,25 +681,35 @@ class ApifyToolsClient:
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
     ) -> tuple[Run, list[dict]]:
-        """Scrape LinkedIn profile posts via ``apimaestro/linkedin-profile-posts``.
+        """Run :meth:`linkedin_profile_posts_call` and return a ``(run_details, items)`` tuple."""
+        return self.run_call(
+            self.linkedin_profile_posts_call(
+                profile_url=profile_url, max_results=max_results, timeout_secs=timeout_secs
+            )
+        )
+
+    def linkedin_profile_search_call(
+        self,
+        query: str,
+        max_results: int = _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> _ActorCall:
+        """Search LinkedIn profiles via ``harvestapi/linkedin-profile-search``.
 
         Args:
-            profile_url: LinkedIn profile URL or username.
-            max_results: Maximum number of posts to return.
+            query: Search keywords (e.g., name, title, company).
+            max_results: Maximum number of profiles to return.
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            A ``(run_details, items)`` tuple.
-
-        Raises:
-            RuntimeError: If the Actor run does not succeed.
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
         """
         run_input: dict = {
-            'username': profile_url,
-            'total_posts': max_results,
+            'searchQuery': query,
+            'maxItems': max_results,
         }
-        return self.run_actor_and_get_items(
-            _LINKEDIN_POSTS_ACTOR_ID,
+        return _ActorCall(
+            _LINKEDIN_SEARCH_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_results,
@@ -488,25 +721,40 @@ class ApifyToolsClient:
         max_results: int = _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
     ) -> tuple[Run, list[dict]]:
-        """Search LinkedIn profiles via ``harvestapi/linkedin-profile-search``.
+        """Run :meth:`linkedin_profile_search_call` and return a ``(run_details, items)`` tuple."""
+        return self.run_call(
+            self.linkedin_profile_search_call(query=query, max_results=max_results, timeout_secs=timeout_secs)
+        )
+
+    def google_maps_search_call(
+        self,
+        query: str,
+        max_results: int = _DEFAULT_GOOGLE_MAPS_MAX_RESULTS,
+        language: str | None = None,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> _ActorCall:
+        """Search Google Maps places, reviews, and business details.
+
+        Uses ``compass/crawler-google-places``.
 
         Args:
-            query: Search keywords (e.g., name, title, company).
-            max_results: Maximum number of profiles to return.
+            query: Search query string (e.g. ``"coffee shops in Berlin"``).
+            max_results: Maximum number of places to return.
+            language: Optional ISO language code for results (e.g. ``"en"``).
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            A ``(run_details, items)`` tuple.
-
-        Raises:
-            RuntimeError: If the Actor run does not succeed.
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
         """
         run_input: dict = {
-            'searchQuery': query,
-            'maxItems': max_results,
+            'searchStringsArray': [query],
+            'maxCrawledPlacesPerSearch': max_results,
         }
-        return self.run_actor_and_get_items(
-            _LINKEDIN_SEARCH_ACTOR_ID,
+        if language is not None:
+            run_input['language'] = language
+
+        return _ActorCall(
+            _GOOGLE_MAPS_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_results,
@@ -519,43 +767,20 @@ class ApifyToolsClient:
         language: str | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
     ) -> tuple[Run, list[dict]]:
-        """Search Google Maps places, reviews, and business details.
-
-        Uses ``compass/crawler-google-places``.
-
-        Args:
-            query: Search query string (e.g. ``"coffee shops in Berlin"``).
-            max_results: Maximum number of places to return.
-            language: Optional ISO language code for results (e.g. ``"en"``).
-            timeout_secs: Maximum time to wait for the run to finish.
-
-        Returns:
-            A ``(run_details, items)`` tuple where each item is a place dict.
-
-        Raises:
-            RuntimeError: If the Actor run fails.
-        """
-        run_input: dict = {
-            'searchStringsArray': [query],
-            'maxCrawledPlacesPerSearch': max_results,
-        }
-        if language is not None:
-            run_input['language'] = language
-
-        return self.run_actor_and_get_items(
-            _GOOGLE_MAPS_ACTOR_ID,
-            run_input=run_input,
-            timeout_secs=timeout_secs,
-            dataset_items_limit=max_results,
+        """Run :meth:`google_maps_search_call` and return a ``(run_details, items)`` tuple."""
+        return self.run_call(
+            self.google_maps_search_call(
+                query=query, max_results=max_results, language=language, timeout_secs=timeout_secs
+            )
         )
 
-    def linkedin_profile_detail(
+    def linkedin_profile_detail_call(
         self,
         profile_url: str,
         *,
         include_email: bool = False,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
-    ) -> tuple[Run, list[dict]]:
+    ) -> _ActorCall:
         """Fetch a LinkedIn profile via ``apimaestro/linkedin-profile-detail``.
 
         Args:
@@ -565,24 +790,34 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            A ``(run_details, items)`` tuple. ``items`` typically contains a
-            single profile dict.
-
-        Raises:
-            RuntimeError: If the Actor run does not succeed.
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
         """
         run_input: dict = {
             'username': profile_url,
             'includeEmail': include_email,
         }
-        return self.run_actor_and_get_items(
+        return _ActorCall(
             _LINKEDIN_DETAIL_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=1,
         )
 
-    def twitter_scrape(
+    def linkedin_profile_detail(
+        self,
+        profile_url: str,
+        *,
+        include_email: bool = False,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Run :meth:`linkedin_profile_detail_call` and return a ``(run_details, items)`` tuple."""
+        return self.run_call(
+            self.linkedin_profile_detail_call(
+                profile_url=profile_url, include_email=include_email, timeout_secs=timeout_secs
+            )
+        )
+
+    def twitter_scrape_call(
         self,
         search_query: str,
         *,
@@ -592,7 +827,7 @@ class ApifyToolsClient:
         end: str | None = None,
         sort: str | None = None,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
-    ) -> tuple[Run, list[dict]]:
+    ) -> _ActorCall:
         """Scrape Twitter/X via ``apidojo/twitter-scraper-lite``.
 
         Args:
@@ -607,11 +842,10 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            A ``(run_details, items)`` tuple.
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
 
         Raises:
             ValueError: If ``search_mode`` is not recognised.
-            RuntimeError: If the Actor run does not succeed.
         """
         run_input: dict = {'maxItems': max_results}
         if search_mode == 'search':
@@ -629,20 +863,44 @@ class ApifyToolsClient:
             run_input['end'] = end
         if sort is not None:
             run_input['sort'] = sort
-        return self.run_actor_and_get_items(
+        return _ActorCall(
             _TWITTER_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_results,
         )
 
-    def tiktok_scrape(
+    def twitter_scrape(
+        self,
+        search_query: str,
+        *,
+        search_mode: str = 'search',
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
+        start: str | None = None,
+        end: str | None = None,
+        sort: str | None = None,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Run :meth:`twitter_scrape_call` and return a ``(run_details, items)`` tuple."""
+        return self.run_call(
+            self.twitter_scrape_call(
+                search_query=search_query,
+                search_mode=search_mode,
+                max_results=max_results,
+                start=start,
+                end=end,
+                sort=sort,
+                timeout_secs=timeout_secs,
+            )
+        )
+
+    def tiktok_scrape_call(
         self,
         search_query: str,
         search_type: str = 'search',
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
-    ) -> tuple[Run, list[dict]]:
+    ) -> _ActorCall:
         """Scrape TikTok via ``clockworks/tiktok-scraper``.
 
         Args:
@@ -652,11 +910,10 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            A ``(run_details, items)`` tuple.
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
 
         Raises:
             ValueError: If ``search_type`` is not recognised.
-            RuntimeError: If the Actor run does not succeed.
         """
         run_input: dict = {'resultsPerPage': max_results}
         if search_type == 'search':
@@ -673,8 +930,59 @@ class ApifyToolsClient:
                 "Expected one of: ['search', 'user', 'hashtag', 'post']."
             )
             raise ValueError(msg)
-        return self.run_actor_and_get_items(
+        return _ActorCall(
             _TIKTOK_ACTOR_ID,
+            run_input=run_input,
+            timeout_secs=timeout_secs,
+            dataset_items_limit=max_results,
+        )
+
+    def tiktok_scrape(
+        self,
+        search_query: str,
+        search_type: str = 'search',
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Run :meth:`tiktok_scrape_call` and return a ``(run_details, items)`` tuple."""
+        return self.run_call(
+            self.tiktok_scrape_call(
+                search_query=search_query, search_type=search_type, max_results=max_results, timeout_secs=timeout_secs
+            )
+        )
+
+    def facebook_posts_scrape_call(
+        self,
+        page_url: str,
+        max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
+        only_posts_newer_than: str | None = None,
+        only_posts_older_than: str | None = None,
+        timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
+    ) -> _ActorCall:
+        """Scrape Facebook page posts via ``apify/facebook-posts-scraper``.
+
+        Args:
+            page_url: Facebook page URL.
+            max_results: Maximum number of posts to return.
+            only_posts_newer_than: Optional date filter. Accepts ``YYYY-MM-DD``,
+                ISO-8601, or relative (e.g. ``"1 day"``, ``"2 months"``).
+            only_posts_older_than: Optional date filter. Accepts ``YYYY-MM-DD``,
+                ISO-8601, or relative (e.g. ``"1 day"``, ``"2 months"``).
+            timeout_secs: Maximum time to wait for the run to finish.
+
+        Returns:
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
+        """
+        run_input: dict = {
+            'startUrls': [{'url': page_url}],
+            'resultsLimit': max_results,
+        }
+        if only_posts_newer_than is not None:
+            run_input['onlyPostsNewerThan'] = only_posts_newer_than
+        if only_posts_older_than is not None:
+            run_input['onlyPostsOlderThan'] = only_posts_older_than
+        return _ActorCall(
+            _FACEBOOK_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_results,
@@ -688,36 +996,15 @@ class ApifyToolsClient:
         only_posts_older_than: str | None = None,
         timeout_secs: int = _DEFAULT_SOCIAL_TIMEOUT_SECS,
     ) -> tuple[Run, list[dict]]:
-        """Scrape Facebook page posts via ``apify/facebook-posts-scraper``.
-
-        Args:
-            page_url: Facebook page URL.
-            max_results: Maximum number of posts to return.
-            only_posts_newer_than: Optional date filter. Accepts ``YYYY-MM-DD``,
-                ISO-8601, or relative (e.g. ``"1 day"``, ``"2 months"``).
-            only_posts_older_than: Optional date filter. Accepts ``YYYY-MM-DD``,
-                ISO-8601, or relative (e.g. ``"1 day"``, ``"2 months"``).
-            timeout_secs: Maximum time to wait for the run to finish.
-
-        Returns:
-            A ``(run_details, items)`` tuple.
-
-        Raises:
-            RuntimeError: If the Actor run does not succeed.
-        """
-        run_input: dict = {
-            'startUrls': [{'url': page_url}],
-            'resultsLimit': max_results,
-        }
-        if only_posts_newer_than is not None:
-            run_input['onlyPostsNewerThan'] = only_posts_newer_than
-        if only_posts_older_than is not None:
-            run_input['onlyPostsOlderThan'] = only_posts_older_than
-        return self.run_actor_and_get_items(
-            _FACEBOOK_ACTOR_ID,
-            run_input=run_input,
-            timeout_secs=timeout_secs,
-            dataset_items_limit=max_results,
+        """Run :meth:`facebook_posts_scrape_call` and return a ``(run_details, items)`` tuple."""
+        return self.run_call(
+            self.facebook_posts_scrape_call(
+                page_url=page_url,
+                max_results=max_results,
+                only_posts_newer_than=only_posts_newer_than,
+                only_posts_older_than=only_posts_older_than,
+                timeout_secs=timeout_secs,
+            )
         )
 
     @staticmethod
@@ -734,13 +1021,13 @@ class ApifyToolsClient:
         # post/comments expect a URL; if a bare ID is given, build a /p/ URL
         return f'https://www.instagram.com/p/{search_query}/'
 
-    def youtube_scrape(
+    def youtube_scrape_call(
         self,
         search_query: str,
         search_type: str = 'search',
         max_results: int = _DEFAULT_YOUTUBE_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> tuple[Run, list[dict]]:
+    ) -> _ActorCall:
         """Scrape YouTube videos, channels, or search results.
 
         Uses ``streamers/youtube-scraper``.
@@ -753,11 +1040,10 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            A ``(run_details, items)`` tuple.
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
 
         Raises:
             ValueError: If ``search_type`` is not a supported value.
-            RuntimeError: If the Actor run fails.
         """
         if search_type not in _YOUTUBE_SEARCH_TYPES:
             msg = f'Invalid search_type {search_type!r}; expected one of {_YOUTUBE_SEARCH_TYPES}.'
@@ -769,20 +1055,34 @@ class ApifyToolsClient:
         else:
             run_input['startUrls'] = [{'url': search_query}]
 
-        return self.run_actor_and_get_items(
+        return _ActorCall(
             _YOUTUBE_SCRAPER_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_results,
         )
 
-    def ecommerce_scrape(
+    def youtube_scrape(
+        self,
+        search_query: str,
+        search_type: str = 'search',
+        max_results: int = _DEFAULT_YOUTUBE_MAX_RESULTS,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Run :meth:`youtube_scrape_call` and return a ``(run_details, items)`` tuple."""
+        return self.run_call(
+            self.youtube_scrape_call(
+                search_query=search_query, search_type=search_type, max_results=max_results, timeout_secs=timeout_secs
+            )
+        )
+
+    def ecommerce_scrape_call(
         self,
         url: str,
         url_type: str = 'product',
         max_results: int = _DEFAULT_ECOMMERCE_MAX_RESULTS,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> tuple[Run, list[dict]]:
+    ) -> _ActorCall:
         """Extract product data from an e-commerce URL.
 
         Uses ``apify/e-commerce-scraping-tool``. ``url_type`` selects which
@@ -798,11 +1098,10 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            A ``(run_details, items)`` tuple.
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
 
         Raises:
             ValueError: If ``url_type`` is not a supported value.
-            RuntimeError: If the Actor run fails.
         """
         if url_type not in _ECOMMERCE_URL_TYPES:
             msg = f'Invalid url_type {url_type!r}; expected one of {_ECOMMERCE_URL_TYPES}.'
@@ -813,21 +1112,33 @@ class ApifyToolsClient:
             input_key: [{'url': url}],
             'maxProductResults': max_results,
         }
-        return self.run_actor_and_get_items(
+        return _ActorCall(
             _ECOMMERCE_SCRAPER_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_results,
         )
 
-    def crawl_website(
+    def ecommerce_scrape(
+        self,
+        url: str,
+        url_type: str = 'product',
+        max_results: int = _DEFAULT_ECOMMERCE_MAX_RESULTS,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Run :meth:`ecommerce_scrape_call` and return a ``(run_details, items)`` tuple."""
+        return self.run_call(
+            self.ecommerce_scrape_call(url=url, url_type=url_type, max_results=max_results, timeout_secs=timeout_secs)
+        )
+
+    def crawl_website_call(
         self,
         url: str,
         max_crawl_pages: int = _DEFAULT_MAX_CRAWL_PAGES,
         max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
         crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-    ) -> tuple[Run, list[dict]]:
+    ) -> _ActorCall:
         """Crawl a website and return page content.
 
         Uses ``apify/website-content-crawler``.
@@ -840,11 +1151,7 @@ class ApifyToolsClient:
             timeout_secs: Maximum time to wait for the run to finish.
 
         Returns:
-            A ``(run_details, items)`` tuple. Each page dict has at least
-            ``url``, ``title``, and ``markdown`` (or ``text``) keys.
-
-        Raises:
-            RuntimeError: If the Actor run fails.
+            The Actor call to run with :meth:`run_call` or :meth:`arun_call`.
         """
         run_input: dict = {
             'startUrls': [{'url': url}],
@@ -852,11 +1159,30 @@ class ApifyToolsClient:
             'maxCrawlDepth': max_crawl_depth,
             'crawlerType': crawler_type,
         }
-        return self.run_actor_and_get_items(
+        return _ActorCall(
             _WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
             run_input=run_input,
             timeout_secs=timeout_secs,
             dataset_items_limit=max_crawl_pages,
+        )
+
+    def crawl_website(
+        self,
+        url: str,
+        max_crawl_pages: int = _DEFAULT_MAX_CRAWL_PAGES,
+        max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
+        crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
+        timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+    ) -> tuple[Run, list[dict]]:
+        """Run :meth:`crawl_website_call` and return a ``(run_details, items)`` tuple."""
+        return self.run_call(
+            self.crawl_website_call(
+                url=url,
+                max_crawl_pages=max_crawl_pages,
+                max_crawl_depth=max_crawl_depth,
+                crawler_type=crawler_type,
+                timeout_secs=timeout_secs,
+            )
         )
 
     @staticmethod
