@@ -30,6 +30,7 @@ from langchain_apify._error_messages import (
 )
 from langchain_apify._types import CrawlerType  # noqa: TC001  # runtime-needed: pydantic-free annotation
 from langchain_apify._utils import (
+    _charge_limit,
     _create_apify_client,
     _extract_content,
     _resolve_apify_token,
@@ -87,6 +88,8 @@ class ApifyToolsClient:
         apify_token: Apify API token. Falls back to the ``APIFY_TOKEN``
             environment variable (or ``APIFY_API_TOKEN`` for backwards
             compatibility) when *None*.
+        max_total_charge_usd: Maximum total cost in USD of each Actor or task
+            run this client starts, or *None* for no limit.
 
     Raises:
         ValueError: If no token is provided and the env var is not set.
@@ -97,6 +100,7 @@ class ApifyToolsClient:
         apify_token: SecretStr | str | None = None,
         *,
         apify_api_token: SecretStr | str | None = None,
+        max_total_charge_usd: float | None = None,
     ) -> None:
         apify_token = _resolve_deprecated_token(apify_token, apify_api_token)
 
@@ -109,6 +113,7 @@ class ApifyToolsClient:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
         self._client = _create_apify_client(ApifyClient, _token)
+        self._max_total_charge_usd = max_total_charge_usd
 
     def run_actor(
         self,
@@ -134,6 +139,8 @@ class ApifyToolsClient:
         call_kwargs: dict = {'run_input': run_input, 'run_timeout': _run_timeout(timeout_secs), 'logger': None}
         if memory_mbytes is not None:
             call_kwargs['memory_mbytes'] = memory_mbytes
+        if self._max_total_charge_usd is not None:
+            call_kwargs['max_total_charge_usd'] = _charge_limit(self._max_total_charge_usd)
 
         try:
             run = self._client.actor(actor_id).call(**call_kwargs)
@@ -217,6 +224,8 @@ class ApifyToolsClient:
         call_kwargs: dict = {'task_input': task_input, 'run_timeout': _run_timeout(timeout_secs)}
         if memory_mbytes is not None:
             call_kwargs['memory_mbytes'] = memory_mbytes
+        if self._max_total_charge_usd is not None:
+            call_kwargs['max_total_charge_usd'] = _charge_limit(self._max_total_charge_usd)
 
         try:
             run = self._client.task(task_id).call(**call_kwargs)

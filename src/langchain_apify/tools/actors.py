@@ -17,6 +17,7 @@ from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import (
     _MAX_DESCRIPTION_LEN,
     _actor_id_to_tool_name,
+    _charge_limit,
     _create_apify_client,
     _get_actor_latest_build,
     _prune_actor_input_schema,
@@ -64,12 +65,14 @@ class ApifyActorsTool(BaseTool):
 
     _apify_client: ApifyClient = PrivateAttr()
     _actor_id: str = PrivateAttr()
+    _max_total_charge_usd: float | None = PrivateAttr(default=None)
 
     def __init__(
         self,
         actor_id: str,
         apify_token: str | SecretStr | None = None,
         *args: Any,
+        max_total_charge_usd: float | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the tool with an Apify Actor.
@@ -79,6 +82,8 @@ class ApifyActorsTool(BaseTool):
             apify_token (Optional[str]): Apify API token.
             apify_api_token: Deprecated alias for ``apify_token``.
             *args: Additional arguments.
+            max_total_charge_usd (Optional[float]): Maximum total cost in USD of each Actor run, or
+                ``None`` for no limit.
             **kwargs: Additional keyword arguments.
 
         Raises:
@@ -111,6 +116,7 @@ class ApifyActorsTool(BaseTool):
 
         self._apify_client = apify_client
         self._actor_id = actor_id
+        self._max_total_charge_usd = max_total_charge_usd
 
     def _run(
         self,
@@ -193,7 +199,10 @@ class ApifyActorsTool(BaseTool):
         Raises:
             ValueError: If the Actor was not started properly and no run details were returned
         """
-        if (details := self._apify_client.actor(actor_id=self._actor_id).call(run_input=run_input)) is None:
+        call_kwargs: dict = {'run_input': run_input}
+        if self._max_total_charge_usd is not None:
+            call_kwargs['max_total_charge_usd'] = _charge_limit(self._max_total_charge_usd)
+        if (details := self._apify_client.actor(actor_id=self._actor_id).call(**call_kwargs)) is None:
             msg = f'Actor: {self._actor_id} was not started properly and details about the run were not returned'
             raise ValueError(msg)
         run = self._apify_client.run(run_id=details.id)

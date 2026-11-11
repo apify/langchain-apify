@@ -2,12 +2,14 @@
 
 apify-client 3.x takes the run timeout as a ``timedelta`` under ``run_timeout``, and has a separate ``timeout``
 argument that bounds the HTTP request instead of the run. Passing seconds, or passing the value under the wrong
-name, fails silently: the call still succeeds and the run just is not bounded the way the caller asked.
+name, fails silently: the call still succeeds and the run just is not bounded the way the caller asked. The same
+goes for the charge limit, which apify-client takes as a `Decimal` under `max_total_charge_usd`.
 """
 
 from __future__ import annotations
 
 from datetime import timedelta
+from decimal import Decimal
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -116,3 +118,77 @@ async def test_acall_actor_task_passes_run_timeout(
 @pytest.mark.parametrize(('timeout_secs', 'expected'), _TIMEOUT_CASES)
 def test_run_timeout_converts_seconds(timeout_secs: int | None, expected: timedelta | None) -> None:
     assert _run_timeout(timeout_secs) == expected
+
+
+_CHARGE_LIMIT_CASES = [
+    pytest.param(1.5, Decimal('1.5'), id='limit'),
+    pytest.param(None, None, id='no limit'),
+]
+
+
+@pytest.mark.parametrize(('max_total_charge_usd', 'expected'), _CHARGE_LIMIT_CASES)
+def test_call_actor_passes_the_charge_limit(
+    wrapper: tuple[ApifyWrapper, MagicMock, MagicMock],
+    max_total_charge_usd: float | None,
+    expected: Decimal | None,
+) -> None:
+    """`call_actor` hands its charge limit to the run as an exact `Decimal`."""
+    apify_wrapper, sync_client, _ = wrapper
+    apify_wrapper.call_actor(
+        actor_id='apify/hello-world',
+        run_input={},
+        dataset_mapping_function=_noop_mapping,
+        max_total_charge_usd=max_total_charge_usd,
+    )
+    assert sync_client.actor.return_value.call.call_args.kwargs['max_total_charge_usd'] == expected
+
+
+@pytest.mark.parametrize(('max_total_charge_usd', 'expected'), _CHARGE_LIMIT_CASES)
+async def test_acall_actor_passes_the_charge_limit(
+    wrapper: tuple[ApifyWrapper, MagicMock, MagicMock],
+    max_total_charge_usd: float | None,
+    expected: Decimal | None,
+) -> None:
+    """`acall_actor` hands its charge limit to the run as an exact `Decimal`."""
+    apify_wrapper, _, async_client = wrapper
+    await apify_wrapper.acall_actor(
+        actor_id='apify/hello-world',
+        run_input={},
+        dataset_mapping_function=_noop_mapping,
+        max_total_charge_usd=max_total_charge_usd,
+    )
+    assert async_client.actor.return_value.call.call_args.kwargs['max_total_charge_usd'] == expected
+
+
+@pytest.mark.parametrize(('max_total_charge_usd', 'expected'), _CHARGE_LIMIT_CASES)
+def test_call_actor_task_passes_the_charge_limit(
+    wrapper: tuple[ApifyWrapper, MagicMock, MagicMock],
+    max_total_charge_usd: float | None,
+    expected: Decimal | None,
+) -> None:
+    """`call_actor_task` hands its charge limit to the run as an exact `Decimal`."""
+    apify_wrapper, sync_client, _ = wrapper
+    apify_wrapper.call_actor_task(
+        task_id='user/my-task',
+        task_input={},
+        dataset_mapping_function=_noop_mapping,
+        max_total_charge_usd=max_total_charge_usd,
+    )
+    assert sync_client.task.return_value.call.call_args.kwargs['max_total_charge_usd'] == expected
+
+
+@pytest.mark.parametrize(('max_total_charge_usd', 'expected'), _CHARGE_LIMIT_CASES)
+async def test_acall_actor_task_passes_the_charge_limit(
+    wrapper: tuple[ApifyWrapper, MagicMock, MagicMock],
+    max_total_charge_usd: float | None,
+    expected: Decimal | None,
+) -> None:
+    """`acall_actor_task` hands its charge limit to the run as an exact `Decimal`."""
+    apify_wrapper, _, async_client = wrapper
+    await apify_wrapper.acall_actor_task(
+        task_id='user/my-task',
+        task_input={},
+        dataset_mapping_function=_noop_mapping,
+        max_total_charge_usd=max_total_charge_usd,
+    )
+    assert async_client.task.return_value.call.call_args.kwargs['max_total_charge_usd'] == expected

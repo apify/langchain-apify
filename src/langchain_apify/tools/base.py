@@ -89,6 +89,9 @@ class _ApifyGenericTool(BaseTool):
     max_crawl_depth: int = Field(
         default=_MAX_CRAWL_DEPTH_CAP, description='Upper bound for max_crawl_depth the LLM may request.'
     )
+    max_total_charge_usd: float | None = Field(
+        default=None, description='Maximum total cost in USD of each Actor or task run, or None for no limit.'
+    )
 
     _client: ApifyToolsClient = PrivateAttr()
 
@@ -101,7 +104,9 @@ class _ApifyGenericTool(BaseTool):
         if self.apify_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self._client = ApifyToolsClient(apify_token=self.apify_token.get_secret_value())
+        self._client = ApifyToolsClient(
+            apify_token=self.apify_token.get_secret_value(), max_total_charge_usd=self.max_total_charge_usd
+        )
         super().model_post_init(context)
 
     def _clamp_timeout(self, value: int) -> int:

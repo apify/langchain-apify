@@ -44,6 +44,8 @@ class ApifySearchRetriever(BaseRetriever):
         apify_api_token: Deprecated alias for ``apify_token``.
         max_results: Maximum number of ``Document`` objects to return per query.
         timeout_secs: Maximum time in seconds to wait for the Actor run.
+        max_total_charge_usd: Maximum total cost in USD of each Actor run, or
+            *None* for no limit.
 
     Returns:
         List of ``Document`` objects.  ``page_content`` contains the crawled
@@ -69,6 +71,9 @@ class ApifySearchRetriever(BaseRetriever):
     )
     max_results: int = Field(default=_DEFAULT_RAG_MAX_RESULTS, description='Maximum number of documents to return.')
     timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description='Maximum Actor run time in seconds.')
+    max_total_charge_usd: float | None = Field(
+        default=None, description='Maximum total cost in USD of each Actor run, or None for no limit.'
+    )
 
     _client: ApifyToolsClient = PrivateAttr()
 
@@ -87,7 +92,9 @@ class ApifySearchRetriever(BaseRetriever):
         if self.apify_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self._client = ApifyToolsClient(apify_token=self.apify_token.get_secret_value())
+        self._client = ApifyToolsClient(
+            apify_token=self.apify_token.get_secret_value(), max_total_charge_usd=self.max_total_charge_usd
+        )
         super().model_post_init(context)
 
     def _clamped_max_results(self) -> int:
