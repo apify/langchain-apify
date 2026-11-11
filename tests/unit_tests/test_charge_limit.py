@@ -95,14 +95,16 @@ def test_retriever_hands_the_limit_to_its_client() -> None:
     assert client_cls.call_args.kwargs['max_total_charge_usd'] == 0.5
 
 
-def _actors_tool(**kwargs: float) -> tuple[ApifyActorsTool, MagicMock]:
+def _actors_tool(max_total_charge_usd: float | None = None) -> tuple[ApifyActorsTool, MagicMock]:
     apify_client = MagicMock()
     build = {'actorDefinition': {'input': {'type': 'object', 'properties': {}}}}
     with (
         patch('langchain_apify.tools.actors._create_apify_client', return_value=apify_client),
         patch('langchain_apify.tools.actors._get_actor_latest_build', return_value=build),
     ):
-        tool = ApifyActorsTool('apify/hello-world', apify_token='dummy-token', **kwargs)
+        tool = ApifyActorsTool(
+            'apify/hello-world', apify_token='dummy-token', max_total_charge_usd=max_total_charge_usd
+        )
     apify_client.run.return_value.dataset.return_value.list_items.return_value.items = []
     return tool, apify_client
 

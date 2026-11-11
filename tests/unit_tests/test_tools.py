@@ -72,6 +72,7 @@ def test_run_actor_method(apify_actors_tool_fixture: ApifyActorsTool) -> None:
             run_input={'query': 'what is Apify?', 'maxResults': 3},
         )
         mock_run_actor.assert_called_once()
+        assert isinstance(result, list)
         assert result[0]['text'] == 'Apify is great!'
 
 

@@ -24,6 +24,7 @@ from langchain_apify._utils import (
     _resolve_apify_token,
     _resolve_deprecated_token,
 )
+from langchain_apify.tools.base import _mark_untrusted
 
 if TYPE_CHECKING:
     from langchain_core.callbacks import (
@@ -70,6 +71,7 @@ class ApifyActorsTool(BaseTool):
     _apify_token: str = PrivateAttr()
     _actor_id: str = PrivateAttr()
     _max_total_charge_usd: float | None = PrivateAttr(default=None)
+    _mark_output_untrusted: bool = PrivateAttr(default=False)
 
     def __init__(
         self,
@@ -77,6 +79,7 @@ class ApifyActorsTool(BaseTool):
         apify_token: str | SecretStr | None = None,
         *args: Any,
         max_total_charge_usd: float | None = None,
+        mark_output_untrusted: bool = False,
         **kwargs: Any,
     ) -> None:
         """Initialize the tool with an Apify Actor.
@@ -88,6 +91,8 @@ class ApifyActorsTool(BaseTool):
             *args: Additional arguments.
             max_total_charge_usd (Optional[float]): Maximum total cost in USD of each Actor run, or
                 ``None`` for no limit.
+            mark_output_untrusted (bool): Return the dataset items as JSON wrapped in untrusted content
+                markers, so the agent treats scraped content as data. Off by default.
             **kwargs: Additional keyword arguments.
 
         Raises:
@@ -122,36 +127,44 @@ class ApifyActorsTool(BaseTool):
         self._apify_token = _raw_token
         self._actor_id = actor_id
         self._max_total_charge_usd = max_total_charge_usd
+        self._mark_output_untrusted = mark_output_untrusted
 
     def _run(
         self,
         run_input: str | dict,
         _: CallbackManagerForToolRun | None = None,
-    ) -> list[dict]:
+    ) -> list[dict] | str:
         """Use the Apify Actor.
 
         Args:
             run_input (Union[str, dict]): JSON input for the Actor.
 
         Returns:
-            list[dict]: The output dataset.
+            list[dict] | str: The output dataset, or with ``mark_output_untrusted`` the dataset as JSON
+                wrapped in untrusted content markers.
         """
-        return self._run_actor(self._input_dict(run_input))
+        return self._output(self._run_actor(self._input_dict(run_input)))
 
     async def _arun(
         self,
         run_input: str | dict,
         _: AsyncCallbackManagerForToolRun | None = None,
-    ) -> list[dict]:
+    ) -> list[dict] | str:
         """Use the Apify Actor on the async Apify client.
 
         Args:
             run_input (Union[str, dict]): JSON input for the Actor.
 
         Returns:
-            list[dict]: The output dataset.
+            list[dict] | str: The output dataset, or with ``mark_output_untrusted`` the dataset as JSON
+                wrapped in untrusted content markers.
         """
-        return await self._arun_actor(self._input_dict(run_input))
+        return self._output(await self._arun_actor(self._input_dict(run_input)))
+
+    def _output(self, items: list[dict]) -> list[dict] | str:
+        if not self._mark_output_untrusted:
+            return items
+        return _mark_untrusted(json.dumps(items, default=str), f'apify:{self._actor_id}')
 
     @staticmethod
     def _input_dict(run_input: str | dict) -> dict:

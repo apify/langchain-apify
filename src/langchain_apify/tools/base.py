@@ -41,6 +41,18 @@ _VALID_MEMORY_MBYTES: tuple[int, ...] = (128, 256, 512, 1024, 2048, 4096, 8192, 
 # a failed/empty Actor run, ``ValueError`` from client-side input validation.
 _TOOL_RUN_ERRORS: tuple[type[Exception], ...] = (RuntimeError, ValueError)
 
+# Markers around tool output that the agent must treat as untrusted data, never as instructions.
+_UNTRUSTED_CONTENT_START = '<<<EXTERNAL_UNTRUSTED_CONTENT>>>'
+_UNTRUSTED_CONTENT_END = '<<<END_EXTERNAL_UNTRUSTED_CONTENT>>>'
+
+
+def _mark_untrusted(content: str, source: str) -> str:
+    """Wrap tool output in the untrusted content markers, after a line naming where it came from."""
+    # Scraped text could contain the markers and close the wrapper early.
+    for marker in (_UNTRUSTED_CONTENT_START, _UNTRUSTED_CONTENT_END):
+        content = content.replace(marker, '[marker removed]')
+    return f'{_UNTRUSTED_CONTENT_START}\nSource: {source}\n{content}\n{_UNTRUSTED_CONTENT_END}'
+
 
 @dataclass(frozen=True)
 class _ClientCall:
@@ -108,6 +120,10 @@ class _ApifyGenericTool(BaseTool):
     max_total_charge_usd: float | None = Field(
         default=None, description='Maximum total cost in USD of each Actor or task run, or None for no limit.'
     )
+    mark_output_untrusted: bool = Field(
+        default=False,
+        description='Wrap the output in untrusted content markers, so the agent treats scraped content as data.',
+    )
 
     _client: ApifyToolsClient = PrivateAttr()
 
@@ -144,7 +160,7 @@ class _ApifyGenericTool(BaseTool):
             result = getattr(self._client, call.method)(*call.args, **call.kwargs)
         except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
-        return (call.format_result or self._format_result)(result)
+        return self._output(call, result)
 
     async def _arun(self, *args: Any, **kwargs: Any) -> str:
         try:
@@ -152,7 +168,11 @@ class _ApifyGenericTool(BaseTool):
             result = await getattr(self._client, f'a{call.method}')(*call.args, **call.kwargs)
         except _TOOL_RUN_ERRORS as exc:
             raise ToolException(str(exc)) from exc
-        return (call.format_result or self._format_result)(result)
+        return self._output(call, result)
+
+    def _output(self, call: _ClientCall, result: Any) -> str:
+        output = (call.format_result or self._format_result)(result)
+        return _mark_untrusted(output, f'apify:{self.name}') if self.mark_output_untrusted else output
 
     def _clamp_timeout(self, value: int) -> int:
         return max(1, min(value, self.max_timeout_secs))
