@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -24,6 +24,9 @@ from langchain_apify.tools import (
     ApifyYouTubeScraperTool,
 )
 from tests.unit_tests.conftest import SAMPLE_ITEMS, SUCCEEDED_RUN, make_tool
+
+if TYPE_CHECKING:
+    from unittest.mock import MagicMock
 
 
 def _assert_envelope_shape(payload: dict) -> None:

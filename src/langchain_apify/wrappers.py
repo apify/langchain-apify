@@ -64,14 +64,15 @@ class ApifyWrapper(BaseModel):
         exclude=True,
         repr=False,
     )
-    apify_client: ApifyClient = Field(default=None, exclude=True)  # type: ignore[assignment]
-    apify_client_async: ApifyClientAsync = Field(default=None, exclude=True)  # type: ignore[assignment]
+    # The `_init_clients` validator always sets both clients, so callers never see the `None` default.
+    apify_client: ApifyClient = Field(default=None, exclude=True)  # ty: ignore[invalid-assignment]
+    apify_client_async: ApifyClientAsync = Field(default=None, exclude=True)  # ty: ignore[invalid-assignment]
 
     def __init__(
         self,
         apify_token: str | SecretStr | None = None,
-        *args: Any,  # noqa: ANN401
-        **kwargs: Any,  # noqa: ANN401
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         """Initialise the wrapper.
 
@@ -107,7 +108,7 @@ class ApifyWrapper(BaseModel):
         self.apify_client_async = _create_apify_client(ApifyClientAsync, token)
         return self
 
-    def call_actor(  # noqa: PLR0913
+    def call_actor(
         self,
         actor_id: str,
         run_input: dict,
@@ -156,7 +157,7 @@ class ApifyWrapper(BaseModel):
             apify_token=self.apify_token,
         )
 
-    async def acall_actor(  # noqa: PLR0913
+    async def acall_actor(
         self,
         actor_id: str,
         run_input: dict,
@@ -205,7 +206,7 @@ class ApifyWrapper(BaseModel):
             apify_token=self.apify_token,
         )
 
-    def call_actor_task(  # noqa: PLR0913
+    def call_actor_task(
         self,
         task_id: str,
         task_input: dict,
@@ -255,7 +256,7 @@ class ApifyWrapper(BaseModel):
             apify_token=self.apify_token,
         )
 
-    async def acall_actor_task(  # noqa: PLR0913
+    async def acall_actor_task(
         self,
         task_id: str,
         task_input: dict,

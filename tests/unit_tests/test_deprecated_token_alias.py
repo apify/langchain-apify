@@ -243,7 +243,7 @@ class TestGenericToolTokenAlias:
         with patch.object(ApifyToolsClient, '__init__', return_value=None):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter('always')
-                tool = ApifyRunActorTool(apify_token='new-style')  # type: ignore[call-arg,arg-type]
+                tool = ApifyRunActorTool(apify_token='new-style')
             assert len(w) == 0
             assert tool.apify_token is not None
 
@@ -251,7 +251,7 @@ class TestGenericToolTokenAlias:
         with patch.object(ApifyToolsClient, '__init__', return_value=None):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter('always')
-                tool = ApifyRunActorTool(apify_api_token='legacy-style')  # type: ignore[call-arg,arg-type]
+                tool = ApifyRunActorTool(apify_api_token='legacy-style')
             assert len(w) == 1
             assert issubclass(w[0].category, DeprecationWarning)
             assert 'apify_api_token' in str(w[0].message)
@@ -262,7 +262,7 @@ class TestGenericToolTokenAlias:
         with patch.object(ApifyToolsClient, '__init__', return_value=None):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter('always')
-                tool = ApifyRunActorTool(apify_token='primary', apify_api_token='ignored')  # type: ignore[call-arg,arg-type]
+                tool = ApifyRunActorTool(apify_token='primary', apify_api_token='ignored')
             assert len(w) == 1
             assert issubclass(w[0].category, DeprecationWarning)
             assert 'ignoring' in str(w[0].message)

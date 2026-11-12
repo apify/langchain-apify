@@ -57,7 +57,7 @@ def _run_meta(run: Run) -> dict:
 # ---------------------------------------------------------------------------
 
 
-class _ApifyGenericTool(BaseTool):  # type: ignore[override]
+class _ApifyGenericTool(BaseTool):
     """Shared base for all generic Apify tools.
 
     Handles ``ApifyToolsClient`` creation, sets ``handle_tool_error``,
@@ -68,7 +68,8 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     ``args_schema``, and ``_run()``.
     """
 
-    handle_tool_error: bool | str | Callable[[ToolException], str] | None = True
+    # Narrower than `BaseTool`'s on purpose: these tools' handlers return the error as a string.
+    handle_tool_error: bool | str | Callable[[ToolException], str] | None = True  # ty: ignore[invalid-mutable-override]
 
     apify_token: SecretStr | None = Field(
         default_factory=_apify_token_secret_factory,
@@ -96,7 +97,7 @@ class _ApifyGenericTool(BaseTool):  # type: ignore[override]
     def _handle_deprecated_apify_api_token(cls, values: dict) -> dict:
         return _resolve_deprecated_token_values(values)
 
-    def model_post_init(self, context: Any) -> None:  # noqa: ANN401
+    def model_post_init(self, context: Any) -> None:
         if self.apify_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)

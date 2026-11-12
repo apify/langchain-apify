@@ -12,9 +12,10 @@ from pydantic import SecretStr
 
 _MAX_DESCRIPTION_LEN: int = 350
 
-_DEPRECATED_APIFY_API_TOKEN_MSG = "The 'apify_api_token' parameter is deprecated, use 'apify_token' instead."
+# The token messages name parameters and environment variables; S105 reads them as hardcoded secrets.
+_DEPRECATED_APIFY_API_TOKEN_MSG = "The 'apify_api_token' parameter is deprecated, use 'apify_token' instead."  # noqa: S105
 _DEPRECATED_APIFY_API_TOKEN_ENV_MSG = (
-    "The 'APIFY_API_TOKEN' environment variable is deprecated, use 'APIFY_TOKEN' instead."
+    "The 'APIFY_API_TOKEN' environment variable is deprecated, use 'APIFY_TOKEN' instead."  # noqa: S105
 )
 _BOTH_TOKENS_MSG = (
     "Both 'apify_token' and 'apify_api_token' were specified; using 'apify_token' "
@@ -169,7 +170,7 @@ def _run_timeout(timeout_secs: int | None) -> timedelta | None:
     return timedelta(seconds=timeout_secs) if timeout_secs is not None else None
 
 
-T = TypeVar('T', ApifyClient, ApifyClientAsync)
+T = TypeVar('T', bound=ApifyClient | ApifyClientAsync)
 
 
 def _create_apify_client(client_cls: type[T], token: str) -> T:

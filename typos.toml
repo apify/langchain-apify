@@ -1,0 +1,15 @@
+# Configuration for typos spell checker
+# https://github.com/crate-ci/typos
+
+[default]
+extend-ignore-re = [
+    "https?://[^\\s]+", # Ignore URLs
+    "\\w+\\.\\.\\.",    # Ignore words truncated in sample output
+]
+
+[files]
+# Extend the default exclude list
+extend-exclude = [
+    "*.lock",
+    "CHANGELOG.md",
+]

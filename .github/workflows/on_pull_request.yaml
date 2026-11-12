@@ -1,0 +1,14 @@
+name: CI (PR)
+
+on:
+  # Runs whenever a pull request is opened or updated.
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Checks
+    uses: ./.github/workflows/_checks.yaml
+    secrets: inherit

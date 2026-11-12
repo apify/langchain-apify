@@ -16,25 +16,25 @@ Open a GitHub issue at <https://github.com/apify/langchain-apify/issues>. A few 
 
 - Branch from `main`.
 - Keep one logical change per PR. A PR that fixes a bug *and* adds a feature is harder to review and harder to revert if needed.
-- Before opening: run `hatch run lint` and `hatch run test` locally. CI will also run integration tests; you don't need an `APIFY_TOKEN` to open the PR (CI has its own).
+- Before opening: run `uv run poe check-code` locally. CI also runs the integration tests against the Apify platform with its own token, on `main` and on pull requests from branches in this repository. Pull requests from forks skip them, because forks don't get the token.
 - If your change affects the public API, update the README and any in-repo examples.
 - If your change adds a new tool family or generic primitive, add or extend the corresponding test file under `tests/unit_tests/`.
 
 ## Commit message conventions
 
-The release workflow uses `git-cliff` to read commit-message prefixes and auto-generate both the version bump and the changelog. **Don't manually edit `version =` in `pyproject.toml` or write `CHANGELOG.md` entries by hand.**
+The release workflows use `git-cliff` to read commit-message prefixes and auto-generate both the version bump and the changelog. **Don't manually edit `version =` in `pyproject.toml` or write `CHANGELOG.md` entries by hand.**
 
-Use these prefixes:
+Use these [Conventional Commits](https://www.conventionalcommits.org/) types:
 
-- `feat:` for a new feature → minor version bump
-- `fix:` for a bug fix → patch bump
-- `ref:` for a refactor → patch
-- `test:` for a test-only change → patch
-- `chore:` for housekeeping → patch
-- `docs:` for a docs-only change → no bump on a stable release (skipped from pre-releases)
-- `ci:` for a CI / workflow change (skipped from pre-releases)
+- `feat:` for a new feature
+- `fix:` for a bug fix
+- `perf:` for a performance improvement
+- `refactor:` or `style:` for a source change that doesn't change behaviour
+- `test:`, `docs:`, `build:`, `chore:` or `ci:` for everything else
 
-A `BREAKING CHANGE:` footer in the commit body triggers a major bump. Use it sparingly and only when the public API genuinely breaks.
+A `feat`, `fix`, `perf`, `refactor` or `style` commit on `main` publishes a beta, so use those types for source changes only. The changelog lists `feat`, `fix`, `perf` and `revert` commits, plus breaking changes of any type.
+
+Mark a breaking change with `!` after the type (`feat!:`) or a `BREAKING CHANGE:` footer. Use it sparingly and only when the public API genuinely breaks. While the version is below 1.0, a breaking change bumps the minor version and a feature bumps the patch version.
 
 A good message is short on the subject line and explains *why* (not what) in the body:
 
@@ -49,17 +49,14 @@ resolution and raised ValueError if neither was present.
 ## What review looks for
 
 - **Correctness on the public API surface.** Any new tool must follow the `_ApifyGenericTool` envelope contract (a JSON string of `{"run": {...}, "items": [...]}`) and route Actor calls through `ApifyToolsClient` (`_client.py`), not the SDK directly.
-- **`hatch run lint` and `hatch run test` pass locally.** Integration tests pass under CI's token; you don't need to run them yourself unless you're touching `_client.py`.
+- **`uv run poe check-code` passes locally.** CI runs the integration tests; run them yourself with `APIFY_TOKEN=... uv run poe integration-tests` when you touch `_client.py` or open a pull request from a fork.
 - **No new `apify_api_token` field declarations.** The canonical token kwarg is `apify_token`; the legacy `apify_api_token` is honoured only via the existing deprecation plumbing in `_utils.py` and per-tool model validators. New code should not introduce fresh `apify_api_token` fields.
 - **No manually bumped `version =` in `pyproject.toml`.** Versions come from commit messages via `git-cliff`.
 - **Shared defaults stay in `_constants.py`.** Don't reintroduce magic literals (`300`, `100`, `120`, etc.); import the named constant instead.
 
 ## Releases
 
-Releases are automated. After a PR merges to `main`, the release workflow:
+- **Betas are automatic.** After a PR merges to `main`, `on_main.yaml` runs the checks and, for a `feat`, `fix`, `perf`, `refactor` or `style` commit, dispatches `manual_release_beta.yaml`, which publishes a beta to PyPI.
+- **Stable releases are manual.** A maintainer runs `manual_release_stable.yaml` from `main`. With `auto`, `git-cliff` picks the version from the commits since the last tag; `custom` takes an exact version. The workflow bumps `pyproject.toml`, writes the changelog, tags the release, creates the GitHub release and publishes to PyPI.
 
-1. Reads commit messages since the last tag.
-2. Computes the new version with `git-cliff`.
-3. Bumps `pyproject.toml`, writes the changelog, tags the release, and pushes to PyPI.
-
-You don't need to do any of those steps manually.
+Neither needs any manual version or changelog edits.

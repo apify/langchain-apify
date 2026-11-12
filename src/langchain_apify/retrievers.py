@@ -77,7 +77,7 @@ class ApifySearchRetriever(BaseRetriever):
     def _handle_deprecated_apify_api_token(cls, values: dict) -> dict:
         return _resolve_deprecated_token_values(values)
 
-    def model_post_init(self, context: Any) -> None:  # noqa: ANN401
+    def model_post_init(self, context: Any) -> None:
         """Construct the underlying ``ApifyToolsClient``.
 
         Mirrors ``_ApifyGenericTool``: guard against a missing token locally

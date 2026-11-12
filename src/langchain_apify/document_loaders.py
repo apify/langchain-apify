@@ -177,7 +177,7 @@ class ApifyCrawlLoader(BaseLoader):
             documents = loader.load()
     """
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         url: str,
         apify_token: str | SecretStr | None = None,
