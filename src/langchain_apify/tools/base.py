@@ -118,7 +118,11 @@ class _ApifyGenericTool(BaseTool):
         default=_MAX_CRAWL_DEPTH_CAP, description='Upper bound for max_crawl_depth the LLM may request.'
     )
     max_total_charge_usd: float | None = Field(
-        default=None, description='Maximum total cost in USD of each Actor or task run, or None for no limit.'
+        default=None,
+        description=(
+            'Maximum total cost in USD of each Actor or task run, or None for no limit.'
+            " A limit below the Actor's own minimum makes the run fail."
+        ),
     )
     mark_output_untrusted: bool = Field(
         default=False,

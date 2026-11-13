@@ -136,7 +136,8 @@ class ApifyToolsClient:
             environment variable (or ``APIFY_API_TOKEN`` for backwards
             compatibility) when *None*.
         max_total_charge_usd: Maximum total cost in USD of each Actor or task
-            run this client starts, or *None* for no limit.
+            run this client starts, or *None* for no limit. A limit below the
+            Actor's own minimum makes the run fail.
 
     Raises:
         ValueError: If no token is provided and the env var is not set.

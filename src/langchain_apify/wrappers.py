@@ -134,6 +134,7 @@ class ApifyWrapper(BaseModel):
                 in megabytes.
             timeout_secs (int, optional): Optional timeout for the run, in seconds.
             max_total_charge_usd (float, optional): Optional maximum total cost of the run, in USD.
+                A limit below the Actor's own minimum makes the run fail.
 
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
@@ -186,6 +187,7 @@ class ApifyWrapper(BaseModel):
                 in megabytes.
             timeout_secs (int, optional): Optional timeout for the run, in seconds.
             max_total_charge_usd (float, optional): Optional maximum total cost of the run, in USD.
+                A limit below the Actor's own minimum makes the run fail.
 
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
@@ -239,6 +241,7 @@ class ApifyWrapper(BaseModel):
                 in megabytes.
             timeout_secs (int, optional): Optional timeout for the run, in seconds.
             max_total_charge_usd (float, optional): Optional maximum total cost of the run, in USD.
+                A limit below the Actor's own minimum makes the run fail.
 
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
@@ -292,6 +295,7 @@ class ApifyWrapper(BaseModel):
                 in megabytes.
             timeout_secs (int, optional): Optional timeout for the run, in seconds.
             max_total_charge_usd (float, optional): Optional maximum total cost of the run, in USD.
+                A limit below the Actor's own minimum makes the run fail.
 
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the

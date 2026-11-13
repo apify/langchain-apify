@@ -205,6 +205,8 @@ actor = ApifyActorsTool('apify/rag-web-browser', max_total_charge_usd=0.50)
 
 `ApifySearchRetriever` takes the same argument, and the `ApifyWrapper` call methods take it per call.
 
+Some Actors require a higher limit. For example, `apify/e-commerce-scraping-tool` needs at least $1.00. A run with a limit below the Actor's minimum fails with "Maximum cost per run is less than the allowed minimum".
+
 ### Marking tool output as untrusted
 
 Scraped pages can contain text written to look like instructions to the agent. With `mark_output_untrusted=True`, a tool returns its output between markers that tell the agent it's data from an outside source:

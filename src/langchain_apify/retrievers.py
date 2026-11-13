@@ -45,7 +45,8 @@ class ApifySearchRetriever(BaseRetriever):
         max_results: Maximum number of ``Document`` objects to return per query.
         timeout_secs: Maximum time in seconds to wait for the Actor run.
         max_total_charge_usd: Maximum total cost in USD of each Actor run, or
-            *None* for no limit.
+            *None* for no limit. A limit below the Actor's own minimum makes
+            the run fail.
 
     Returns:
         List of ``Document`` objects.  ``page_content`` contains the crawled

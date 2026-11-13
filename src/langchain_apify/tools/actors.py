@@ -90,7 +90,7 @@ class ApifyActorsTool(BaseTool):
             apify_api_token: Deprecated alias for ``apify_token``.
             *args: Additional arguments.
             max_total_charge_usd (Optional[float]): Maximum total cost in USD of each Actor run, or
-                ``None`` for no limit.
+                ``None`` for no limit. A limit below the Actor's own minimum makes the run fail.
             mark_output_untrusted (bool): Return the dataset items as JSON wrapped in untrusted content
                 markers, so the agent treats scraped content as data. Off by default.
             **kwargs: Additional keyword arguments.
