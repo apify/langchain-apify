@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from langchain_core.tools import ArgsSchema, ToolException
+from langchain_core.tools import ArgsSchema
 from pydantic import BaseModel, Field, field_validator
 
 from langchain_apify._constants import (
@@ -31,11 +31,10 @@ from langchain_apify._types import (  # runtime-needed: pydantic Field annotatio
     YouTubeSearchType,
 )
 from langchain_apify._utils import _extract_content, _extract_source, _safe_title
-from langchain_apify.tools.base import _TOOL_RUN_ERRORS, _ApifyGenericTool
+from langchain_apify.tools.base import _ApifyGenericTool, _ClientCall
 from langchain_apify.tools.core import _DESC_RUN_TIMEOUT_SECS
 
 if TYPE_CHECKING:
-    from langchain_core.callbacks import CallbackManagerForToolRun
     from langchain_core.tools import BaseTool
 
 
@@ -190,29 +189,22 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyGoogleSearchInput
 
-    def _run(
+    def _client_call(
         self,
         query: str,
         max_results: int = _DEFAULT_GOOGLE_MAX_RESULTS,
         country_code: str | None = None,
         language_code: str | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, results = self._client.google_search(
-                query,
-                max_results=self._clamp_items(max_results),
-                country_code=country_code,
-                language_code=language_code,
-                timeout_secs=self._clamp_timeout(timeout_secs),
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        # default=str coerces any non-JSON-native types (e.g. datetime from
-        # the Apify client's clean=True deserialiser) to their string repr
-        # so the LLM never sees a serialisation failure.
-        return self._envelope(run, results)
+    ) -> _ClientCall:
+        return self._call(
+            'google_search',
+            query,
+            max_results=self._clamp_items(max_results),
+            country_code=country_code,
+            language_code=language_code,
+            timeout_secs=self._clamp_timeout(timeout_secs),
+        )
 
 
 class ApifyWebCrawlerTool(_ApifyGenericTool):
@@ -258,25 +250,25 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyWebCrawlerInput
 
-    def _run(
+    def _client_call(
         self,
         url: str,
         max_crawl_pages: int = _DEFAULT_MAX_CRAWL_PAGES,
         max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
         crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.crawl_website(
-                url,
-                max_crawl_pages=self._clamp_items(max_crawl_pages),
-                max_crawl_depth=self._clamp_depth(max_crawl_depth),
-                crawler_type=crawler_type,
-                timeout_secs=self._clamp_timeout(timeout_secs),
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
+    ) -> _ClientCall:
+        return self._call(
+            'crawl_website',
+            url,
+            max_crawl_pages=self._clamp_items(max_crawl_pages),
+            max_crawl_depth=self._clamp_depth(max_crawl_depth),
+            crawler_type=crawler_type,
+            timeout_secs=self._clamp_timeout(timeout_secs),
+        )
+
+    def _format_result(self, result: tuple) -> str:
+        run, items = result
         # Defensive filter: some Actor responses occasionally surface list-typed
         # entries (e.g. nested arrays for sitemap-style outputs). Skip anything
         # that isn't a dict so .get() never blows up.
@@ -333,20 +325,17 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):
     # 1000 ceiling so _clamp_items clamps to the value the Actor accepts.
     max_items: int = _RAG_MAX_RESULTS_CAP
 
-    def _run(
+    def _client_call(
         self,
         query: str,
         max_results: int = _DEFAULT_RAG_MAX_RESULTS,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.rag_web_search(
-                query,
-                max_results=self._clamp_items(max_results),
-                timeout_secs=self.max_timeout_secs,
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
+    ) -> _ClientCall:
+        return self._call(
+            'rag_web_search', query, max_results=self._clamp_items(max_results), timeout_secs=self.max_timeout_secs
+        )
+
+    def _format_result(self, result: tuple) -> str:
+        run, items = result
         results = [
             {
                 'url': _extract_source(item),
@@ -396,23 +385,19 @@ class ApifyGoogleMapsTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyGoogleMapsInput
 
-    def _run(
+    def _client_call(
         self,
         query: str,
         max_results: int = _DEFAULT_GOOGLE_MAPS_MAX_RESULTS,
         language: str | None = None,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.google_maps_search(
-                query,
-                max_results=self._clamp_items(max_results),
-                language=language,
-                timeout_secs=self.max_timeout_secs,
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, items)
+    ) -> _ClientCall:
+        return self._call(
+            'google_maps_search',
+            query,
+            max_results=self._clamp_items(max_results),
+            language=language,
+            timeout_secs=self.max_timeout_secs,
+        )
 
 
 class ApifyYouTubeScraperTool(_ApifyGenericTool):
@@ -456,23 +441,19 @@ class ApifyYouTubeScraperTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyYouTubeScraperInput
 
-    def _run(
+    def _client_call(
         self,
         search_query: str,
         search_type: YouTubeSearchType = 'search',
         max_results: int = _DEFAULT_YOUTUBE_MAX_RESULTS,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.youtube_scrape(
-                search_query=search_query,
-                search_type=search_type,
-                max_results=self._clamp_items(max_results),
-                timeout_secs=self.max_timeout_secs,
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, items)
+    ) -> _ClientCall:
+        return self._call(
+            'youtube_scrape',
+            search_query=search_query,
+            search_type=search_type,
+            max_results=self._clamp_items(max_results),
+            timeout_secs=self.max_timeout_secs,
+        )
 
 
 class ApifyEcommerceScraperTool(_ApifyGenericTool):
@@ -516,23 +497,19 @@ class ApifyEcommerceScraperTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyEcommerceScraperInput
 
-    def _run(
+    def _client_call(
         self,
         url: str,
         url_type: EcommerceUrlType = 'product',
         max_results: int = _DEFAULT_ECOMMERCE_MAX_RESULTS,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.ecommerce_scrape(
-                url,
-                url_type=url_type,
-                max_results=self._clamp_items(max_results),
-                timeout_secs=self.max_timeout_secs,
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, items)
+    ) -> _ClientCall:
+        return self._call(
+            'ecommerce_scrape',
+            url,
+            url_type=url_type,
+            max_results=self._clamp_items(max_results),
+            timeout_secs=self.max_timeout_secs,
+        )
 
 
 # Convenience tool-class list for selective agent binding.

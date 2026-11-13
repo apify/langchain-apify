@@ -145,7 +145,11 @@ inline-quotes = "single"
 
 [tool.ruff.lint.flake8-type-checking]
 # Pydantic resolves field annotations at runtime, so their imports can't move into a TYPE_CHECKING block.
-runtime-evaluated-base-classes = ["pydantic.BaseModel", "langchain_core.tools.BaseTool"]
+runtime-evaluated-base-classes = [
+    "pydantic.BaseModel",
+    "langchain_core.tools.BaseTool",
+    "langchain_apify.tools.base._ApifyGenericTool",
+]
 
 [tool.ruff.lint.pylint]
 max-branches = 18

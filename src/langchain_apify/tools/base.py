@@ -1,8 +1,8 @@
 """Shared base for generic Apify tools.
 
-Hosts the :class:`_ApifyGenericTool` base class, the JSON envelope helper,
-run-metadata helpers, the developer-controlled clamp methods, and the shared
-``_TOOL_RUN_ERRORS`` contract used by every tool ``_run``.
+Hosts the :class:`_ApifyGenericTool` base class with the shared ``_run`` and
+``_arun``, the JSON envelope helper, run-metadata helpers, the
+developer-controlled clamp methods, and the shared ``_TOOL_RUN_ERRORS`` contract.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ from __future__ import annotations
 import bisect
 import json
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from langchain_core.tools import BaseTool, ToolException
@@ -40,6 +41,32 @@ _VALID_MEMORY_MBYTES: tuple[int, ...] = (128, 256, 512, 1024, 2048, 4096, 8192, 
 # a failed/empty Actor run, ``ValueError`` from client-side input validation.
 _TOOL_RUN_ERRORS: tuple[type[Exception], ...] = (RuntimeError, ValueError)
 
+# Markers around tool output that the agent must treat as untrusted data, never as instructions.
+_UNTRUSTED_CONTENT_START = '<<<EXTERNAL_UNTRUSTED_CONTENT>>>'
+_UNTRUSTED_CONTENT_END = '<<<END_EXTERNAL_UNTRUSTED_CONTENT>>>'
+
+
+def _mark_untrusted(content: str, source: str) -> str:
+    """Wrap tool output in the untrusted content markers, after a line naming where it came from."""
+    # Scraped text could contain the markers and close the wrapper early.
+    for marker in (_UNTRUSTED_CONTENT_START, _UNTRUSTED_CONTENT_END):
+        content = content.replace(marker, '[marker removed]')
+    return f'{_UNTRUSTED_CONTENT_START}\nSource: {source}\n{content}\n{_UNTRUSTED_CONTENT_END}'
+
+
+@dataclass(frozen=True)
+class _ClientCall:
+    """The ``ApifyToolsClient`` method a tool runs, with its arguments.
+
+    ``_run`` calls ``method``, and ``_arun`` awaits its ``a``-prefixed async version with the same arguments.
+    """
+
+    method: str
+    args: tuple
+    kwargs: dict
+    # Turns the client's result into the tool output; without it, the tool's `_format_result` does.
+    format_result: Callable[[Any], str] | None = None
+
 
 def _run_meta(run: Run) -> dict:
     """Extract a compact metadata dict from an Apify ``Run``."""
@@ -65,7 +92,8 @@ class _ApifyGenericTool(BaseTool):
     LLM may provide at invocation time.
 
     Subclasses only need to declare ``name``, ``description``,
-    ``args_schema``, and ``_run()``.
+    ``args_schema``, and ``_client_call()``, which takes the tool's arguments
+    and returns the client call. ``_run`` and ``_arun`` are shared.
     """
 
     # Narrower than `BaseTool`'s on purpose: these tools' handlers return the error as a string.
@@ -89,6 +117,17 @@ class _ApifyGenericTool(BaseTool):
     max_crawl_depth: int = Field(
         default=_MAX_CRAWL_DEPTH_CAP, description='Upper bound for max_crawl_depth the LLM may request.'
     )
+    max_total_charge_usd: float | None = Field(
+        default=None,
+        description=(
+            'Maximum total cost in USD of each Actor or task run, or None for no limit.'
+            " A limit below the Actor's own minimum makes the run fail."
+        ),
+    )
+    mark_output_untrusted: bool = Field(
+        default=False,
+        description='Wrap the output in untrusted content markers, so the agent treats scraped content as data.',
+    )
 
     _client: ApifyToolsClient = PrivateAttr()
 
@@ -101,8 +140,43 @@ class _ApifyGenericTool(BaseTool):
         if self.apify_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self._client = ApifyToolsClient(apify_token=self.apify_token.get_secret_value())
+        self._client = ApifyToolsClient(
+            apify_token=self.apify_token.get_secret_value(), max_total_charge_usd=self.max_total_charge_usd
+        )
         super().model_post_init(context)
+
+    def _client_call(self, *args: Any, **kwargs: Any) -> _ClientCall:
+        """Return the client call for the tool's arguments; every tool implements it."""
+        raise NotImplementedError
+
+    @staticmethod
+    def _call(method: str, *args: Any, format_result: Callable[[Any], str] | None = None, **kwargs: Any) -> _ClientCall:
+        return _ClientCall(method, args, kwargs, format_result)
+
+    def _format_result(self, result: Any) -> str:
+        """Turn a ``(run, items)`` result into the envelope; tools whose client method returns more override it."""
+        run, items = result
+        return self._envelope(run, items)
+
+    def _run(self, *args: Any, **kwargs: Any) -> str:
+        try:
+            call = self._client_call(*args, **kwargs)
+            result = getattr(self._client, call.method)(*call.args, **call.kwargs)
+        except _TOOL_RUN_ERRORS as exc:
+            raise ToolException(str(exc)) from exc
+        return self._output(call, result)
+
+    async def _arun(self, *args: Any, **kwargs: Any) -> str:
+        try:
+            call = self._client_call(*args, **kwargs)
+            result = await getattr(self._client, f'a{call.method}')(*call.args, **call.kwargs)
+        except _TOOL_RUN_ERRORS as exc:
+            raise ToolException(str(exc)) from exc
+        return self._output(call, result)
+
+    def _output(self, call: _ClientCall, result: Any) -> str:
+        output = (call.format_result or self._format_result)(result)
+        return _mark_untrusted(output, f'apify:{self.name}') if self.mark_output_untrusted else output
 
     def _clamp_timeout(self, value: int) -> int:
         return max(1, min(value, self.max_timeout_secs))

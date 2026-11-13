@@ -4,6 +4,7 @@ import os
 import string
 import warnings
 from datetime import timedelta
+from decimal import Decimal
 from typing import TypeVar
 
 from apify_client import ApifyClient, ApifyClientAsync
@@ -168,6 +169,19 @@ def _run_timeout(timeout_secs: int | None) -> timedelta | None:
             apify-client's ``timeout`` argument, which bounds the HTTP request rather than the run.
     """
     return timedelta(seconds=timeout_secs) if timeout_secs is not None else None
+
+
+def _charge_limit(max_total_charge_usd: float | None) -> Decimal | None:
+    """Convert a charge limit in USD to the ``Decimal`` apify-client expects.
+
+    Args:
+        max_total_charge_usd (float, optional): Maximum total cost of the run in USD, or ``None`` for no limit.
+
+    Returns:
+        Decimal | None: The value for the ``max_total_charge_usd`` argument of ``.call()``. It goes through ``str``,
+            so a value like ``0.1`` stays exact.
+    """
+    return Decimal(str(max_total_charge_usd)) if max_total_charge_usd is not None else None
 
 
 T = TypeVar('T', bound=ApifyClient | ApifyClientAsync)

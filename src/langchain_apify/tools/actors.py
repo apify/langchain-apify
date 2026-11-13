@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any
 
-from apify_client import ApifyClient
+from apify_client import ApifyClient, ApifyClientAsync
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, PrivateAttr, SecretStr, create_model
 
@@ -17,15 +17,18 @@ from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import (
     _MAX_DESCRIPTION_LEN,
     _actor_id_to_tool_name,
+    _charge_limit,
     _create_apify_client,
     _get_actor_latest_build,
     _prune_actor_input_schema,
     _resolve_apify_token,
     _resolve_deprecated_token,
 )
+from langchain_apify.tools.base import _mark_untrusted
 
 if TYPE_CHECKING:
     from langchain_core.callbacks import (
+        AsyncCallbackManagerForToolRun,
         CallbackManagerForToolRun,
     )
 
@@ -63,13 +66,20 @@ class ApifyActorsTool(BaseTool):
     """
 
     _apify_client: ApifyClient = PrivateAttr()
+    # Created on the first async run, so sync-only use never opens a second HTTP client.
+    _apify_client_async: ApifyClientAsync | None = PrivateAttr(default=None)
+    _apify_token: str = PrivateAttr()
     _actor_id: str = PrivateAttr()
+    _max_total_charge_usd: float | None = PrivateAttr(default=None)
+    _mark_output_untrusted: bool = PrivateAttr(default=False)
 
     def __init__(
         self,
         actor_id: str,
         apify_token: str | SecretStr | None = None,
         *args: Any,
+        max_total_charge_usd: float | None = None,
+        mark_output_untrusted: bool = False,
         **kwargs: Any,
     ) -> None:
         """Initialize the tool with an Apify Actor.
@@ -79,6 +89,10 @@ class ApifyActorsTool(BaseTool):
             apify_token (Optional[str]): Apify API token.
             apify_api_token: Deprecated alias for ``apify_token``.
             *args: Additional arguments.
+            max_total_charge_usd (Optional[float]): Maximum total cost in USD of each Actor run, or
+                ``None`` for no limit. A limit below the Actor's own minimum makes the run fail.
+            mark_output_untrusted (bool): Return the dataset items as JSON wrapped in untrusted content
+                markers, so the agent treats scraped content as data. Off by default.
             **kwargs: Additional keyword arguments.
 
         Raises:
@@ -110,25 +124,53 @@ class ApifyActorsTool(BaseTool):
         super().__init__(*args, **kwargs)
 
         self._apify_client = apify_client
+        self._apify_token = _raw_token
         self._actor_id = actor_id
+        self._max_total_charge_usd = max_total_charge_usd
+        self._mark_output_untrusted = mark_output_untrusted
 
     def _run(
         self,
         run_input: str | dict,
         _: CallbackManagerForToolRun | None = None,
-    ) -> list[dict]:
+    ) -> list[dict] | str:
         """Use the Apify Actor.
 
         Args:
             run_input (Union[str, dict]): JSON input for the Actor.
 
         Returns:
-            list[dict]: The output dataset.
+            list[dict] | str: The output dataset, or with ``mark_output_untrusted`` the dataset as JSON
+                wrapped in untrusted content markers.
         """
+        return self._output(self._run_actor(self._input_dict(run_input)))
+
+    async def _arun(
+        self,
+        run_input: str | dict,
+        _: AsyncCallbackManagerForToolRun | None = None,
+    ) -> list[dict] | str:
+        """Use the Apify Actor on the async Apify client.
+
+        Args:
+            run_input (Union[str, dict]): JSON input for the Actor.
+
+        Returns:
+            list[dict] | str: The output dataset, or with ``mark_output_untrusted`` the dataset as JSON
+                wrapped in untrusted content markers.
+        """
+        return self._output(await self._arun_actor(self._input_dict(run_input)))
+
+    def _output(self, items: list[dict]) -> list[dict] | str:
+        if not self._mark_output_untrusted:
+            return items
+        return _mark_untrusted(json.dumps(items, default=str), f'apify:{self._actor_id}')
+
+    @staticmethod
+    def _input_dict(run_input: str | dict) -> dict:
         input_dict = json.loads(run_input) if isinstance(run_input, str) else run_input
         # retrieve if nested, just in case
-        input_dict = input_dict.get('run_input', input_dict)
-        return self._run_actor(input_dict)
+        return input_dict.get('run_input', input_dict)
 
     @staticmethod
     def _create_description(build: dict) -> str:
@@ -193,9 +235,27 @@ class ApifyActorsTool(BaseTool):
         Raises:
             ValueError: If the Actor was not started properly and no run details were returned
         """
-        if (details := self._apify_client.actor(actor_id=self._actor_id).call(run_input=run_input)) is None:
+        if (details := self._apify_client.actor(actor_id=self._actor_id).call(**self._call_kwargs(run_input))) is None:
             msg = f'Actor: {self._actor_id} was not started properly and details about the run were not returned'
             raise ValueError(msg)
         run = self._apify_client.run(run_id=details.id)
 
         return run.dataset().list_items(clean=True).items
+
+    async def _arun_actor(self, run_input: dict) -> list[dict]:
+        """Async version of :meth:`_run_actor`, on ``ApifyClientAsync``."""
+        if self._apify_client_async is None:
+            self._apify_client_async = _create_apify_client(ApifyClientAsync, self._apify_token)
+        actor = self._apify_client_async.actor(actor_id=self._actor_id)
+        if (details := await actor.call(**self._call_kwargs(run_input))) is None:
+            msg = f'Actor: {self._actor_id} was not started properly and details about the run were not returned'
+            raise ValueError(msg)
+        run = self._apify_client_async.run(run_id=details.id)
+
+        return (await run.dataset().list_items(clean=True)).items
+
+    def _call_kwargs(self, run_input: dict) -> dict:
+        call_kwargs: dict = {'run_input': run_input}
+        if self._max_total_charge_usd is not None:
+            call_kwargs['max_total_charge_usd'] = _charge_limit(self._max_total_charge_usd)
+        return call_kwargs

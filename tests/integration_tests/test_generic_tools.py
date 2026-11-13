@@ -12,6 +12,7 @@ import json
 import os
 
 import pytest
+from apify_client import ApifyClient
 
 from langchain_apify import (
     ApifyGetDatasetItemsTool,
@@ -62,6 +63,20 @@ def test_run_actor_and_get_items_tool_smoke() -> None:
     parsed = json.loads(result)
     assert parsed['run']['status'] == 'SUCCEEDED'
     assert isinstance(parsed['items'], list)
+
+
+async def test_run_actor_and_get_items_tool_ainvoke_with_a_charge_limit() -> None:
+    """`ainvoke` runs the Actor on the async Apify client, and the run carries the tool's charge limit."""
+    tool = ApifyRunActorAndGetDatasetTool(max_total_charge_usd=0.05)
+    result = await tool.ainvoke({'actor_id': _ACTOR_ID, 'run_input': _RUN_INPUT})
+
+    parsed = json.loads(result)
+    assert parsed['run']['status'] == 'SUCCEEDED'
+    assert parsed['items'][0]['sum'] == 5
+    run = ApifyClient(token=_resolve_apify_token()).run(parsed['run']['run_id']).get()
+    assert run is not None
+    assert run.options is not None
+    assert run.options.max_total_charge_usd == 0.05
 
 
 def test_scrape_url_tool_smoke() -> None:

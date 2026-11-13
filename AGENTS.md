@@ -11,7 +11,9 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) for issue, commit and PR conventions, an
 
 ## Components
 
-- Generic tools subclass `_ApifyGenericTool` and declare only `name`, `description`, `args_schema` and `_run`. They return the JSON envelope `{"run": {...}, "items": [...]}`, run Actors only through `ApifyToolsClient` in `_client.py`, and pass values the LLM supplies through the `_clamp_*` helpers on the base.
+- Generic tools subclass `_ApifyGenericTool` and declare only `name`, `description`, `args_schema` and `_client_call`, which returns the `ApifyToolsClient` method to call and its arguments. The base runs that method in `_run` and awaits its `a`-prefixed async version in `_arun`, so every client method a tool uses needs both. Tools return the JSON envelope `{"run": {...}, "items": [...]}` and pass values the LLM supplies through the `_clamp_*` helpers on the base.
+- In `_client.py`, each domain method builds its Actor call in a `*_call` method, and `run_call` or `arun_call` runs it, so the sync and async paths send the same input.
+- Settings the LLM must not change, like `max_total_charge_usd` and `mark_output_untrusted`, are tool fields or constructor arguments, never tool arguments.
 - `ApifyActorsTool` reads the Actor's latest build when it is constructed and builds its argument schema from the Actor's input schema. The build is a pydantic model from apify-client dumped to a dict, so a field the API leaves out is present as `None`, not missing.
 - Every Apify client comes from `_create_apify_client` in `_utils.py`, which adds the `x-apify-integration-platform: langchain` header and the `Origin/langchain` user-agent marker.
 - The token is `apify_token`, a `SecretStr` that falls back to the `APIFY_TOKEN` environment variable. `apify_api_token` and `APIFY_API_TOKEN` are deprecated aliases handled in `_utils.py`; don't add new fields for them.
