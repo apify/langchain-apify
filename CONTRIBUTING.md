@@ -59,4 +59,6 @@ resolution and raised ValueError if neither was present.
 - **Betas are automatic.** After a PR merges to `main`, `on_main.yaml` runs the checks and, for a `feat`, `fix`, `perf`, `refactor` or `style` commit, dispatches `manual_release_beta.yaml`, which publishes a beta to PyPI.
 - **Stable releases are manual.** A maintainer runs `manual_release_stable.yaml` from `main`. With `auto`, `git-cliff` picks the version from the commits since the last tag; `custom` takes an exact version. The workflow bumps `pyproject.toml`, writes the changelog, tags the release, creates the GitHub release and publishes to PyPI.
 
+Both release workflows publish through `release.yml`, the one workflow registered as the PyPI trusted publisher, so beta and stable releases have the same provenance.
+
 Neither needs any manual version or changelog edits.

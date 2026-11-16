@@ -461,9 +461,10 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyTwitterScraperInput
 
-    def _run(  # noqa: PLR0917 - LangChain calls `_run` with the tool's arguments as declared
+    def _run(
         self,
         search_query: str,
+        *,
         search_mode: TwitterSearchMode = 'search',
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         start: str | None = None,

@@ -68,7 +68,7 @@ class _ApifyGenericTool(BaseTool):
     ``args_schema``, and ``_run()``.
     """
 
-    # Narrower than `BaseTool`'s on purpose: these tools' handlers return the error as a string.
+    # Narrower than `BaseTool`'s, whose type uses `ToolExceptionHandlerOutput`, missing from older langchain-core.
     handle_tool_error: bool | str | Callable[[ToolException], str] | None = True  # ty: ignore[invalid-mutable-override]
 
     apify_token: SecretStr | None = Field(
