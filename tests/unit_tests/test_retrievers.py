@@ -25,7 +25,7 @@ RAG_ITEMS: list[dict] = [
 ]
 
 
-def _make_retriever(mock_client: MagicMock, **kwargs: Any) -> ApifySearchRetriever:  # noqa: ANN401
+def _make_retriever(mock_client: MagicMock, **kwargs: Any) -> ApifySearchRetriever:
     """Instantiate a retriever with a mocked ApifyToolsClient."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         retriever = ApifySearchRetriever(apify_token=SecretStr('dummy-token'), **kwargs)
@@ -61,10 +61,10 @@ def test_init_custom_params() -> None:
 
 def test_deprecated_apify_api_token_alias_warns() -> None:
     # ``apify_api_token`` is a runtime alias handled by a model validator, not a
-    # declared field, hence the call-arg ignore.
+    # declared field.
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         with pytest.warns(DeprecationWarning, match='apify_api_token'):
-            retriever = ApifySearchRetriever(apify_api_token=SecretStr('legacy-token'))  # type: ignore[call-arg]
+            retriever = ApifySearchRetriever(apify_api_token=SecretStr('legacy-token'))
         assert retriever.apify_token == SecretStr('legacy-token')
 
 

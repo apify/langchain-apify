@@ -1,0 +1,120 @@
+name: Stable release
+
+on:
+  # Runs when manually triggered from the GitHub UI, with options to specify the type of release.
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: Release type
+        required: true
+        type: choice
+        default: auto
+        options:
+          - auto
+          - custom
+          - patch
+          - minor
+          - major
+      custom_version:
+        description: The custom version to bump to (only for "custom" type)
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  wait_for_checks:
+    # Gate the release on the `Checks` workflow already succeeding on this commit (run by `on_main.yaml`).
+    name: Wait for required checks
+    runs-on: ubuntu-latest
+    permissions:
+      checks: read
+    steps:
+      - name: Wait for checks
+        uses: apify/actions/wait-for-checks@v1.6.2
+        with:
+          ref: ${{ github.sha }}
+          check-regexp: ^Checks
+
+  release_prepare:
+    name: Release prepare
+    needs: [wait_for_checks]
+    runs-on: ubuntu-latest
+    outputs:
+      version_number: ${{ steps.release_prepare.outputs.version_number }}
+      tag_name: ${{ steps.release_prepare.outputs.tag_name }}
+      changelog: ${{ steps.release_prepare.outputs.changelog }}
+      release_notes: ${{ steps.release_prepare.outputs.release_notes }}
+    steps:
+      - name: Verify running on main in the apify org
+        if: github.ref != 'refs/heads/main' || !startsWith(github.repository, 'apify/')
+        run: |
+          echo "::error title=Wrong branch or repository::Releases must run from main in an apify/ repository."
+          exit 1
+
+      - name: Validate inputs
+        if: inputs.release_type == 'custom' && inputs.custom_version == ''
+        run: |
+          echo "::error title=Missing custom_version::release_type is 'custom' but custom_version is empty."
+          exit 1
+
+      - uses: apify/actions/git-cliff-release@v1.6.2
+        name: Release prepare
+        id: release_prepare
+        with:
+          release_type: ${{ inputs.release_type }}
+          custom_version: ${{ inputs.custom_version }}
+          existing_changelog_path: CHANGELOG.md
+
+  changelog_update:
+    name: Changelog update
+    needs: [release_prepare]
+    permissions:
+      contents: write
+    uses: apify/workflows/.github/workflows/python_bump_and_update_changelog.yaml@main
+    with:
+      version_number: ${{ needs.release_prepare.outputs.version_number }}
+      changelog: ${{ needs.release_prepare.outputs.changelog }}
+    secrets: inherit
+
+  github_release:
+    name: GitHub release
+    needs: [release_prepare, changelog_update]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: GitHub release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: ${{ needs.release_prepare.outputs.tag_name }}
+          name: ${{ needs.release_prepare.outputs.version_number }}
+          target_commitish: ${{ needs.changelog_update.outputs.changelog_commitish }}
+          body: ${{ needs.release_prepare.outputs.release_notes }}
+
+  # Publishing runs as a separate workflow run of `release.yml` (see the comment there).
+  pypi_publish:
+    name: PyPI publish
+    needs: [release_prepare, changelog_update]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write # Required by execute-workflow.
+    steps:
+      - name: Dispatch PyPI publish workflow
+        uses: apify/actions/execute-workflow@v1.6.2
+        with:
+          workflow: release.yml
+          inputs: >
+            {
+              "version_number": "${{ needs.release_prepare.outputs.version_number }}",
+              "ref": "${{ needs.changelog_update.outputs.changelog_commitish }}",
+              "is_prerelease": "false"
+            }
