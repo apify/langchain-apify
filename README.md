@@ -44,7 +44,7 @@ pip install langchain-apify
 You should configure credentials by setting the following environment variable:
 - `APIFY_TOKEN`: Apify API token. (`APIFY_API_TOKEN` is also honoured as a deprecated alias for backwards compatibility.)
 
-Get your API token from [Apify Console](https://console.apify.com/settings/integrations?utm_source=langchain&utm_medium=integrations) — you'll be prompted to register a free Apify account if you don't have one yet.
+Create an API token for LangChain in [Apify Console](https://console.apify.com/settings/integrations?createApiToken=true&for=LangChain&utm_source=langchain&utm_medium=integrations) and copy it right after creating it — it is shown only once. You'll be prompted to register a free Apify account if you don't have one yet.
 
 ## Tools
 
