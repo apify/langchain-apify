@@ -11,6 +11,15 @@ from typing import TYPE_CHECKING
 from langchain_core.tools import ArgsSchema
 from pydantic import BaseModel, Field
 
+from langchain_apify._client import (
+    _FACEBOOK_ACTOR_ID,
+    _INSTAGRAM_ACTOR_ID,
+    _LINKEDIN_DETAIL_ACTOR_ID,
+    _LINKEDIN_POSTS_ACTOR_ID,
+    _LINKEDIN_SEARCH_ACTOR_ID,
+    _TIKTOK_ACTOR_ID,
+    _TWITTER_ACTOR_ID,
+)
 from langchain_apify._constants import (
     _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
     _DEFAULT_SOCIAL_RESULTS_LIMIT,
@@ -241,6 +250,7 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):
             max_results=self._clamp_items(max_results),
             only_posts_newer_than=only_posts_newer_than,
             timeout_secs=self.max_timeout_secs,
+            source=_INSTAGRAM_ACTOR_ID,
         )
 
 
@@ -293,6 +303,7 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):
             profile_url=profile_url,
             max_results=self._clamp_items(max_results),
             timeout_secs=self.max_timeout_secs,
+            source=_LINKEDIN_POSTS_ACTOR_ID,
         )
 
 
@@ -345,6 +356,7 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):
             query=query,
             max_results=self._clamp_items(max_results),
             timeout_secs=self.max_timeout_secs,
+            source=_LINKEDIN_SEARCH_ACTOR_ID,
         )
 
 
@@ -397,6 +409,7 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):
             profile_url=profile_url,
             include_email=include_email,
             timeout_secs=self.max_timeout_secs,
+            source=_LINKEDIN_DETAIL_ACTOR_ID,
         )
 
 
@@ -462,6 +475,7 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):
             end=end,
             sort=sort,
             timeout_secs=self.max_timeout_secs,
+            source=_TWITTER_ACTOR_ID,
         )
 
     def _format_result(self, result: tuple) -> str:
@@ -523,6 +537,7 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):
             search_type=search_type,
             max_results=self._clamp_items(max_results),
             timeout_secs=self.max_timeout_secs,
+            source=_TIKTOK_ACTOR_ID,
         )
 
 
@@ -583,6 +598,7 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):
             only_posts_newer_than=only_posts_newer_than,
             only_posts_older_than=only_posts_older_than,
             timeout_secs=self.max_timeout_secs,
+            source=_FACEBOOK_ACTOR_ID,
         )
 
 

@@ -11,6 +11,9 @@ from typing import TYPE_CHECKING
 from langchain_core.tools import ArgsSchema
 from pydantic import BaseModel, Field
 
+from langchain_apify._client import (
+    _WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
+)
 from langchain_apify._constants import (
     _DEFAULT_DATASET_ITEMS_LIMIT,
     _DEFAULT_RUN_TIMEOUT_SECS,
@@ -164,6 +167,7 @@ class ApifyRunActorTool(_ApifyGenericTool):
             self._clamp_timeout(timeout_secs),
             self._clamp_memory(memory_mbytes),
             format_result=lambda run: self._envelope(run, []),
+            source=None,
         )
 
 
@@ -215,6 +219,7 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):
             self._clamp_items(limit),
             max(0, offset),
             format_result=lambda items: self._envelope(None, items),
+            source=f'dataset/{dataset_id}',
         )
 
 
@@ -275,6 +280,7 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):
             self._clamp_timeout(timeout_secs),
             self._clamp_memory(memory_mbytes),
             self._clamp_items(dataset_items_limit),
+            source=actor_id,
         )
 
 
@@ -327,6 +333,7 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):
             url,
             self._clamp_timeout(timeout_secs),
             format_result=lambda result: self._envelope(result[0], [{'url': url, 'content': result[2]}]),
+            source=_WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
         )
 
 
@@ -387,6 +394,7 @@ class ApifyRunTaskTool(_ApifyGenericTool):
             self._clamp_timeout(timeout_secs),
             self._clamp_memory(memory_mbytes),
             format_result=lambda run: self._envelope(run, []),
+            source=None,
         )
 
 
@@ -447,6 +455,7 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):
             self._clamp_timeout(timeout_secs),
             self._clamp_memory(memory_mbytes),
             self._clamp_items(dataset_items_limit),
+            source=f'task/{task_id}',
         )
 
 

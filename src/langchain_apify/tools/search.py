@@ -11,6 +11,14 @@ from typing import TYPE_CHECKING
 from langchain_core.tools import ArgsSchema
 from pydantic import BaseModel, Field, field_validator
 
+from langchain_apify._client import (
+    _ECOMMERCE_SCRAPER_ACTOR_ID,
+    _GOOGLE_MAPS_ACTOR_ID,
+    _GOOGLE_SEARCH_ACTOR_ID,
+    _RAG_WEB_BROWSER_ACTOR_ID,
+    _WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
+    _YOUTUBE_SCRAPER_ACTOR_ID,
+)
 from langchain_apify._constants import (
     _DEFAULT_CRAWLER_TYPE,
     _DEFAULT_ECOMMERCE_MAX_RESULTS,
@@ -204,6 +212,7 @@ class ApifyGoogleSearchTool(_ApifyGenericTool):
             country_code=country_code,
             language_code=language_code,
             timeout_secs=self._clamp_timeout(timeout_secs),
+            source=_GOOGLE_SEARCH_ACTOR_ID,
         )
 
 
@@ -265,6 +274,7 @@ class ApifyWebCrawlerTool(_ApifyGenericTool):
             max_crawl_depth=self._clamp_depth(max_crawl_depth),
             crawler_type=crawler_type,
             timeout_secs=self._clamp_timeout(timeout_secs),
+            source=_WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
         )
 
     def _format_result(self, result: tuple) -> str:
@@ -331,7 +341,11 @@ class ApifyRAGWebBrowserTool(_ApifyGenericTool):
         max_results: int = _DEFAULT_RAG_MAX_RESULTS,
     ) -> _ClientCall:
         return self._call(
-            'rag_web_search', query, max_results=self._clamp_items(max_results), timeout_secs=self.max_timeout_secs
+            'rag_web_search',
+            query,
+            max_results=self._clamp_items(max_results),
+            timeout_secs=self.max_timeout_secs,
+            source=_RAG_WEB_BROWSER_ACTOR_ID,
         )
 
     def _format_result(self, result: tuple) -> str:
@@ -397,6 +411,7 @@ class ApifyGoogleMapsTool(_ApifyGenericTool):
             max_results=self._clamp_items(max_results),
             language=language,
             timeout_secs=self.max_timeout_secs,
+            source=_GOOGLE_MAPS_ACTOR_ID,
         )
 
 
@@ -453,6 +468,7 @@ class ApifyYouTubeScraperTool(_ApifyGenericTool):
             search_type=search_type,
             max_results=self._clamp_items(max_results),
             timeout_secs=self.max_timeout_secs,
+            source=_YOUTUBE_SCRAPER_ACTOR_ID,
         )
 
 
@@ -509,6 +525,7 @@ class ApifyEcommerceScraperTool(_ApifyGenericTool):
             url_type=url_type,
             max_results=self._clamp_items(max_results),
             timeout_secs=self.max_timeout_secs,
+            source=_ECOMMERCE_SCRAPER_ACTOR_ID,
         )
 
 

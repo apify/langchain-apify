@@ -71,7 +71,7 @@ class ApifyActorsTool(BaseTool):
     _apify_token: str = PrivateAttr()
     _actor_id: str = PrivateAttr()
     _max_total_charge_usd: float | None = PrivateAttr(default=None)
-    _mark_output_untrusted: bool = PrivateAttr(default=False)
+    _mark_output_untrusted: bool = PrivateAttr(default=True)
 
     def __init__(
         self,
@@ -79,7 +79,7 @@ class ApifyActorsTool(BaseTool):
         apify_token: str | SecretStr | None = None,
         *args: Any,
         max_total_charge_usd: float | None = None,
-        mark_output_untrusted: bool = False,
+        mark_output_untrusted: bool = True,
         **kwargs: Any,
     ) -> None:
         """Initialize the tool with an Apify Actor.
@@ -92,7 +92,8 @@ class ApifyActorsTool(BaseTool):
             max_total_charge_usd (Optional[float]): Maximum total cost in USD of each Actor run, or
                 ``None`` for no limit. A limit below the Actor's own minimum makes the run fail.
             mark_output_untrusted (bool): Return the dataset items as JSON wrapped in untrusted content
-                markers, so the agent treats scraped content as data. Off by default.
+                markers, so the agent treats scraped content as data. On by default; set ``False`` to get
+                the items as a list.
             **kwargs: Additional keyword arguments.
 
         Raises:
@@ -140,8 +141,8 @@ class ApifyActorsTool(BaseTool):
             run_input (Union[str, dict]): JSON input for the Actor.
 
         Returns:
-            list[dict] | str: The output dataset, or with ``mark_output_untrusted`` the dataset as JSON
-                wrapped in untrusted content markers.
+            list[dict] | str: The output dataset as JSON wrapped in untrusted content markers, or as a list
+                with ``mark_output_untrusted=False``.
         """
         return self._output(self._run_actor(self._input_dict(run_input)))
 
@@ -156,8 +157,8 @@ class ApifyActorsTool(BaseTool):
             run_input (Union[str, dict]): JSON input for the Actor.
 
         Returns:
-            list[dict] | str: The output dataset, or with ``mark_output_untrusted`` the dataset as JSON
-                wrapped in untrusted content markers.
+            list[dict] | str: The output dataset as JSON wrapped in untrusted content markers, or as a list
+                with ``mark_output_untrusted=False``.
         """
         return self._output(await self._arun_actor(self._input_dict(run_input)))
 

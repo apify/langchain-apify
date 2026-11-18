@@ -140,7 +140,9 @@ def actors_tool_clients() -> Iterator[tuple[MagicMock, MagicMock]]:
 async def test_actors_tool_ainvoke_runs_on_the_async_client(actors_tool_clients: tuple[MagicMock, MagicMock]) -> None:
     """`ApifyActorsTool` runs the Actor on the async client, with its charge limit, and returns the dataset items."""
     sync_client, async_client = actors_tool_clients
-    tool = ApifyActorsTool('apify/hello-world', apify_token='dummy-token', max_total_charge_usd=0.25)
+    tool = ApifyActorsTool(
+        'apify/hello-world', apify_token='dummy-token', max_total_charge_usd=0.25, mark_output_untrusted=False
+    )
 
     items = await tool.ainvoke({'run_input': '{"a": 1}'})
 

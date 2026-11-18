@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+from typing import Any
 
 import pytest
 from apify_client import ApifyClient
@@ -32,12 +34,27 @@ pytestmark = pytest.mark.skipif(
     reason='APIFY_TOKEN not set',
 )
 
+_WRAPPER = re.compile(
+    r'\A<<<EXTERNAL_UNTRUSTED_CONTENT id=(?P<id>[0-9a-f]{16})>>>\n.*?\n.*?\n(?P<content>.*)\n'
+    r'<<<END_EXTERNAL_UNTRUSTED_CONTENT id=(?P=id)>>>\Z',
+    re.DOTALL,
+)
+
+
+def _payload(result: str) -> Any:
+    """Return the tool's JSON envelope, first checking and removing the untrusted content markers, if any."""
+    if result.startswith('<<<EXTERNAL_UNTRUSTED_CONTENT'):
+        match = _WRAPPER.match(result)
+        assert match, result[:300]
+        result = match['content']
+    return json.loads(result)
+
 
 def test_run_actor_tool_smoke() -> None:
     tool = ApifyRunActorTool()
     result = tool.invoke({'actor_id': _ACTOR_ID, 'run_input': _RUN_INPUT})
 
-    parsed = json.loads(result)
+    parsed = _payload(result)
     assert parsed['run']['status'] == 'SUCCEEDED'
     assert parsed['run']['run_id']
     assert parsed['run']['dataset_id']
@@ -45,13 +62,13 @@ def test_run_actor_tool_smoke() -> None:
 
 def test_get_dataset_items_tool_smoke() -> None:
     run_tool = ApifyRunActorTool()
-    run_result = json.loads(run_tool.invoke({'actor_id': _ACTOR_ID, 'run_input': _RUN_INPUT}))
+    run_result = _payload(run_tool.invoke({'actor_id': _ACTOR_ID, 'run_input': _RUN_INPUT}))
     dataset_id = run_result['run']['dataset_id']
 
     items_tool = ApifyGetDatasetItemsTool()
     result = items_tool.invoke({'dataset_id': dataset_id, 'limit': 10})
 
-    parsed = json.loads(result)
+    parsed = _payload(result)
     assert 'items' in parsed
     assert isinstance(parsed['items'], list)
 
@@ -60,7 +77,7 @@ def test_run_actor_and_get_items_tool_smoke() -> None:
     tool = ApifyRunActorAndGetDatasetTool()
     result = tool.invoke({'actor_id': _ACTOR_ID, 'run_input': _RUN_INPUT})
 
-    parsed = json.loads(result)
+    parsed = _payload(result)
     assert parsed['run']['status'] == 'SUCCEEDED'
     assert isinstance(parsed['items'], list)
 
@@ -70,7 +87,7 @@ async def test_run_actor_and_get_items_tool_ainvoke_with_a_charge_limit() -> Non
     tool = ApifyRunActorAndGetDatasetTool(max_total_charge_usd=0.05)
     result = await tool.ainvoke({'actor_id': _ACTOR_ID, 'run_input': _RUN_INPUT})
 
-    parsed = json.loads(result)
+    parsed = _payload(result)
     assert parsed['run']['status'] == 'SUCCEEDED'
     assert parsed['items'][0]['sum'] == 5
     run = ApifyClient(token=_resolve_apify_token()).run(parsed['run']['run_id']).get()
@@ -83,7 +100,7 @@ def test_scrape_url_tool_smoke() -> None:
     tool = ApifyScrapeUrlTool()
     result = tool.invoke({'url': 'https://crawlee.dev'})
 
-    parsed = json.loads(result)
+    parsed = _payload(result)
     assert parsed['run']['status'] == 'SUCCEEDED'
     assert parsed['items'][0]['content']
 
@@ -96,7 +113,7 @@ def test_run_task_tool_smoke() -> None:
     tool = ApifyRunTaskTool()
     result = tool.invoke({'task_id': _TASK_ID})
 
-    parsed = json.loads(result)
+    parsed = _payload(result)
     assert parsed['run']['status'] == 'SUCCEEDED'
     assert parsed['run']['run_id']
     assert parsed['run']['dataset_id']
@@ -107,6 +124,6 @@ def test_run_task_and_get_items_tool_smoke() -> None:
     tool = ApifyRunTaskAndGetDatasetTool()
     result = tool.invoke({'task_id': _TASK_ID})
 
-    parsed = json.loads(result)
+    parsed = _payload(result)
     assert parsed['run']['status'] == 'SUCCEEDED'
     assert isinstance(parsed['items'], list)
