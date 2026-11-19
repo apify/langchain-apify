@@ -117,7 +117,7 @@ class _ApifyGenericTool(BaseTool):
     and returns the client call. ``_run`` and ``_arun`` are shared.
     """
 
-    # Narrower than `BaseTool`'s on purpose: these tools' handlers return the error as a string.
+    # Narrower than `BaseTool`'s, whose type uses `ToolExceptionHandlerOutput`, missing from older langchain-core.
     handle_tool_error: bool | str | Callable[[ToolException], str] | None = True  # ty: ignore[invalid-mutable-override]
 
     apify_token: SecretStr | None = Field(

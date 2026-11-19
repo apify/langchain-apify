@@ -52,7 +52,7 @@ class TestApifyActorsToolIntegration(ToolsIntegrationTests):
 
 
 def test_actors_tool_builds_for_an_actor_without_a_description() -> None:
-    """`apify/hello-world` has no `description` in its `actor.json`; building its tool raised `TypeError` in 0.1.9b3."""
+    """`ApifyActorsTool` builds for an Actor whose `actor.json` has no `description`."""
     tool = ApifyActorsTool('apify/hello-world')
 
     assert tool.description == ''
