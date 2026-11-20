@@ -8,7 +8,10 @@ def _load(file: str) -> None:
     if spec is None or spec.loader is None:
         msg = f'Cannot load {file}'
         raise ImportError(msg)
-    spec.loader.exec_module(importlib.util.module_from_spec(spec))
+    module = importlib.util.module_from_spec(spec)
+    # Register the module as `load_module` did; dataclasses look up their module in `sys.modules`.
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
 
 
 if __name__ == '__main__':

@@ -72,6 +72,7 @@ def test_run_actor_method(apify_actors_tool_fixture: ApifyActorsTool) -> None:
             run_input={'query': 'what is Apify?', 'maxResults': 3},
         )
         mock_run_actor.assert_called_once()
+        assert isinstance(result, list)
         assert result[0]['text'] == 'Apify is great!'
 
 
@@ -100,7 +101,7 @@ def apify_actors_tool_fixture() -> Generator[ApifyActorsTool, None, None]:
 
         mock_build_tool_args_schema_model.return_value = DummyModel
 
-        tool = ApifyActorsTool(actor_id='apify/python-example', apify_token='dummy-token')
+        tool = ApifyActorsTool(actor_id='apify/python-example', apify_token='dummy-token', mark_output_untrusted=False)
         yield tool
 
 

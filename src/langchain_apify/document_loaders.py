@@ -156,6 +156,9 @@ class ApifyCrawlLoader(BaseLoader):
         max_crawl_depth: Maximum link-follow depth from the seed URL.
         crawler_type: Crawler engine (e.g. ``"cheerio"``, ``"playwright:firefox"``).
         timeout_secs: Maximum time in seconds to wait for the crawl.
+        max_total_charge_usd: Maximum total cost in USD of the crawl run, or
+            *None* for no limit. A limit below the Actor's own minimum makes
+            the run fail.
 
     Returns:
         Iterator (or list) of ``Document`` objects.  ``page_content`` contains
@@ -187,6 +190,7 @@ class ApifyCrawlLoader(BaseLoader):
         max_crawl_depth: int = _DEFAULT_MAX_CRAWL_DEPTH,
         crawler_type: CrawlerType = _DEFAULT_CRAWLER_TYPE,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
+        max_total_charge_usd: float | None = None,
     ) -> None:
         apify_token = _resolve_deprecated_token(apify_token, apify_api_token)
 
@@ -195,7 +199,7 @@ class ApifyCrawlLoader(BaseLoader):
         self.max_crawl_depth = max_crawl_depth
         self.crawler_type: CrawlerType = crawler_type
         self.timeout_secs = timeout_secs
-        self._client = ApifyToolsClient(apify_token=apify_token)
+        self._client = ApifyToolsClient(apify_token=apify_token, max_total_charge_usd=max_total_charge_usd)
 
     def lazy_load(self) -> Iterator[Document]:
         """Crawl the website and yield Documents.

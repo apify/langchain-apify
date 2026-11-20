@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
@@ -25,6 +24,8 @@ from langchain_apify._utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from langchain_core.callbacks import (
         AsyncCallbackManagerForRetrieverRun,
         CallbackManagerForRetrieverRun,
@@ -44,6 +45,9 @@ class ApifySearchRetriever(BaseRetriever):
         apify_api_token: Deprecated alias for ``apify_token``.
         max_results: Maximum number of ``Document`` objects to return per query.
         timeout_secs: Maximum time in seconds to wait for the Actor run.
+        max_total_charge_usd: Maximum total cost in USD of each Actor run, or
+            *None* for no limit. A limit below the Actor's own minimum makes
+            the run fail.
 
     Returns:
         List of ``Document`` objects.  ``page_content`` contains the crawled
@@ -69,6 +73,14 @@ class ApifySearchRetriever(BaseRetriever):
     )
     max_results: int = Field(default=_DEFAULT_RAG_MAX_RESULTS, description='Maximum number of documents to return.')
     timeout_secs: int = Field(default=_DEFAULT_RUN_TIMEOUT_SECS, description='Maximum Actor run time in seconds.')
+    # Frozen, because the client holds the limit; `model_copy` builds a new client for a copy with another limit.
+    max_total_charge_usd: float | None = Field(
+        default=None,
+        gt=0,
+        allow_inf_nan=False,
+        frozen=True,
+        description='Maximum total cost in USD of each Actor run, or None for no limit.',
+    )
 
     _client: ApifyToolsClient = PrivateAttr()
 
@@ -84,11 +96,23 @@ class ApifySearchRetriever(BaseRetriever):
         before constructing the client, so the failure mode is consistent
         across tools and the retriever.
         """
+        self._client = self._new_client()
+        super().model_post_init(context)
+
+    def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> Self:
+        """Copy the retriever; the copy gets its own client, with its own token and charge limit."""
+        copy = super().model_copy(update=update, deep=deep)
+        # The client holds the token and limit it was created with, so the copy needs its own.
+        copy._client = copy._new_client()  # noqa: SLF001 - the copy is an instance of this class
+        return copy
+
+    def _new_client(self) -> ApifyToolsClient:
         if self.apify_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self._client = ApifyToolsClient(apify_token=self.apify_token.get_secret_value())
-        super().model_post_init(context)
+        return ApifyToolsClient(
+            apify_token=self.apify_token.get_secret_value(), max_total_charge_usd=self.max_total_charge_usd
+        )
 
     def _clamped_max_results(self) -> int:
         """Clamp ``max_results`` to the rag-web-browser Actor's ceiling.
@@ -117,9 +141,7 @@ class ApifySearchRetriever(BaseRetriever):
         *,
         run_manager: AsyncCallbackManagerForRetrieverRun | None = None,  # noqa: ARG002
     ) -> list[Document]:
-        # ApifyToolsClient is sync-only.
-        _, items = await asyncio.to_thread(
-            self._client.rag_web_search,
+        _, items = await self._client.arag_web_search(
             query,
             max_results=self._clamped_max_results(),
             timeout_secs=self.timeout_secs,

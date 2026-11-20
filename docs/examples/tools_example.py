@@ -15,9 +15,8 @@ tool = ApifyActorsTool(actor_id='apify/rag-web-browser')
 
 # Example: Use the tool directly to call the Apify Actor
 print('Calling tool ...')
-results = tool.invoke(input={'run_input': {'query': 'what are Apify Actors?', 'maxResults': 3}})
-for result in results:
-    print(result)
+# The items come back as JSON wrapped in untrusted content markers; pass `mark_output_untrusted=False` to get a list.
+print(tool.invoke(input={'run_input': {'query': 'what are Apify Actors?', 'maxResults': 3}}))
 
 # Example: Use the tool with an agent
 tools = [tool]
