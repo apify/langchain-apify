@@ -51,9 +51,10 @@ _UNTRUSTED_CONTENT_START = '<<<EXTERNAL_UNTRUSTED_CONTENT id={id}>>>'
 _UNTRUSTED_CONTENT_END = '<<<END_EXTERNAL_UNTRUSTED_CONTENT id={id}>>>'
 # Fake markers in the content are still removed, so the model sees fewer of them. This also matches case and
 # whitespace variants and a copied `id=...`. Whitespace includes the `\t`, `\n` and `\r` escapes, also between the
-# words, because the content is usually JSON, where a tab or newline in a scraped page appears escaped.
+# words, because the content is usually JSON, where a tab or newline in a scraped page appears escaped. Between the
+# words, an underscore may also follow backslashes, because markdown escapes `_` as `\_`, which is `\\_` in JSON.
 _SPACE = r'(?:\s|\\[tnr])*'
-_GAP = r'(?:[\s_]|\\[tnr])'
+_GAP = r'(?:[\s_]|\\[tnr]|\\+_)'
 _MARKER_PATTERN = re.compile(
     rf'<<<{_SPACE}(?:END{_GAP}*)?EXTERNAL{_GAP}+UNTRUSTED{_GAP}+CONTENT{_SPACE}(?:id{_SPACE}={_SPACE}[^\s>]*{_SPACE})?>>>',
     re.IGNORECASE,
