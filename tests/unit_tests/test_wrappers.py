@@ -192,3 +192,20 @@ async def test_acall_actor_task_passes_the_charge_limit(
         max_total_charge_usd=max_total_charge_usd,
     )
     assert async_client.task.return_value.call.call_args.kwargs['max_total_charge_usd'] == expected
+
+
+@pytest.mark.parametrize('value', [0, -1, float('nan'), float('inf')], ids=['zero', 'negative', 'nan', 'inf'])
+def test_call_actor_rejects_an_invalid_charge_limit(
+    wrapper: tuple[ApifyWrapper, MagicMock, MagicMock], value: float
+) -> None:
+    """An invalid limit fails before the run is started."""
+    apify_wrapper, sync_client, _ = wrapper
+
+    with pytest.raises(ValueError, match='max_total_charge_usd'):
+        apify_wrapper.call_actor(
+            actor_id='apify/hello-world',
+            run_input={},
+            dataset_mapping_function=_noop_mapping,
+            max_total_charge_usd=value,
+        )
+    sync_client.actor.return_value.call.assert_not_called()

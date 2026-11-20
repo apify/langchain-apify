@@ -13,7 +13,7 @@ import re
 import secrets
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from langchain_core.tools import BaseTool, ToolException
 from pydantic import Field, PrivateAttr, SecretStr, model_validator
@@ -32,6 +32,8 @@ from langchain_apify._utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     # apify-client 3.x exports its response models only from this private module.
     from apify_client._models import Run
 
@@ -48,11 +50,12 @@ _TOOL_RUN_ERRORS: tuple[type[Exception], ...] = (RuntimeError, ValueError)
 _UNTRUSTED_CONTENT_START = '<<<EXTERNAL_UNTRUSTED_CONTENT id={id}>>>'
 _UNTRUSTED_CONTENT_END = '<<<END_EXTERNAL_UNTRUSTED_CONTENT id={id}>>>'
 # Fake markers in the content are still removed, so the model sees fewer of them. This also matches case and
-# whitespace variants and a copied `id=...`. Whitespace includes the `\t`, `\n` and `\r` escapes, because the
-# content is usually JSON, where a tab or newline in a scraped page appears escaped.
+# whitespace variants and a copied `id=...`. Whitespace includes the `\t`, `\n` and `\r` escapes, also between the
+# words, because the content is usually JSON, where a tab or newline in a scraped page appears escaped.
 _SPACE = r'(?:\s|\\[tnr])*'
+_GAP = r'(?:[\s_]|\\[tnr])'
 _MARKER_PATTERN = re.compile(
-    rf'<<<{_SPACE}(?:END[\s_]*)?EXTERNAL[\s_]+UNTRUSTED[\s_]+CONTENT{_SPACE}(?:id{_SPACE}={_SPACE}[^\s>]*{_SPACE})?>>>',
+    rf'<<<{_SPACE}(?:END{_GAP}*)?EXTERNAL{_GAP}+UNTRUSTED{_GAP}+CONTENT{_SPACE}(?:id{_SPACE}={_SPACE}[^\s>]*{_SPACE})?>>>',
     re.IGNORECASE,
 )
 
@@ -138,8 +141,12 @@ class _ApifyGenericTool(BaseTool):
     max_crawl_depth: int = Field(
         default=_MAX_CRAWL_DEPTH_CAP, description='Upper bound for max_crawl_depth the LLM may request.'
     )
+    # Frozen, because the client holds the limit; `model_copy` builds a new client for a copy with another limit.
     max_total_charge_usd: float | None = Field(
         default=None,
+        gt=0,
+        allow_inf_nan=False,
+        frozen=True,
         description=(
             'Maximum total cost in USD of each Actor or task run, or None for no limit.'
             " A limit below the Actor's own minimum makes the run fail."
@@ -161,13 +168,22 @@ class _ApifyGenericTool(BaseTool):
         return _resolve_deprecated_token_values(values)
 
     def model_post_init(self, context: Any) -> None:
+        self._client = self._new_client()
+        super().model_post_init(context)
+
+    def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> Self:
+        copy = super().model_copy(update=update, deep=deep)
+        # The client holds the token and limit it was created with, so the copy needs its own.
+        copy._client = copy._new_client()  # noqa: SLF001 - the copy is an instance of this class
+        return copy
+
+    def _new_client(self) -> ApifyToolsClient:
         if self.apify_token is None:
             msg = _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
             raise ValueError(msg)
-        self._client = ApifyToolsClient(
+        return ApifyToolsClient(
             apify_token=self.apify_token.get_secret_value(), max_total_charge_usd=self.max_total_charge_usd
         )
-        super().model_post_init(context)
 
     def _client_call(self, *args: Any, **kwargs: Any) -> _ClientCall:
         """Return the client call for the tool's arguments; every tool implements it."""
@@ -245,4 +261,4 @@ class _ApifyGenericTool(BaseTool):
         payload: dict = {'run': _run_meta(run) if run is not None else None, 'items': items}
         if notice is not None:
             payload['notice'] = notice
-        return json.dumps(payload, default=str)
+        return json.dumps(payload, default=str, ensure_ascii=False)

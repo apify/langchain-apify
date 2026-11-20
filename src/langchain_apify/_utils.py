@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 import string
 import warnings
@@ -180,8 +181,16 @@ def _charge_limit(max_total_charge_usd: float | None) -> Decimal | None:
     Returns:
         Decimal | None: The value for the ``max_total_charge_usd`` argument of ``.call()``. It goes through ``str``,
             so a value like ``0.1`` stays exact.
+
+    Raises:
+        ValueError: If the limit is not a positive, finite number.
     """
-    return Decimal(str(max_total_charge_usd)) if max_total_charge_usd is not None else None
+    if max_total_charge_usd is None:
+        return None
+    if not math.isfinite(max_total_charge_usd) or max_total_charge_usd <= 0:
+        msg = f'max_total_charge_usd must be a positive, finite number of USD, got {max_total_charge_usd!r}.'
+        raise ValueError(msg)
+    return Decimal(str(max_total_charge_usd))
 
 
 T = TypeVar('T', bound=ApifyClient | ApifyClientAsync)

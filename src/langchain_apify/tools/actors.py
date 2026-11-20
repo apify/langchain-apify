@@ -99,6 +99,8 @@ class ApifyActorsTool(BaseTool):
         Raises:
             ValueError: If the ``APIFY_TOKEN`` environment variable is not set
         """
+        # Fail on an invalid limit now rather than when the first run starts.
+        _charge_limit(max_total_charge_usd)
         if 'apify_api_token' in kwargs:
             apify_token = _resolve_deprecated_token(apify_token, kwargs.pop('apify_api_token'))
 
@@ -165,7 +167,7 @@ class ApifyActorsTool(BaseTool):
     def _output(self, items: list[dict]) -> list[dict] | str:
         if not self._mark_output_untrusted:
             return items
-        return _mark_untrusted(json.dumps(items, default=str), f'apify:{self._actor_id}')
+        return _mark_untrusted(json.dumps(items, default=str, ensure_ascii=False), f'apify:{self._actor_id}')
 
     @staticmethod
     def _input_dict(run_input: str | dict) -> dict:

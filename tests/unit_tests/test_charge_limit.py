@@ -10,8 +10,9 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
 
-from langchain_apify import ApifyActorsTool, ApifyRunActorTool, ApifySearchRetriever
+from langchain_apify import ApifyActorsTool, ApifyCrawlLoader, ApifyRunActorTool, ApifySearchRetriever
 from langchain_apify._client import ApifyToolsClient
 from langchain_apify._utils import _charge_limit
 from tests.unit_tests.conftest import SUCCEEDED_RUN
@@ -125,3 +126,96 @@ def test_actors_tool_without_a_limit_leaves_the_call_unchanged() -> None:
     tool._run_actor({})
 
     apify_client.actor.return_value.call.assert_called_once_with(run_input={})
+
+
+_INVALID_LIMITS = [
+    pytest.param(0, id='zero'),
+    pytest.param(-1, id='negative'),
+    pytest.param(float('nan'), id='nan'),
+    pytest.param(float('inf'), id='inf'),
+]
+
+
+@pytest.mark.parametrize('value', _INVALID_LIMITS)
+def test_invalid_limits_are_rejected_up_front(value: float) -> None:
+    """A limit that isn't a positive finite number fails when the limit is set, not when a run starts."""
+    build = {'actorDefinition': {'input': {'type': 'object', 'properties': {}}}}
+    with (
+        patch('langchain_apify._client._create_apify_client'),
+        patch('langchain_apify.tools.actors._create_apify_client'),
+        patch('langchain_apify.tools.actors._get_actor_latest_build', return_value=build),
+    ):
+        with pytest.raises(ValueError, match='max_total_charge_usd'):
+            _charge_limit(value)
+        with pytest.raises(ValidationError):
+            ApifyRunActorTool(apify_token='dummy-token', max_total_charge_usd=value)
+        with pytest.raises(ValidationError):
+            ApifySearchRetriever(apify_token='dummy-token', max_total_charge_usd=value)
+        with pytest.raises(ValueError, match='max_total_charge_usd'):
+            ApifyToolsClient(apify_token='dummy-token', max_total_charge_usd=value)
+        with pytest.raises(ValueError, match='max_total_charge_usd'):
+            ApifyCrawlLoader('https://example.com', apify_token='dummy-token', max_total_charge_usd=value)
+        with pytest.raises(ValueError, match='max_total_charge_usd'):
+            ApifyActorsTool('apify/hello-world', apify_token='dummy-token', max_total_charge_usd=value)
+
+
+def _client_factory(created: list[MagicMock]) -> object:
+    """A stand-in for `_create_apify_client` that hands out a new mock Apify client each time and records it."""
+
+    def create(*_args: object) -> MagicMock:
+        apify_client = MagicMock()
+        apify_client.actor.return_value.call.return_value = SUCCEEDED_RUN
+        apify_client.dataset.return_value.list_items.return_value.items = []
+        created.append(apify_client)
+        return apify_client
+
+    return create
+
+
+def test_a_copy_with_a_new_limit_runs_with_that_limit() -> None:
+    """A copy made with `model_copy(update=...)` gets its own client, so only its runs carry the new limit."""
+    created: list[MagicMock] = []
+    with patch('langchain_apify._client._create_apify_client', side_effect=_client_factory(created)):
+        tool = ApifyRunActorTool(apify_token='dummy-token', max_total_charge_usd=0.1)
+        copy = tool.model_copy(update={'max_total_charge_usd': 0.5})
+
+    copy.invoke({'actor_id': 'apify/hello-world'})
+    tool.invoke({'actor_id': 'apify/hello-world'})
+
+    original_client, copy_client = created
+    assert copy_client.actor.return_value.call.call_args.kwargs['max_total_charge_usd'] == Decimal('0.5')
+    assert original_client.actor.return_value.call.call_args.kwargs['max_total_charge_usd'] == Decimal('0.1')
+
+
+def test_a_retriever_copy_with_a_new_limit_runs_with_that_limit() -> None:
+    """The retriever's copy gets its own client with the new limit too."""
+    created: list[MagicMock] = []
+    with patch('langchain_apify._client._create_apify_client', side_effect=_client_factory(created)):
+        retriever = ApifySearchRetriever(apify_token='dummy-token', max_total_charge_usd=0.1)
+        copy = retriever.model_copy(update={'max_total_charge_usd': 0.5})
+
+    copy.invoke('apify')
+
+    original_client, copy_client = created
+    assert copy_client.actor.return_value.call.call_args.kwargs['max_total_charge_usd'] == Decimal('0.5')
+    original_client.actor.return_value.call.assert_not_called()
+
+
+def test_the_limit_cannot_be_changed_by_assignment() -> None:
+    """Assigning a new limit would leave the client with the old one, so it raises instead."""
+    with patch('langchain_apify._client._create_apify_client'):
+        tool = ApifyRunActorTool(apify_token='dummy-token', max_total_charge_usd=0.1)
+        retriever = ApifySearchRetriever(apify_token='dummy-token', max_total_charge_usd=0.1)
+
+    with pytest.raises(ValidationError):
+        tool.max_total_charge_usd = 0.5
+    with pytest.raises(ValidationError):
+        retriever.max_total_charge_usd = 0.5  # ty: ignore[invalid-assignment] - the test checks that this raises
+
+
+def test_crawl_loader_hands_the_limit_to_its_client() -> None:
+    """`ApifyCrawlLoader` creates its client with the developer's limit."""
+    with patch('langchain_apify.document_loaders.ApifyToolsClient') as client_cls:
+        ApifyCrawlLoader('https://example.com', apify_token='dummy-token', max_total_charge_usd=0.5)
+
+    assert client_cls.call_args.kwargs['max_total_charge_usd'] == 0.5

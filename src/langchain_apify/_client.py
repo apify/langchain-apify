@@ -151,6 +151,8 @@ class ApifyToolsClient:
         max_total_charge_usd: float | None = None,
     ) -> None:
         apify_token = _resolve_deprecated_token(apify_token, apify_api_token)
+        # Fail on an invalid limit now rather than when the first run starts.
+        _charge_limit(max_total_charge_usd)
 
         if isinstance(apify_token, SecretStr):
             _token: str | None = apify_token.get_secret_value()
