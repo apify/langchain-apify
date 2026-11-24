@@ -28,7 +28,7 @@ _RUN_PAYLOAD: dict = {
 }
 
 
-def make_run(**overrides: Any) -> Run:  # noqa: ANN401
+def make_run(**overrides: Any) -> Run:
     """Build a ``Run`` from the shared payload, overriding camelCase API fields."""
     return Run.model_validate({**_RUN_PAYLOAD, **overrides})
 
@@ -66,7 +66,7 @@ def client(mock_apify_client: MagicMock) -> ApifyToolsClient:
         return ApifyToolsClient(apify_token='dummy-token')
 
 
-def make_tool(tool_cls: type, mock_client: MagicMock, **kwargs: Any) -> Any:  # noqa: ANN401
+def make_tool(tool_cls: type, mock_client: MagicMock, **kwargs: Any) -> Any:
     """Instantiate a generic tool with a mocked ApifyToolsClient."""
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         tool = tool_cls(apify_token='dummy-token', **kwargs)

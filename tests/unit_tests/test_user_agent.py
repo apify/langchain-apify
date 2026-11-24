@@ -24,7 +24,7 @@ _CLIENT_CLASSES = [ApifyClient, ApifyClientAsync]
 
 
 @pytest.mark.parametrize('client_cls', _CLIENT_CLASSES)
-def test_create_apify_client_appends_origin_to_user_agent(client_cls: type) -> None:
+def test_create_apify_client_appends_origin_to_user_agent(client_cls: type[ApifyClient | ApifyClientAsync]) -> None:
     user_agent = _create_apify_client(client_cls, 'test-token').http_client._headers['User-Agent']
 
     # The client's own user-agent is extended, not replaced.
@@ -33,7 +33,7 @@ def test_create_apify_client_appends_origin_to_user_agent(client_cls: type) -> N
 
 
 @pytest.mark.parametrize('client_cls', _CLIENT_CLASSES)
-def test_origin_survives_the_per_request_header_merge(client_cls: type) -> None:
+def test_origin_survives_the_per_request_header_merge(client_cls: type[ApifyClient | ApifyClientAsync]) -> None:
     """Sitting on the client is not enough; the marker has to reach the headers of an actual request."""
     client = _create_apify_client(client_cls, 'test-token')
 
@@ -43,7 +43,7 @@ def test_origin_survives_the_per_request_header_merge(client_cls: type) -> None:
 
 
 @pytest.mark.parametrize('client_cls', _CLIENT_CLASSES)
-def test_integration_platform_header_reaches_the_request(client_cls: type) -> None:
+def test_integration_platform_header_reaches_the_request(client_cls: type[ApifyClient | ApifyClientAsync]) -> None:
     """This is the header the Apify platform reads; the user-agent marker predates it."""
     client = _create_apify_client(client_cls, 'test-token')
 

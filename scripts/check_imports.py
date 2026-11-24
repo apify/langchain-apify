@@ -1,13 +1,22 @@
+import importlib.util
 import sys
 import traceback
-from importlib.machinery import SourceFileLoader
+
+
+def _load(file: str) -> None:
+    spec = importlib.util.spec_from_file_location('x', file)
+    if spec is None or spec.loader is None:
+        msg = f'Cannot load {file}'
+        raise ImportError(msg)
+    spec.loader.exec_module(importlib.util.module_from_spec(spec))
+
 
 if __name__ == '__main__':
     files = sys.argv[1:]
     has_failure = False
     for file in files:
         try:
-            SourceFileLoader('x', file).load_module()
+            _load(file)
         except Exception:
             has_failure = True
             print(file)

@@ -49,3 +49,11 @@ class TestApifyActorsToolIntegration(ToolsIntegrationTests):
     def tool_invoke_params_example(self) -> dict:
         """Return an example of the parameters to pass to the tool invoke method."""
         return {'run_input': json.dumps({'first_number': 2, 'second_number': 3})}
+
+
+def test_actors_tool_builds_for_an_actor_without_a_description() -> None:
+    """`ApifyActorsTool` builds for an Actor whose `actor.json` has no `description`."""
+    tool = ApifyActorsTool('apify/hello-world')
+
+    assert tool.description == ''
+    assert 'run_input' in tool.args
