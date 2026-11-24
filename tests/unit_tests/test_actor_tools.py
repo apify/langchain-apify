@@ -120,10 +120,10 @@ def test_google_search_tool_rejects_malformed_locale(mock_tools_client: MagicMoc
     """country_code and language_code must be exactly two letters."""
     tool = make_tool(ApifyGoogleSearchTool, mock_tools_client)
 
-    with pytest.raises(ValueError, match='string_pattern_mismatch|String should match pattern'):
+    with pytest.raises(ValueError, match=r'string_pattern_mismatch|String should match pattern'):
         tool.invoke({'query': 'test', 'country_code': bad_code})
 
-    with pytest.raises(ValueError, match='string_pattern_mismatch|String should match pattern'):
+    with pytest.raises(ValueError, match=r'string_pattern_mismatch|String should match pattern'):
         tool.invoke({'query': 'test', 'language_code': bad_code})
 
 
@@ -771,7 +771,7 @@ def test_twitter_tool_value_error_raises_tool_exception(mock_tools_client: Magic
     tool = make_tool(ApifyTwitterScraperTool, mock_tools_client)
 
     with pytest.raises(ToolException, match='Unsupported Twitter search_mode'):
-        tool._run(search_query='apify', search_mode='replies')  # type: ignore[arg-type]
+        tool._run(search_query='apify', search_mode='replies')
 
 
 def test_twitter_tool_demo_items_add_notice(mock_tools_client: MagicMock) -> None:

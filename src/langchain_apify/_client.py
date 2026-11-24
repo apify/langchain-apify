@@ -28,7 +28,7 @@ from langchain_apify._error_messages import (
     _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET,
     _ERROR_SCRAPE_EMPTY,
 )
-from langchain_apify._types import CrawlerType  # noqa: TCH001  # runtime-needed: pydantic-free annotation
+from langchain_apify._types import CrawlerType  # noqa: TC001  # runtime-needed: pydantic-free annotation
 from langchain_apify._utils import (
     _create_apify_client,
     _extract_content,
@@ -573,9 +573,10 @@ class ApifyToolsClient:
             dataset_items_limit=1,
         )
 
-    def twitter_scrape(  # noqa: PLR0913
+    def twitter_scrape(
         self,
         search_query: str,
+        *,
         search_mode: str = 'search',
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         start: str | None = None,
