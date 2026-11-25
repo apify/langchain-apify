@@ -1,5 +1,9 @@
 _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET = (
     'APIFY_TOKEN environment variable is not set.'  # noqa: S105 - an error message, not a secret
+    ' Create an Apify API token at'
+    ' https://console.apify.com/settings/integrations'
+    '?createApiToken=true&for=LangChain&utm_source=langchain&utm_medium=integrations'
+    ' (it is shown only once).'
     ' Please set it to your Apify API token by using `os.environ["APIFY_TOKEN"] = "YOUR_APIFY_TOKEN"`'
     ' in your code or pass it as environment variable.'
     ' To pass it as environment variable, you can use the following command:'
