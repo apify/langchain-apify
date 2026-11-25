@@ -21,7 +21,7 @@ jobs:
       checks: read
     steps:
       - name: Wait for checks
-        uses: apify/actions/wait-for-checks@v1.6.2
+        uses: apify/actions/wait-for-checks@v1.9.0
         with:
           ref: ${{ github.sha }}
           check-regexp: ^Checks
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version_number: ${{ steps.release_prepare.outputs.version_number }}
-      changelog: ${{ steps.release_prepare.outputs.changelog }}
+      changelog_artifact_name: ${{ steps.release_prepare.outputs.changelog_artifact_name }}
     steps:
       - name: Verify running on main in the apify org
         if: github.ref != 'refs/heads/main' || !startsWith(github.repository, 'apify/')
@@ -40,7 +40,7 @@ jobs:
           echo "::error title=Wrong branch or repository::Releases must run from main in an apify/ repository."
           exit 1
 
-      - uses: apify/actions/git-cliff-release@v1.6.2
+      - uses: apify/actions/git-cliff-release@v1.9.0
         id: release_prepare
         name: Release prepare
         with:
@@ -50,13 +50,22 @@ jobs:
   changelog_update:
     name: Changelog update
     needs: [release_prepare]
+    runs-on: ubuntu-latest
+    environment:
+      name: automation
+      deployment: false
     permissions:
       contents: write
-    uses: apify/workflows/.github/workflows/python_bump_and_update_changelog.yaml@main
-    with:
-      version_number: ${{ needs.release_prepare.outputs.version_number }}
-      changelog: ${{ needs.release_prepare.outputs.changelog }}
-    secrets: inherit
+    outputs:
+      changelog_commitish: ${{ steps.changelog_update.outputs.changelog-commitish }}
+    steps:
+      - name: Bump version and update changelog
+        id: changelog_update
+        uses: apify/actions/python-bump-and-update-changelog@v1.9.0
+        with:
+          version-number: ${{ needs.release_prepare.outputs.version_number }}
+          changelog-artifact-name: ${{ needs.release_prepare.outputs.changelog_artifact_name }}
+          apify-service-account-github-token: ${{ secrets.APIFY_SERVICE_ACCOUNT_GITHUB_TOKEN }}
 
   # Publishing runs as a separate workflow run of `release.yml` (see the comment there).
   pypi_publish:
@@ -67,7 +76,7 @@ jobs:
       actions: write # Required by execute-workflow.
     steps:
       - name: Dispatch PyPI publish workflow
-        uses: apify/actions/execute-workflow@v1.6.2
+        uses: apify/actions/execute-workflow@v1.9.0
         with:
           workflow: release.yml
           inputs: >
