@@ -97,7 +97,7 @@ jobs:
         run: uv run poe build
 
       - name: Verify built package
-        uses: apify/actions/python-package-check@v1.6.2
+        uses: apify/actions/python-package-check@v1.9.0
         with:
           package_name: langchain_apify
           dist_dir: dist
