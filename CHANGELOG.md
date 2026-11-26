@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ## 0.2.1 - **not yet released**
 
+### 🚀 Features
+
+- [**breaking**] Add async tools, charge limits and untrusted output ([#52](https://github.com/apify/langchain-apify/pull/52)) ([09289c8](https://github.com/apify/langchain-apify/commit/09289c8d5b9ee6a3afd1c53fe316039e8bacb871)) by [@daveomri](https://github.com/daveomri)
+
 ### 🐛 Bug Fixes
 
 - Link to Console create-API-token form ([#55](https://github.com/apify/langchain-apify/pull/55)) ([924ae75](https://github.com/apify/langchain-apify/commit/924ae75e255feeb99841aaa7cb361f6e9c46e074)) by [@protoss70](https://github.com/protoss70)
