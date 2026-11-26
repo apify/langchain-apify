@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from langchain_apify._error_messages import _ERROR_APIFY_TOKEN_ENV_VAR_NOT_SET
 from langchain_apify._utils import (
     _apify_token_secret_factory,
+    _charge_limit,
     _create_apify_client,
     _resolve_deprecated_token,
     _run_timeout,
@@ -117,6 +118,7 @@ class ApifyWrapper(BaseModel):
         build: str | None = None,
         memory_mbytes: int | None = None,
         timeout_secs: int | None = None,
+        max_total_charge_usd: float | None = None,
     ) -> ApifyDatasetLoader:
         """Run an Actor on the Apify platform and wait for results to be ready.
 
@@ -131,6 +133,8 @@ class ApifyWrapper(BaseModel):
             memory_mbytes (int, optional): Optional memory limit for the run,
                 in megabytes.
             timeout_secs (int, optional): Optional timeout for the run, in seconds.
+            max_total_charge_usd (float, optional): Optional maximum total cost of the run, in USD.
+                A limit below the Actor's own minimum makes the run fail.
 
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
@@ -146,6 +150,7 @@ class ApifyWrapper(BaseModel):
                 build=build,
                 memory_mbytes=memory_mbytes,
                 run_timeout=run_timeout,
+                max_total_charge_usd=_charge_limit(max_total_charge_usd),
             )
         ) is None:
             msg = f'Failed to call Actor {actor_id}.'
@@ -166,6 +171,7 @@ class ApifyWrapper(BaseModel):
         build: str | None = None,
         memory_mbytes: int | None = None,
         timeout_secs: int | None = None,
+        max_total_charge_usd: float | None = None,
     ) -> ApifyDatasetLoader:
         """Run an Actor on the Apify platform and wait for results to be ready.
 
@@ -180,6 +186,8 @@ class ApifyWrapper(BaseModel):
             memory_mbytes (int, optional): Optional memory limit for the run,
                 in megabytes.
             timeout_secs (int, optional): Optional timeout for the run, in seconds.
+            max_total_charge_usd (float, optional): Optional maximum total cost of the run, in USD.
+                A limit below the Actor's own minimum makes the run fail.
 
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
@@ -195,6 +203,7 @@ class ApifyWrapper(BaseModel):
                 build=build,
                 memory_mbytes=memory_mbytes,
                 run_timeout=run_timeout,
+                max_total_charge_usd=_charge_limit(max_total_charge_usd),
             )
         ) is None:
             msg = f'Failed to call Actor {actor_id}.'
@@ -215,6 +224,7 @@ class ApifyWrapper(BaseModel):
         build: str | None = None,
         memory_mbytes: int | None = None,
         timeout_secs: int | None = None,
+        max_total_charge_usd: float | None = None,
     ) -> ApifyDatasetLoader:
         """Run a saved Actor task on Apify and wait for results to be ready.
 
@@ -230,6 +240,8 @@ class ApifyWrapper(BaseModel):
             memory_mbytes (int, optional): Optional memory limit for the run,
                 in megabytes.
             timeout_secs (int, optional): Optional timeout for the run, in seconds.
+            max_total_charge_usd (float, optional): Optional maximum total cost of the run, in USD.
+                A limit below the Actor's own minimum makes the run fail.
 
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
@@ -245,6 +257,7 @@ class ApifyWrapper(BaseModel):
                 build=build,
                 memory_mbytes=memory_mbytes,
                 run_timeout=run_timeout,
+                max_total_charge_usd=_charge_limit(max_total_charge_usd),
             )
         ) is None:
             msg = f'Failed to call task {task_id}.'
@@ -265,6 +278,7 @@ class ApifyWrapper(BaseModel):
         build: str | None = None,
         memory_mbytes: int | None = None,
         timeout_secs: int | None = None,
+        max_total_charge_usd: float | None = None,
     ) -> ApifyDatasetLoader:
         """Run a saved Actor task on Apify and wait for results to be ready.
 
@@ -280,6 +294,8 @@ class ApifyWrapper(BaseModel):
             memory_mbytes (int, optional): Optional memory limit for the run,
                 in megabytes.
             timeout_secs (int, optional): Optional timeout for the run, in seconds.
+            max_total_charge_usd (float, optional): Optional maximum total cost of the run, in USD.
+                A limit below the Actor's own minimum makes the run fail.
 
         Returns:
             ApifyDatasetLoader: A loader that will fetch the records from the
@@ -295,6 +311,7 @@ class ApifyWrapper(BaseModel):
                 build=build,
                 memory_mbytes=memory_mbytes,
                 run_timeout=run_timeout,
+                max_total_charge_usd=_charge_limit(max_total_charge_usd),
             )
         ) is None:
             msg = f'Failed to call task {task_id}.'

@@ -8,9 +8,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from langchain_core.tools import ArgsSchema, ToolException
+from langchain_core.tools import ArgsSchema
 from pydantic import BaseModel, Field
 
+from langchain_apify._client import (
+    _FACEBOOK_ACTOR_ID,
+    _INSTAGRAM_ACTOR_ID,
+    _LINKEDIN_DETAIL_ACTOR_ID,
+    _LINKEDIN_POSTS_ACTOR_ID,
+    _LINKEDIN_SEARCH_ACTOR_ID,
+    _TIKTOK_ACTOR_ID,
+    _TWITTER_ACTOR_ID,
+)
 from langchain_apify._constants import (
     _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
     _DEFAULT_SOCIAL_RESULTS_LIMIT,
@@ -23,10 +32,9 @@ from langchain_apify._types import (  # runtime-needed: pydantic Field annotatio
     TwitterSearchMode,
     TwitterSort,
 )
-from langchain_apify.tools.base import _TOOL_RUN_ERRORS, _ApifyGenericTool
+from langchain_apify.tools.base import _ApifyGenericTool, _ClientCall
 
 if TYPE_CHECKING:
-    from langchain_core.callbacks import CallbackManagerForToolRun
     from langchain_core.tools import BaseTool
 
 
@@ -228,25 +236,22 @@ class ApifyInstagramScraperTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyInstagramScraperInput
 
-    def _run(
+    def _client_call(
         self,
         search_type: InstagramSearchType,
         search_query: str,
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         only_posts_newer_than: str | None = None,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.instagram_scrape(
-                search_type=search_type,
-                search_query=search_query,
-                max_results=self._clamp_items(max_results),
-                only_posts_newer_than=only_posts_newer_than,
-                timeout_secs=self.max_timeout_secs,
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, items)
+    ) -> _ClientCall:
+        return self._call(
+            'instagram_scrape',
+            search_type=search_type,
+            search_query=search_query,
+            max_results=self._clamp_items(max_results),
+            only_posts_newer_than=only_posts_newer_than,
+            timeout_secs=self.max_timeout_secs,
+            source=_INSTAGRAM_ACTOR_ID,
+        )
 
 
 class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):
@@ -288,21 +293,18 @@ class ApifyLinkedInProfilePostsTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyLinkedInProfilePostsInput
 
-    def _run(
+    def _client_call(
         self,
         profile_url: str,
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.linkedin_profile_posts(
-                profile_url=profile_url,
-                max_results=self._clamp_items(max_results),
-                timeout_secs=self.max_timeout_secs,
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, items)
+    ) -> _ClientCall:
+        return self._call(
+            'linkedin_profile_posts',
+            profile_url=profile_url,
+            max_results=self._clamp_items(max_results),
+            timeout_secs=self.max_timeout_secs,
+            source=_LINKEDIN_POSTS_ACTOR_ID,
+        )
 
 
 class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):
@@ -344,21 +346,18 @@ class ApifyLinkedInProfileSearchTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyLinkedInProfileSearchInput
 
-    def _run(
+    def _client_call(
         self,
         query: str,
         max_results: int = _DEFAULT_LINKEDIN_SEARCH_MAX_RESULTS,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.linkedin_profile_search(
-                query=query,
-                max_results=self._clamp_items(max_results),
-                timeout_secs=self.max_timeout_secs,
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, items)
+    ) -> _ClientCall:
+        return self._call(
+            'linkedin_profile_search',
+            query=query,
+            max_results=self._clamp_items(max_results),
+            timeout_secs=self.max_timeout_secs,
+            source=_LINKEDIN_SEARCH_ACTOR_ID,
+        )
 
 
 class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):
@@ -399,22 +398,19 @@ class ApifyLinkedInProfileDetailTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyLinkedInProfileDetailInput
 
-    def _run(
+    def _client_call(
         self,
         profile_url: str,
         *,
         include_email: bool = False,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.linkedin_profile_detail(
-                profile_url=profile_url,
-                include_email=include_email,
-                timeout_secs=self.max_timeout_secs,
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, items)
+    ) -> _ClientCall:
+        return self._call(
+            'linkedin_profile_detail',
+            profile_url=profile_url,
+            include_email=include_email,
+            timeout_secs=self.max_timeout_secs,
+            source=_LINKEDIN_DETAIL_ACTOR_ID,
+        )
 
 
 class ApifyTwitterScraperTool(_ApifyGenericTool):
@@ -461,7 +457,7 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyTwitterScraperInput
 
-    def _run(
+    def _client_call(
         self,
         search_query: str,
         *,
@@ -470,20 +466,21 @@ class ApifyTwitterScraperTool(_ApifyGenericTool):
         start: str | None = None,
         end: str | None = None,
         sort: TwitterSort | None = None,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.twitter_scrape(
-                search_query=search_query,
-                search_mode=search_mode,
-                max_results=self._clamp_items(max_results),
-                start=start,
-                end=end,
-                sort=sort,
-                timeout_secs=self.max_timeout_secs,
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
+    ) -> _ClientCall:
+        return self._call(
+            'twitter_scrape',
+            search_query=search_query,
+            search_mode=search_mode,
+            max_results=self._clamp_items(max_results),
+            start=start,
+            end=end,
+            sort=sort,
+            timeout_secs=self.max_timeout_secs,
+            source=_TWITTER_ACTOR_ID,
+        )
+
+    def _format_result(self, result: tuple) -> str:
+        run, items = result
         notice = _NOTICE_TWITTER_DEMO if _has_demo_items(items) else None
         return self._envelope(run, items, notice=notice)
 
@@ -529,23 +526,20 @@ class ApifyTikTokScraperTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyTikTokScraperInput
 
-    def _run(
+    def _client_call(
         self,
         search_query: str,
         search_type: TikTokSearchType = 'search',
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.tiktok_scrape(
-                search_query=search_query,
-                search_type=search_type,
-                max_results=self._clamp_items(max_results),
-                timeout_secs=self.max_timeout_secs,
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, items)
+    ) -> _ClientCall:
+        return self._call(
+            'tiktok_scrape',
+            search_query=search_query,
+            search_type=search_type,
+            max_results=self._clamp_items(max_results),
+            timeout_secs=self.max_timeout_secs,
+            source=_TIKTOK_ACTOR_ID,
+        )
 
 
 class ApifyFacebookPostsScraperTool(_ApifyGenericTool):
@@ -591,25 +585,22 @@ class ApifyFacebookPostsScraperTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyFacebookPostsScraperInput
 
-    def _run(
+    def _client_call(
         self,
         page_url: str,
         max_results: int = _DEFAULT_SOCIAL_RESULTS_LIMIT,
         only_posts_newer_than: str | None = None,
         only_posts_older_than: str | None = None,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.facebook_posts_scrape(
-                page_url=page_url,
-                max_results=self._clamp_items(max_results),
-                only_posts_newer_than=only_posts_newer_than,
-                only_posts_older_than=only_posts_older_than,
-                timeout_secs=self.max_timeout_secs,
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, items)
+    ) -> _ClientCall:
+        return self._call(
+            'facebook_posts_scrape',
+            page_url=page_url,
+            max_results=self._clamp_items(max_results),
+            only_posts_newer_than=only_posts_newer_than,
+            only_posts_older_than=only_posts_older_than,
+            timeout_secs=self.max_timeout_secs,
+            source=_FACEBOOK_ACTOR_ID,
+        )
 
 
 # Convenience tool-class list for selective agent binding.

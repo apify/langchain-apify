@@ -36,6 +36,8 @@ results = browser.invoke(input={
 })
 ```
 
+The tool returns the dataset items as JSON between untrusted content markers, which tell the agent to treat scraped content as data. Pass `mark_output_untrusted=False` to get the items as a list.
+
 ### Using with an Agent
 
 The ApifyActorsTool can also be integrated with LangChain agents for more dynamic workflows:

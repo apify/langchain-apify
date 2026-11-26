@@ -67,7 +67,12 @@ def client(mock_apify_client: MagicMock) -> ApifyToolsClient:
 
 
 def make_tool(tool_cls: type, mock_client: MagicMock, **kwargs: Any) -> Any:
-    """Instantiate a generic tool with a mocked ApifyToolsClient."""
+    """Instantiate a generic tool with a mocked ApifyToolsClient.
+
+    Marking is off unless the test passes `mark_output_untrusted`, so tests can parse the plain JSON envelope;
+    `test_untrusted_output.py` covers the markers, which are on by default.
+    """
+    kwargs.setdefault('mark_output_untrusted', False)
     with patch.object(ApifyToolsClient, '__init__', return_value=None):
         tool = tool_cls(apify_token='dummy-token', **kwargs)
     tool._client = mock_client

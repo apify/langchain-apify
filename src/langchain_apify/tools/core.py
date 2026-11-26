@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from langchain_core.tools import ArgsSchema, ToolException
+from langchain_core.tools import ArgsSchema
 from pydantic import BaseModel, Field
 
+from langchain_apify._client import (
+    _WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
+)
 from langchain_apify._constants import (
     _DEFAULT_DATASET_ITEMS_LIMIT,
     _DEFAULT_RUN_TIMEOUT_SECS,
@@ -19,10 +22,9 @@ from langchain_apify._constants import (
     _MAX_MEMORY_MBYTES_CAP,
     _MAX_TIMEOUT_SECS_CAP,
 )
-from langchain_apify.tools.base import _TOOL_RUN_ERRORS, _ApifyGenericTool
+from langchain_apify.tools.base import _ApifyGenericTool, _ClientCall
 
 if TYPE_CHECKING:
-    from langchain_core.callbacks import CallbackManagerForToolRun
     from langchain_core.tools import BaseTool
 
 
@@ -151,21 +153,22 @@ class ApifyRunActorTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyRunActorInput
 
-    def _run(
+    def _client_call(
         self,
         actor_id: str,
         run_input: dict | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run = self._client.run_actor(
-                actor_id, run_input, self._clamp_timeout(timeout_secs), self._clamp_memory(memory_mbytes)
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, [])
+    ) -> _ClientCall:
+        return self._call(
+            'run_actor',
+            actor_id,
+            run_input,
+            self._clamp_timeout(timeout_secs),
+            self._clamp_memory(memory_mbytes),
+            format_result=lambda run: self._envelope(run, []),
+            source=None,
+        )
 
 
 class ApifyGetDatasetItemsTool(_ApifyGenericTool):
@@ -204,18 +207,20 @@ class ApifyGetDatasetItemsTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyGetDatasetItemsInput
 
-    def _run(
+    def _client_call(
         self,
         dataset_id: str,
         limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
         offset: int = 0,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            items = self._client.get_dataset_items(dataset_id, self._clamp_items(limit), max(0, offset))
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(None, items)
+    ) -> _ClientCall:
+        return self._call(
+            'get_dataset_items',
+            dataset_id,
+            self._clamp_items(limit),
+            max(0, offset),
+            format_result=lambda items: self._envelope(None, items),
+            source=f'dataset/{dataset_id}',
+        )
 
 
 class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):
@@ -260,26 +265,23 @@ class ApifyRunActorAndGetDatasetTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyRunActorAndGetDatasetInput
 
-    def _run(
+    def _client_call(
         self,
         actor_id: str,
         run_input: dict | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
         dataset_items_limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.run_actor_and_get_items(
-                actor_id,
-                run_input,
-                self._clamp_timeout(timeout_secs),
-                self._clamp_memory(memory_mbytes),
-                self._clamp_items(dataset_items_limit),
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, items)
+    ) -> _ClientCall:
+        return self._call(
+            'run_actor_and_get_items',
+            actor_id,
+            run_input,
+            self._clamp_timeout(timeout_secs),
+            self._clamp_memory(memory_mbytes),
+            self._clamp_items(dataset_items_limit),
+            source=actor_id,
+        )
 
 
 class ApifyScrapeUrlTool(_ApifyGenericTool):
@@ -319,19 +321,20 @@ class ApifyScrapeUrlTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyScrapeUrlInput
 
-    def _run(
+    def _client_call(
         self,
         url: str,
         timeout_secs: int = _DEFAULT_SCRAPE_TIMEOUT_SECS,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            # scrape_url_with_metadata is the rich primitive; the plain
-            # scrape_url() drops the run metadata + content source this tool needs.
-            run, _, content, _ = self._client.scrape_url_with_metadata(url, self._clamp_timeout(timeout_secs))
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, [{'url': url, 'content': content}])
+    ) -> _ClientCall:
+        # scrape_url_with_metadata is the rich primitive; the plain
+        # scrape_url() drops the run metadata + content source this tool needs.
+        return self._call(
+            'scrape_url_with_metadata',
+            url,
+            self._clamp_timeout(timeout_secs),
+            format_result=lambda result: self._envelope(result[0], [{'url': url, 'content': result[2]}]),
+            source=_WEBSITE_CONTENT_CRAWLER_ACTOR_ID,
+        )
 
 
 class ApifyRunTaskTool(_ApifyGenericTool):
@@ -377,21 +380,22 @@ class ApifyRunTaskTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyRunTaskInput
 
-    def _run(
+    def _client_call(
         self,
         task_id: str,
         task_input: dict | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run = self._client.run_task(
-                task_id, task_input, self._clamp_timeout(timeout_secs), self._clamp_memory(memory_mbytes)
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, [])
+    ) -> _ClientCall:
+        return self._call(
+            'run_task',
+            task_id,
+            task_input,
+            self._clamp_timeout(timeout_secs),
+            self._clamp_memory(memory_mbytes),
+            format_result=lambda run: self._envelope(run, []),
+            source=None,
+        )
 
 
 class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):
@@ -436,26 +440,23 @@ class ApifyRunTaskAndGetDatasetTool(_ApifyGenericTool):
     )
     args_schema: ArgsSchema | None = ApifyRunTaskAndGetDatasetInput
 
-    def _run(
+    def _client_call(
         self,
         task_id: str,
         task_input: dict | None = None,
         timeout_secs: int = _DEFAULT_RUN_TIMEOUT_SECS,
         memory_mbytes: int | None = None,
         dataset_items_limit: int = _DEFAULT_DATASET_ITEMS_LIMIT,
-        _run_manager: CallbackManagerForToolRun | None = None,
-    ) -> str:
-        try:
-            run, items = self._client.run_task_and_get_items(
-                task_id,
-                task_input,
-                self._clamp_timeout(timeout_secs),
-                self._clamp_memory(memory_mbytes),
-                self._clamp_items(dataset_items_limit),
-            )
-        except _TOOL_RUN_ERRORS as exc:
-            raise ToolException(str(exc)) from exc
-        return self._envelope(run, items)
+    ) -> _ClientCall:
+        return self._call(
+            'run_task_and_get_items',
+            task_id,
+            task_input,
+            self._clamp_timeout(timeout_secs),
+            self._clamp_memory(memory_mbytes),
+            self._clamp_items(dataset_items_limit),
+            source=f'task/{task_id}',
+        )
 
 
 # Convenience tool-class list for selective agent binding.
