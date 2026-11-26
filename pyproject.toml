@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "langchain-apify"
-version = "0.2.1"
+version = "0.3.0"
 description = "An integration package connecting Apify and LangChain"
 authors = [{ name = "Apify Technologies s.r.o.", email = "support@apify.com" }]
 readme = "README.md"
