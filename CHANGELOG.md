@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+<!-- git-cliff-unreleased-start -->
+
+## 0.2.1 - **not yet released**
+
+### 🐛 Bug Fixes
+
+- Link to Console create-API-token form ([#55](https://github.com/apify/langchain-apify/pull/55)) ([924ae75](https://github.com/apify/langchain-apify/commit/924ae75e255feeb99841aaa7cb361f6e9c46e074)) by [@protoss70](https://github.com/protoss70)
+
+<!-- git-cliff-unreleased-end -->
+
 ## [0.2.0](https://github.com/apify/langchain-apify/releases/tag/v0.2.0) (2026-11-05)
 
 ### 🚀 Features
